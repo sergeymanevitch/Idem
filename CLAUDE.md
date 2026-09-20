@@ -5,7 +5,9 @@ from the source with its quote and line number, every gap marked `not in source`
 written for the person using or judging the folder; this file is the route for an agent about to
 work in it. It routes and holds no rule.
 
-**State: skeleton.** Nothing below is built yet; each folder's `CONTEXT.md` says what it will hold.
+**State: the contract can be read.** `reference/00_catalogue.md` states the strict-table grammar and
+names every contract table; `lib/idemlib/contract.py` loads them and `lib/tests/` proves it. Nothing
+else below is built yet — each folder's `CONTEXT.md` says what it will hold.
 
 ## To translate a snapshot
 
