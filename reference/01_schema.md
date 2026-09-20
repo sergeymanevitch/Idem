@@ -46,7 +46,7 @@ range itself. The cell is empty and never `no`, because `no` is a scope and `sou
 | --- | --- | --- | --- | --- |
 | change | copied | 1+ | no | what changed: a verbatim span of the source. Which span a long entry yields is a rule Epic 5 adds to this file (FR-12) |
 | affected_surface | copied | 1+ | yes | the endpoint, parameter, method or version the change is about, spelled as it appears |
-| breaking | listed | 1+ | yes | yes, no, or the sentinel. Filled only when the quote holds a phrase of 03_breaking-terms.md, which maps each phrase to its value, longest match first (FR-14) |
+| breaking | listed | 1+ | yes | yes, no, or the sentinel. Filled only when the quote holds a phrase of 03_breaking-terms.md, which maps each phrase to its value, read by the routine that file states (FR-14) |
 | entry_date | copied | 1+ | yes | the date in the dated heading the change sits under (FR-15). It is never copied into effective_date |
 | effective_date | copied | 1+ | no | only a temporal expression the source ties to the change taking effect, copied as written and never resolved or computed (FR-16) |
 | sunset_date | copied | 1+ | no | only a temporal expression the source ties to old behaviour ending, copied as written and never resolved or computed (FR-16) |
