@@ -7,27 +7,50 @@ imports `idemlib`. Python 3.9 or later, standard library only, no install step.
 
 | Entry | What it is |
 | --- | --- |
-| `idemlib/contract.py` | built — loads every table `reference/00_catalogue.md` names, and lints every pattern cell in them |
+| `idemlib/contract.py` | built — loads every table `reference/00_catalogue.md` names, lints every pattern cell in them, and reads one strict table outside that folder when a caller hands it a path |
 | `idemlib/snapshot.py` | not built — the snapshot format, the coordinate system, the line classifier |
 | `idemlib/tickets.py` | not built — parse and serialise a tickets file, and its canonical form |
-| `tests/` | the `unittest` suite for `idemlib` |
+| `tests/` | the `unittest` suite: `idemlib` itself, and one module per written file of `reference/`, which reads the shipped tables back and holds them to what their prose says |
 
 - **Read by:** every step script and the harness. Nothing here reads a step's output folder.
 - **Writes:** nothing. `contract.py` finds the Idem root from its own location, never the working
-  directory, and writes nothing into the repository.
+  directory, and writes nothing into the repository. It reads nothing outside `reference/` of its
+  own accord; `read_table(path, table_id)` is the one function a **caller may supply a path** to,
+  and it reads exactly the file it is given.
 - **Human check:** that a rule a tool enforces is the rule `reference/` states. The tools only make
   that possible; they cannot prove it.
 
 ## Running the tests
 
-From the Idem root:
+There are **two** commands, and "the tests" means both. From the Idem root:
 
     python3 -m unittest discover -s lib/tests -t lib
+    python3 -m unittest discover -s 02_validate -t 02_validate
 
-`-t lib` puts `lib/` on the path, so a test imports `idemlib` the way a step script does. The suite
-is stdlib `unittest` — there is nothing to install and no runner to configure. Run it on the oldest
+The first is this folder's suite: `idemlib`, and one module per written file of `reference/`. The
+second is one file, `02_validate/test_manifest.py`, and it holds the **reconciliation between
+`reference/05_checks.md` and `02_validate/00_fixtures/manifest.md`** — every check named by a
+fixture, every code a fixture expects defined as a check (AD-7). Nothing under `lib/tests/` runs it,
+so a person who runs only the first command has not run it.
+
+`-t lib` puts `lib/` on the path, so a test imports `idemlib` the way a step script does; the second
+command's file puts `lib/` on the path itself, for the same reason. Both suites are stdlib
+`unittest` — there is nothing to install and no runner to configure. Run them on the oldest
 interpreter you have as well as the newest: 3.9 is the floor (NFR-1), and on macOS
 `/usr/bin/python3` is usually it.
+
+## One table that is not contract
+
+`load()` reads the folder the catalogue describes, both ways, and nothing outside `reference/` can
+add a table to it. `read_table(path, table_id)` is the other door: one strict table, in a file the
+caller names, by the same grammar and the same reader. It exists for
+`02_validate/00_fixtures/manifest.md`, which says what the negative suite expects of particular
+files and is therefore not contract — nothing enforces it, so nothing catalogues it. What that
+costs is everything a catalogue row buys: no column names a caller may trust, so the columns are
+read by position; no key column, so the rows come back as a list in file order; no pattern cell
+linted; no both-ways check. `read_table()` raises `ContractError` like the loader, carrying one
+Problem per problem — two rows of the wrong width are two — so a caller can print one coded line
+each and stop. A table with a header, a delimiter row and no body rows is a table, not a defect.
 
 ## The one place two code strings are written
 

@@ -167,12 +167,22 @@ row by that value.
 | line-classes | 04_snapshot-format.md | class, pattern, rule | class |
 | html-elements | 04_snapshot-format.md | element, parsing, output, marker | element |
 | fetch-limits | 04_snapshot-format.md | limit, value, meaning | limit |
+| checks | 05_checks.md | key, code, what it checks, FR | key |
+| fetch-failures | 05_checks.md | key, code, what it reports, FR | key |
+| warn-patterns | 05_checks.md | name, pattern | name |
 
-At this step the catalogue names itself, the five tables of the ticket schema, the phrases that
-decide `breaking` and the five tables of the snapshot format, and the loader that reads them is
-written and tested. The validator's checks are added to this table by the story that writes
-`05_checks.md`; a table is usable by a tool on the day its row appears here, and not before.
+The catalogue now names itself, the five tables of the ticket schema, the phrases that decide
+`breaking`, the five tables of the snapshot format and the three tables of `05_checks.md` — every
+validator check with its code, the fetch failures with theirs, and the pattern a warning looks for.
+That is the whole of the enumerable contract Epic 1 set out to write, and the loader that reads it
+is written and tested. A table is usable by a tool on the day its row appears here, and not before.
 
 Listed is not the same as used. Every table above loads today, and nothing but `contract.py` reads
 any of them yet: `tickets.py`, `snapshot.py`, `fetch.py` and the validator are not written. A row
 here says a tool *may* read that table, never that one does.
+
+One table Idem ships is deliberately **not** listed here: the fixture manifest of
+`02_validate/00_fixtures/`. It is written in the same grammar and read by the same reader, through
+`read_table()` rather than `load()`, and it is in no catalogue row because it is not contract — it
+is what a suite expects of particular files. It lives outside this folder, so the both-ways check
+above never sees it, nothing in it is linted, and a caller reads its columns by position.

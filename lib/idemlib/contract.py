@@ -67,12 +67,23 @@ CONTRACT_TABLE line, at the line of the row that holds the cell. It compiles wit
 caller must do the same: passing a flag would put back exactly what the ban on inline flag groups
 takes away, and the table would stop saying what it matches.
 
+ONE TABLE SOMEWHERE ELSE
+
+read_table(path, table_id) reads a single strict table out of a file the caller names, by the same
+grammar and with the same reader. It exists for one file: the fixture manifest of AD-7, which lives
+under 02_validate/ and is not contract - it is what a suite expects of files, not something a tool
+enforces - so it is in no catalogue, gets no both-ways check and has no pattern cell linted. The
+caller supplies the path and reads the columns by position, because no catalogue row names them and
+this module holds no name of its own. load() is untouched by it: the contract is still the folder
+the catalogue describes, and nothing outside reference/ can add a table to it.
+
 WHAT IT DOES NOT DO
 
 It does not check that a rule is right, only that the table stating it can be read. It writes
-nothing, reads nothing outside reference/, and finds the Idem root from its own location, so a tool
-started from any folder loads the same contract. It holds no knowledge of what a table means: a
-caller asks for a table by the id the catalogue gives it and reads the columns the catalogue names.
+nothing, reads nothing outside reference/ except the one file a caller hands to read_table(), and
+finds the Idem root from its own location, so a tool started from any folder loads the same
+contract. It holds no knowledge of what a table means: a caller asks for a table by the id the
+catalogue gives it and reads the columns the catalogue names.
 
 This file keeps to syntax that every Python 3 accepts - no f-strings, no annotations - so that an
 interpreter below the floor reaches the version check and says what is needed, instead of dying of
@@ -134,6 +145,11 @@ USAGE = ("usage: python3 lib/idemlib/contract.py - it takes no argument, and rea
 
 Problem = collections.namedtuple("Problem", "file line message")
 Table = collections.namedtuple("Table", "id file line columns key_column rows")
+#: What read_table() gives back: a table nobody catalogued, so its columns have no names a tool may
+#: trust and its rows have no key. The header cells and the body rows are handed over as they stand,
+#: in file order, and the caller reads them by position.
+RawTable = collections.namedtuple("RawTable", "file line header rows")
+RawRow = collections.namedtuple("RawRow", "line cells")
 
 
 class ContractError(Exception):
@@ -167,12 +183,18 @@ def idem_root():
 
 
 def _relative(path, root):
-    """The path as a failure line reports it: relative to the Idem root, forward slashes."""
-    try:
-        relative = os.path.relpath(path, root)
-    except ValueError:
-        relative = path
-    return relative.replace(os.sep, "/")
+    """The path as a failure line reports it: relative to the Idem root, forward slashes.
+
+    A path that is not under the root is reported **absolutely**. `os.path.relpath` would answer
+    with a ladder of `..`, which names the file no more exactly than the absolute path and names it
+    from a working directory the reader does not have; and read_table() takes a path from its
+    caller, so a file outside the root is something a failure line has to be able to say.
+    """
+    absolute = os.path.abspath(path)
+    prefix = os.path.join(os.path.abspath(root), "")
+    if not absolute.startswith(prefix):
+        return absolute.replace(os.sep, "/")
+    return absolute[len(prefix):].replace(os.sep, "/")
 
 
 # --- the failure line (AD-6) ---------------------------------------------------------------------
@@ -366,6 +388,64 @@ def _is_delimiter(cells):
         if DELIMITER_RE.match(cell) is None:
             return False
     return True
+
+
+# --- one table outside reference/ -----------------------------------------------------------------
+
+
+def read_table(path, table_id):
+    """The strict table `table_id` in the file at `path`, as a RawTable.
+
+    The same grammar as the contract and the same reader: the marker line at the very start of a
+    line, a header row, a delimiter row, then one row per entry; a table inside a code fence is
+    invisible and an unmarked table is illustration. One reader, so a table cannot mean one thing
+    in reference/ and another under 02_validate/.
+
+    Everything the catalogue would say is missing here, and deliberately. There is no row naming the
+    columns, so the header cells are handed back as they stand and the caller reads them by
+    position; there is no key column, so the rows are a list in file order and a repeated value in
+    any column is the caller's business; no cell is linted or compiled, because a column named
+    `pattern` in a file outside reference/ states no contract for a tool to hold; and no both-ways
+    check runs, because nothing catalogues this table. What is checked is only that the file can be
+    read and that what stands under the marker is a table. A table with a marker, a header and a
+    delimiter row and **no body rows** is a table: it is returned with an empty `rows`, because a
+    list of nothing is a thing a manifest may legitimately say and not a defect in the file.
+
+    Raises ContractError - one Problem per problem, in file order, so a caller may print them as
+    the coded lines of AD-6 - when the path cannot be read or is not UTF-8, when a fence in the
+    file is never closed, when no visible marker carries the id, when the id is marked twice, or
+    when the table under the marker is unusable. The first four are one problem each and stop
+    there; malformed rows are counted separately, so two rows of the wrong width are two Problems.
+    """
+    label = _relative(path, idem_root())
+    lines, problem = _read(path, label)
+    if problem is not None:
+        raise ContractError([Problem(label, 1, problem.message)])
+    flags, unclosed = _fenced(lines)
+    if unclosed is not None:
+        raise ContractError([Problem(label, unclosed,
+                                     "a code fence opens here and is never closed; a marker below "
+                                     "it would be invisible, so no table in this file can be "
+                                     "trusted")])
+    marker_line = None
+    for candidate_line, candidate_id in _markers(lines, flags):
+        if candidate_id != table_id:
+            continue
+        if marker_line is not None:
+            raise ContractError([Problem(label, candidate_line,
+                                         "the table id '" + table_id + "' is marked twice in this "
+                                         "file; the first marker is on line " + str(marker_line))])
+        marker_line = candidate_line
+    if marker_line is None:
+        raise ContractError([Problem(label, 1,
+                                     "no marked table '" + table_id + "' in this file; a table is "
+                                     "read only under the marker line that names it")])
+    parsed, problems = _parse_table(lines, flags, marker_line, label)
+    if parsed is None or problems:
+        raise ContractError(problems)
+    header_line, header, rows = parsed
+    return RawTable(label, header_line, header,
+                    [RawRow(line, cells) for line, cells in rows])
 
 
 # --- loading the contract ------------------------------------------------------------------------
@@ -872,8 +952,14 @@ def _emit(line):
     UnicodeEncodeError outside the handler in main(), and a traceback would reach the stream
     instead of one coded line. So an unencodable character is backslash-escaped and the line goes
     out.
+
+    The attribute is reached rather than named, because `encoding` became a key of the `checks`
+    table in Story 1.7, and a test holds the loader to naming no key of any shipped table.
     """
-    encoding = getattr(sys.stdout, "encoding", None)
+    try:
+        encoding = sys.stdout.encoding
+    except AttributeError:
+        encoding = None
     if encoding:
         line = line.encode(encoding, "backslashreplace").decode(encoding, "replace")
     print(line)

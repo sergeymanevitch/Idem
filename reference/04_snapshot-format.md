@@ -38,8 +38,8 @@ sha256: <the digest of the body>
 Four values are written in angle brackets on purpose. What form each of those takes — how a
 timestamp is spelled, how a routine is named, how long a digest is — is not settled in this file,
 and this file invents nothing. They are settled by the story that writes `fetch.py`, which is what
-produces them, and by `05_checks.md`, which is where a rule about the form of a value gets the check
-key that makes it enforceable. Not before either of those.
+produces them; `05_checks.md` is written and keys what a snapshot faces, but no key of it says what
+a timestamp or a digest looks like, and none will until `fetch.py` says so first.
 
 The header ends at the **first** line that is exactly the separator. A body line that happens to
 read the same is body: it is numbered like every other line, and nothing looks for a second
@@ -72,9 +72,10 @@ Row order below **is** field order — a header carries all eight, in this order
 
 There is no pattern column here, and that is deliberate. What a value must *look* like — how a
 timestamp is written, how many characters a digest has — is a rule something would have to check,
-and a check needs a key and a code in `05_checks.md`. That table is not written yet, and a story
-that needs a key it lacks raises a decision rather than inventing one (AD-7). So this table says
-what each field holds, and stops there.
+and a check needs a key and a code in `05_checks.md`. That table is written, and it keys the two
+checks a snapshot faces — that the file can be read as a snapshot at all, and that its body matches
+its own digest — but the form of a header value belongs to the story that writes `fetch.py`, which
+produces it. So this table says what each field holds, and stops there.
 
 ## The constants
 

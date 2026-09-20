@@ -11,8 +11,8 @@ the page.
 
 One table below holds the list. It is in the catalogue, so a tool loads it; no tool holds a copy of
 it (AD-1). What the table cannot carry — how a quote is read against it — is the prose of this file,
-and `reference/CONTEXT.md` names that as debt until `05_checks.md` gives it a key and the fixtures of
-Epic 3 exercise it.
+and `05_checks.md` now gives it a key; `reference/CONTEXT.md` still names it as debt, because a key
+is not a check until `validate.py` and the fixtures of Epic 3 exist.
 
 ## The list
 
@@ -101,8 +101,8 @@ because "breaking change" occurs in it and there is no left edge to stop it. A l
 is *not* breaking, and a line where the phrase is buried inside a word, are both lines worth a
 reader's eye when they were left uncited inside a change's range. A warning that missed them to
 stay tidy would be the wrong trade; a false `not in source` is what FR-37 exists to backstop. That
-warning is built in `validate.py`; nothing in this file is a check until `05_checks.md` gives it a
-key.
+warning has its key in `05_checks.md` and will be built in `validate.py`; until that tool exists,
+nothing in this file is enforced by anything.
 
 ## Worked
 
@@ -147,8 +147,9 @@ guessing:
   change" and reads `yes`. The plural is worth the cost; a word boundary on the right would drop
   "Breaking changes", which is the heading this field is most often filled from.
 - **The rule is per quote, not per ticket.** Two rows of one ticket are read separately, and this
-  file says nothing about what a validator does when two of them disagree. That belongs to
-  `05_checks.md`.
+  file says nothing about what a validator does when two of them disagree. Neither does
+  `05_checks.md`: it names that as a limit with no check, because each row is true of its own quote
+  and the honest answer would be a rule about segmentation.
 - **"is not deprecated" and its like are not this list's business.** They belong to the substring
   rule of a `copied` field (FR-30), which reads a value against its own quote and has nothing to do
   with `breaking`.

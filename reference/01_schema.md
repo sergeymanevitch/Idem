@@ -139,8 +139,9 @@ reads `none`, which is a statement about this file and not about the input.
 
 Three items have no `value_pattern`, and that is deliberate. What a digest, a URL or a snapshot name
 must *look* like is a rule pairing enforces (FR-35), and a check needs a key and a code in
-`05_checks.md`. That table is not written yet, and a story that needs a key it lacks raises a
-decision rather than inventing one (AD-7). So those three rows say what the item holds, and stop
+`05_checks.md`. That table now has them — the pairing phase keys the snapshot name, the digest and
+the URL as three separate checks — and what each value must look like is still settled where it is
+produced, by the story that writes `fetch.py`. So those three rows say what the item holds, and stop
 there.
 
 `body_range` is a range and never a count: `12-40` is lines 12 to 40 inclusive, and one line is the
@@ -264,10 +265,10 @@ them in order, that a refusal reason is a row of `refusal-reasons`, that a heade
 row of `header-items`, that a filled value of a `copied` field is a substring of its own quote, and
 that `unnumbered` appears only under `line_numbers: none`.
 
-Both kinds are stated here in English and enforced by nothing today. The first wait for `tickets.py`
-and the validator; the second wait for the same, and for the keys and codes Story 1.7 writes into
-`05_checks.md`, because a rule about a cell is a check and a check needs a code (AD-7). Every one of
-them is listed as debt in `reference/CONTEXT.md`.
+Both kinds are stated here in English and enforced by nothing today. Every one of them now has a key
+and a code in `05_checks.md`, so what each is waiting for is the same thing: `tickets.py` and the
+validator, which are not written. Every one of them is listed as debt in `reference/CONTEXT.md`,
+where the key it was given is named beside it.
 
 ## The `source` row
 
@@ -496,9 +497,9 @@ the item, several dates, nested headings. Both are translator prose rather than 
 Story 5.1 adds them to this file, after the translator has been run against real changelogs rather
 than before.
 
-Of the two neighbours this file points at, one is written — `03_breaking-terms.md`, the closed list
-of phrases that fill `breaking` and the value each one maps to — and one is not: `05_checks.md`,
-where every rule above gets the key and the code that make it enforceable.
+Both neighbours this file points at are written: `03_breaking-terms.md`, the closed list of phrases
+that fill `breaking` and the value each one maps to, and `05_checks.md`, where every rule above has
+the key and the code that will make it enforceable.
 
 ## Nothing reads these tables yet
 

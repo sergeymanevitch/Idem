@@ -1043,6 +1043,300 @@ class TestTheShippedPatternCells(unittest.TestCase):
         self.assertTrue(found, "the shipped contract holds no pattern cell to check")
 
 
+# --- one table outside reference/ -----------------------------------------------------------------
+
+
+class TestReadTable(unittest.TestCase):
+    """`read_table(path, table_id)`: the same grammar and the same reader, on a file the caller
+    names. It is for the fixture manifest of AD-7, which is not contract - nothing catalogues it,
+    nothing lints it, and the caller reads its columns by position.
+
+    Every table here is written into a throwaway folder that is not `reference/`, because reading a
+    file the catalogue knows nothing about is the whole of what this function adds.
+    """
+
+    TABLE = "sample"
+
+    def setUp(self):
+        self.folder = tempfile.mkdtemp()
+
+    def tearDown(self):
+        shutil.rmtree(self.folder, ignore_errors=True)
+
+    def write(self, lines, name="table.md"):
+        return self.write_bytes(("\n".join(lines) + "\n").encode("utf-8"), name)
+
+    def write_bytes(self, data, name="table.md"):
+        path = os.path.join(self.folder, name)
+        handle = open(path, "wb")
+        try:
+            handle.write(data)
+        finally:
+            handle.close()
+        return path
+
+    def assert_problems(self, path, count=1, table_id=None):
+        """ContractError carrying `count` well-formed coded lines, in file order."""
+        try:
+            contract.read_table(path, self.TABLE if table_id is None else table_id)
+        except contract.ContractError as broken:
+            self.assertEqual(count, len(broken.problems), broken.lines())
+            for line in broken.lines():
+                self.assertTrue(FAILURE_LINE.match(line), repr(line))
+            return broken.lines()
+        else:
+            self.fail("read_table must raise ContractError here")
+
+    def assert_one_problem(self, path, table_id=None):
+        """ContractError carrying one well-formed coded line, and the offending file named."""
+        return self.assert_problems(path, 1, table_id)[0]
+
+    def test_it_reads_the_header_cells_and_the_rows_in_file_order(self):
+        path = self.write([
+            "Prose above the table.",
+            "",
+            "<!-- table: sample -->",
+            "| fixture | expected exit |",
+            "| --- | --- |",
+            "| second | 1 |",
+            "| first | 0 |",
+            "",
+            "Prose below the table.",
+        ])
+        table = contract.read_table(path, self.TABLE)
+        self.assertEqual(["fixture", "expected exit"], table.header)
+        self.assertEqual([["second", "1"], ["first", "0"]], [row.cells for row in table.rows])
+        self.assertEqual([6, 7], [row.line for row in table.rows])
+        self.assertEqual(4, table.line)
+
+    def test_a_repeated_value_in_the_first_column_is_not_the_readers_business(self):
+        """There is no key column without a catalogue row to name one, so two rows reading the same
+        are two rows. Whether that is a defect is for the caller to say."""
+        path = self.write([
+            "<!-- table: sample -->",
+            "| fixture | expected exit |",
+            "| --- | --- |",
+            "| one | 0 |",
+            "| one | 1 |",
+        ])
+        self.assertEqual(2, len(contract.read_table(path, self.TABLE).rows))
+
+    def test_cells_are_literal_and_the_two_escapes_are_undone(self):
+        path = self.write([
+            "<!-- table: sample -->",
+            "| fixture | codes |",
+            "| --- | --- |",
+            "| padding |  kept inside |",
+            "| empty |  |",
+            "| escapes | a \\| b \\\\ c \\d |",
+        ])
+        rows = [row.cells for row in contract.read_table(path, self.TABLE).rows]
+        self.assertEqual([["padding", " kept inside"], ["empty", ""],
+                          ["escapes", "a | b \\ c \\d"]], rows)
+
+    def test_a_fenced_table_is_invisible_and_an_unmarked_one_is_illustration(self):
+        path = self.write([
+            "<!-- table: sample -->",
+            "| fixture | codes |",
+            "| --- | --- |",
+            "| read | the only table here |",
+            "",
+            "| fixture | codes |",
+            "| --- | --- |",
+            "| unmarked | nothing reads this |",
+            "",
+            "```text",
+            "<!-- table: sample -->",
+            "| fixture | codes |",
+            "| --- | --- |",
+            "| fenced | nothing reads this either |",
+            "```",
+        ])
+        self.assertEqual([["read", "the only table here"]],
+                         [row.cells for row in contract.read_table(path, self.TABLE).rows])
+
+    def test_a_table_only_inside_a_fence_is_no_table_at_all(self):
+        path = self.write([
+            "```text",
+            "<!-- table: sample -->",
+            "| fixture | codes |",
+            "| --- | --- |",
+            "| fenced | nothing reads this |",
+            "```",
+        ])
+        self.assertIn("no marked table 'sample'", self.assert_one_problem(path))
+
+    def test_a_fence_that_never_closes_is_refused(self):
+        path = self.write([
+            "```text",
+            "<!-- table: sample -->",
+            "| fixture | codes |",
+        ])
+        line = self.assert_one_problem(path)
+        self.assertIn("never closed", line)
+        self.assertIn(":1", line)
+
+    def test_a_missing_marker_names_the_id_asked_for(self):
+        path = self.write([
+            "<!-- table: other -->",
+            "| fixture | codes |",
+            "| --- | --- |",
+            "| first | one |",
+        ])
+        self.assertIn("no marked table 'sample'", self.assert_one_problem(path))
+
+    def test_the_same_id_marked_twice_is_refused(self):
+        path = self.write([
+            "<!-- table: sample -->",
+            "| fixture | codes |",
+            "| --- | --- |",
+            "| first | one |",
+            "",
+            "<!-- table: sample -->",
+            "| fixture | codes |",
+            "| --- | --- |",
+            "| second | two |",
+        ])
+        line = self.assert_one_problem(path)
+        self.assertIn("twice", line)
+        self.assertIn("line 1", line)
+
+    def test_a_table_with_no_delimiter_row_is_refused(self):
+        path = self.write([
+            "<!-- table: sample -->",
+            "| fixture | codes |",
+            "| first | no delimiter above me |",
+        ])
+        self.assertIn("delimiter", self.assert_one_problem(path))
+
+    def test_a_row_of_the_wrong_width_is_refused(self):
+        path = self.write([
+            "<!-- table: sample -->",
+            "| fixture | codes |",
+            "| --- | --- |",
+            "| first | one | and a third |",
+        ])
+        line = self.assert_one_problem(path)
+        self.assertIn("this row has 3 cells; the header has 2", line)
+        self.assertIn(":4", line)
+
+    def test_two_malformed_rows_are_two_problems_in_file_order(self):
+        """One Problem per problem, as the loader does it. A reader fixing a manifest by hand wants
+        every bad row at once, not the first one four times over."""
+        path = self.write([
+            "<!-- table: sample -->",
+            "| fixture | codes |",
+            "| --- | --- |",
+            "| first | one | and a third |",
+            "| second | two |",
+            "| third |",
+        ])
+        lines = self.assert_problems(path, 2)
+        self.assertIn(":4", lines[0])
+        self.assertIn("3 cells", lines[0])
+        self.assertIn(":6", lines[1])
+        self.assertIn("1 cell", lines[1])
+
+    def test_a_table_with_no_body_rows_is_a_table(self):
+        """A marker, a header and a delimiter row and nothing under them. A manifest that expects
+        nothing of anything is a strange manifest and not a broken file."""
+        path = self.write([
+            "<!-- table: sample -->",
+            "| fixture | codes |",
+            "| --- | --- |",
+            "",
+            "Prose under it.",
+        ])
+        table = contract.read_table(path, self.TABLE)
+        self.assertEqual(["fixture", "codes"], table.header)
+        self.assertEqual([], table.rows)
+
+    def test_an_indented_row_does_not_end_the_table_in_silence(self):
+        path = self.write([
+            "<!-- table: sample -->",
+            "| fixture | codes |",
+            "| --- | --- |",
+            "| first | one |",
+            "  | second | two |",
+        ])
+        self.assertIn("starts with a pipe but is not a table row", self.assert_one_problem(path))
+
+    def test_a_path_that_cannot_be_read(self):
+        path = os.path.join(self.folder, "nothing-is-here.md")
+        line = self.assert_one_problem(path)
+        self.assertIn("cannot be read", line)
+        self.assertIn(":1", line)
+
+    def test_a_file_that_is_not_utf_8(self):
+        path = self.write_bytes(b"<!-- table: sample -->\n| fixture |\xff\xfe |\n")
+        self.assertIn("is not UTF-8", self.assert_one_problem(path))
+
+    def test_nothing_in_it_is_linted_or_compiled(self):
+        """A column named `pattern` outside reference/ is a column named `pattern` and no more. The
+        lint exists so that a contract pattern means the same on every interpreter; a file no tool
+        enforces states no contract, and the cell is handed over as written."""
+        path = self.write([
+            "<!-- table: sample -->",
+            "| fixture | pattern |",
+            "| --- | --- |",
+            "| first | ^\\d*$ |",
+        ])
+        value = contract.read_table(path, self.TABLE).rows[0].cells[1]
+        self.assertEqual("^\\d*$", value)
+        self.assertTrue(contract.lint_pattern(value))
+
+    def test_the_catalogue_has_no_say_over_it(self):
+        """An id no catalogue row names, in a folder no catalogue describes, reads fine - and the
+        shipped contract is untouched by it."""
+        path = self.write([
+            "<!-- table: stowaway -->",
+            "| fixture | codes |",
+            "| --- | --- |",
+            "| first | one |",
+        ])
+        table = contract.read_table(path, "stowaway")
+        self.assertEqual([["first", "one"]], [row.cells for row in table.rows])
+        self.assertNotIn("stowaway", contract.load(root=SHIPPED_ROOT))
+
+    BAD_ROW = [
+        "<!-- table: sample -->",
+        "| fixture | codes |",
+        "| --- | --- |",
+        "| first | one | and a third |",
+    ]
+
+    def reported_file(self, path):
+        """The whole `file` field of the one failure line, as a reader sees it."""
+        return self.assert_one_problem(path).split(contract.TAB)[1].rsplit(":", 1)[0]
+
+    def test_a_file_under_the_idem_root_is_reported_relative_to_it(self):
+        """A failure line names a file the way every other failure line does: from the Idem root,
+        with forward slashes and no leading slash. Written inside the real root, because that is
+        the only place the claim can be tested."""
+        inside = tempfile.mkdtemp(dir=SHIPPED_ROOT)
+        try:
+            path = os.path.join(inside, "table.md")
+            handle = open(path, "wb")
+            try:
+                handle.write(("\n".join(self.BAD_ROW) + "\n").encode("utf-8"))
+            finally:
+                handle.close()
+            expected = os.path.relpath(path, SHIPPED_ROOT).replace(os.sep, "/")
+            self.assertFalse(expected.startswith("/"))
+            self.assertFalse(os.path.isabs(expected))
+            self.assertEqual(expected, self.reported_file(path))
+        finally:
+            shutil.rmtree(inside, ignore_errors=True)
+
+    def test_a_file_outside_the_idem_root_is_reported_absolutely(self):
+        """Not a ladder of `..`, which would name the file from a working directory the reader does
+        not have. `read_table()` takes its path from a caller, so this case is reachable."""
+        path = self.write(self.BAD_ROW)
+        reported = self.reported_file(path)
+        self.assertEqual(os.path.abspath(path).replace(os.sep, "/"), reported)
+        self.assertNotIn("..", reported)
+
+
 # --- block 5: an interpreter below the floor ------------------------------------------------------
 
 
