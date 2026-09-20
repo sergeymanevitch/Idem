@@ -156,17 +156,22 @@ row by that value.
 | table_id | file | columns | key_column |
 | --- | --- | --- | --- |
 | catalogue | 00_catalogue.md | table_id, file, columns, key_column | table_id |
+| fields | 01_schema.md | field, kind, rows, ancestor, holds | field |
+| schema-constants | 01_schema.md | constant, value, meaning | constant |
+| header-items | 01_schema.md | item, value_pattern, holds | item |
+| refusal-reasons | 01_schema.md | reason, when | reason |
+| ticket-lines | 01_schema.md | line, pattern, rule | line |
 | snapshot-header | 04_snapshot-format.md | field, holds | field |
 | snapshot-constants | 04_snapshot-format.md | constant, value, meaning | constant |
 | line-classes | 04_snapshot-format.md | class, pattern, rule | class |
 | html-elements | 04_snapshot-format.md | element, parsing, output, marker | element |
 | fetch-limits | 04_snapshot-format.md | limit, value, meaning | limit |
 
-At this step the catalogue names itself and the five tables of the snapshot format, and the loader
-that reads them is written and tested. The ticket schema, the `breaking` phrases and the validator's
-checks are added to this table by the stories that write those files; a table is usable by a tool
-on the day its row appears here, and not before.
+At this step the catalogue names itself, the five tables of the ticket schema and the five of the
+snapshot format, and the loader that reads them is written and tested. The `breaking` phrases and
+the validator's checks are added to this table by the stories that write those two files; a table is
+usable by a tool on the day its row appears here, and not before.
 
 Listed is not the same as used. Every table above loads today, and nothing but `contract.py` reads
-any of them yet: `snapshot.py`, `fetch.py` and the validator are not written. A row here says a tool
-*may* read that table, never that one does.
+any of them yet: `tickets.py`, `snapshot.py`, `fetch.py` and the validator are not written. A row
+here says a tool *may* read that table, never that one does.
