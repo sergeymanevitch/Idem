@@ -119,7 +119,25 @@ capture, the look-arounds `(?=`, `(?!`, `(?<=`, `(?<!`, the named forms `(?P<` a
 comment `(?#`.
 
 `lint_pattern()` in `lib/idemlib/contract.py` rejects a pattern that breaks this rule and names the
-offending offset. Which columns hold patterns is a property of each table, not of the catalogue.
+offending offset. Which columns hold patterns is a property of each table, not of the catalogue:
+the catalogue has no column for it, and needs none, because a table says so in the names of its own
+columns. **A column named `pattern`, or whose name ends `_pattern`, holds patterns.** As the
+contract loads, every non-empty cell of such a column is linted against the rule above and compiled.
+A cell that breaks the rule, or that `re` cannot compile at all, is a broken contract: one
+`CONTRACT_TABLE` line at that row's line, exit 2, and no tool runs. An empty cell is not a pattern
+and is left alone — a row may say that its subject is decided by something other than a pattern. A
+cell of nothing but spaces or tabs is neither: it reads as empty and would match a space, so it is
+refused like a bad pattern.
+
+The name is read as written, letter and case. `Pattern`, `PATTERN` and `Line_Pattern` are not the
+convention, and rather than leave such a column unlinted the loader refuses it, naming the column at
+the header row's line. The trap the other way has no such guard: a column under **any other name** —
+`regex`, `form`, `matches` — is not a pattern column and nothing in it is ever linted or compiled.
+So a pattern belongs in a column named for what it is, and nowhere else.
+
+The name is the whole of the convention, so it is stated once here and held as table grammar in
+`contract.py` beside the marker form and the two escapes; `lib/CONTEXT.md` lists what that module is
+allowed to know.
 
 ## The catalogue
 
@@ -138,8 +156,17 @@ row by that value.
 | table_id | file | columns | key_column |
 | --- | --- | --- | --- |
 | catalogue | 00_catalogue.md | table_id, file, columns, key_column | table_id |
+| snapshot-header | 04_snapshot-format.md | field, holds | field |
+| snapshot-constants | 04_snapshot-format.md | constant, value, meaning | constant |
+| line-classes | 04_snapshot-format.md | class, pattern, rule | class |
+| html-elements | 04_snapshot-format.md | element, parsing, output, marker | element |
+| fetch-limits | 04_snapshot-format.md | limit, value, meaning | limit |
 
-At this step the catalogue names only itself, and the loader that reads it is written and tested.
-The tables of the snapshot format, the ticket schema, the `breaking` phrases and the validator's
+At this step the catalogue names itself and the five tables of the snapshot format, and the loader
+that reads them is written and tested. The ticket schema, the `breaking` phrases and the validator's
 checks are added to this table by the stories that write those files; a table is usable by a tool
 on the day its row appears here, and not before.
+
+Listed is not the same as used. Every table above loads today, and nothing but `contract.py` reads
+any of them yet: `snapshot.py`, `fetch.py` and the validator are not written. A row here says a tool
+*may* read that table, never that one does.

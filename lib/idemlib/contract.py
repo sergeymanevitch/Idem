@@ -27,7 +27,11 @@ space of padding is removed from each side - no Markdown is interpreted - and th
 `\\|` for a pipe and `\\\\` for a backslash; any other backslash is itself. A table inside a code
 fence is invisible, and an unmarked table is illustration, so both are safe to write in prose
 beside the real thing. Every marked table in the folder must be in the catalogue and every
-catalogue row must name a table that is there: the check runs both ways.
+catalogue row must name a table that is there: the check runs both ways. One more clause of the
+grammar is about a column rather than a line: a column named `pattern`, or whose name ends
+`_pattern`, holds patterns, and every non-empty cell of one is linted and compiled while the
+contract loads. That convention is a name, not a list, which is why it can live here; the catalogue
+keeps its four columns and says nothing about which of a table's columns hold what.
 
 FAILURE
 
@@ -55,6 +59,13 @@ and the atomic group, a syntax error before 3.11; and a pattern that cannot be r
 trailing backslash or a class never closed. The groups that only give a pattern its shape - `(?:`,
 `(?=`, `(?!`, `(?<=`, `(?<!`, `(?P<`, `(?P=`, `(?#` - are untouched. Write the characters out:
 `[0-9]`, `[ \\t]`.
+
+load() applies that lint itself, and compiles what it accepts, on every non-empty cell of every
+pattern column of every table it reads. So a pattern nobody can use is a broken contract found the
+moment the contract is read, not a surprise at the first line it was meant to match: exit 2, one
+CONTRACT_TABLE line, at the line of the row that holds the cell. It compiles with no flags, and a
+caller must do the same: passing a flag would put back exactly what the ban on inline flag groups
+takes away, and the table would stop saying what it matches.
 
 WHAT IT DOES NOT DO
 
@@ -90,6 +101,12 @@ PIPE = "|"
 BACKSLASH = "\\"
 #: Read left to right, a catalogue row is: table id, file, columns, key column.
 CATALOGUE_WIDTH = 4
+#: A column with this name, or with a name ending in an underscore and this name, holds patterns.
+#: Which columns hold patterns is a property of each table, so it is said in the column's own name
+#: rather than in a fifth catalogue column; every non-empty cell of such a column is linted and
+#: compiled as the contract loads.
+PATTERN_COLUMN = "pattern"
+PATTERN_SUFFIX = "_" + PATTERN_COLUMN
 
 # --- the two sanctioned code strings (AD-7) ------------------------------------------------------
 
@@ -597,6 +614,9 @@ def _load_row(folder, catalogue_label, line, cells):
                               "'; the catalogue says '" + columns_cell + "'")]
     if problems:
         return None, problems
+    pattern_columns, column_problems = _pattern_columns(columns, label, header_line)
+    if column_problems:
+        return None, column_problems
     rows = {}
     first_seen = {}
     for row_line, row_cells in raw_rows:
@@ -612,8 +632,52 @@ def _load_row(folder, catalogue_label, line, cells):
                                   "'" + key + "' is already the key of the row on line " +
                                   str(first_seen[key]))]
         first_seen[key] = row_line
+        for column in pattern_columns:
+            value = row[column]
+            if value == "":
+                continue
+            if value.strip(" \t") == "":
+                return None, [Problem(label, row_line,
+                                      "the '" + column + "' cell holds nothing but spaces or tabs; "
+                                      "it reads as empty and would match them, so it is neither a "
+                                      "pattern nor the empty cell that says a row has none")]
+            try:
+                check_pattern(value, label, row_line)
+            except ContractError as broken:
+                return None, list(broken.problems)
         rows[key] = row
     return Table(table_id, label, marker_line, columns, key_column, rows), []
+
+
+def _is_pattern_column(column):
+    """True when the cells of this column hold patterns, and so are linted and compiled at load.
+
+    The convention is the column's own name - `pattern`, or a name ending `_pattern` - because which
+    columns hold patterns is a property of the table and not of the catalogue, and a name is the one
+    way to say so without a fifth catalogue column or a list held in this module. An empty cell is
+    not a pattern: a row may say that its subject is decided by something a pattern cannot express.
+    """
+    return column == PATTERN_COLUMN or column.endswith(PATTERN_SUFFIX)
+
+
+def _pattern_columns(columns, label, header_line):
+    """Return (the pattern columns of this table, problems).
+
+    The convention is case-exact, because a column name is read the way every other cell of the
+    contract is read: character for character. A name that would only match with the case ignored is
+    refused rather than passed over - it is almost certainly meant to hold patterns, and nothing
+    would lint it.
+    """
+    found = []
+    for column in columns:
+        if _is_pattern_column(column):
+            found.append(column)
+        elif _is_pattern_column(column.lower()):
+            return None, [Problem(label, header_line,
+                                  "the column '" + column + "' names a pattern column only if case "
+                                  "is ignored, and a name is read as written; under this name "
+                                  "nothing in it is linted")]
+    return found, []
 
 
 def _unlisted(folder, listed, owner, named):
@@ -675,8 +739,9 @@ def lint_pattern(pattern):
     mistaken for a quantifier, and a `}` counts as the end of a quantifier only when it closes a
     `{m}`, `{m,}`, `{,n}` or `{m,n}` repeat.
 
-    Story 1.4 decides how the pattern tables call this on every pattern they hold; here it is
-    offered, and used on this module's own patterns by the test suite.
+    load() calls this through check_pattern() on every non-empty cell of every pattern column, so a
+    table's patterns are read for this the moment the contract is read. The test suite runs it over
+    this module's own patterns too, so the rule holds for the code that enforces it.
     """
     reasons = []
     index = 0
@@ -773,8 +838,25 @@ def _class_literal(pattern, class_start, index):
 
 
 def check_pattern(pattern, file, line):
-    """Raise ContractError when a pattern read from a contract table may not be used."""
+    """Raise ContractError when a pattern read from a contract table may not be used.
+
+    Two ways it may not: it breaks the rule lint_pattern() states, or `re` cannot compile it at all.
+    The second is not covered by the first - a lint reads a pattern for the constructs that mean
+    different things on different interpreters, and says nothing about an unbalanced parenthesis or
+    a repeat whose bounds are the wrong way round. load() calls this on every non-empty cell of
+    every pattern column, so both are found while the contract is being read.
+
+    Compiling is guarded for more than re.error: a repeat count too large to hold raises
+    OverflowError and a deeply nested pattern can raise RecursionError. Both mean the same thing
+    here - this cell cannot be used - and a contract table is not allowed to reach the INTERNAL
+    handler with a defect of its own.
+    """
     reasons = lint_pattern(pattern)
+    if not reasons:
+        try:
+            re.compile(pattern)
+        except (re.error, OverflowError, RecursionError) as unreadable:
+            reasons = ["this pattern cannot be compiled: " + str(unreadable)]
     if reasons:
         raise ContractError([Problem(file, line, "; ".join(reasons))])
 

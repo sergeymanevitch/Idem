@@ -36,8 +36,10 @@ FAILURE_LINE = re.compile(r"^CONTRACT_TABLE\t[^\t]+:[0-9]+\t[^\t]+$")
 CYRILLIC = re.compile("[" + chr(0x0400) + "-" + chr(0x04ff) + "]")
 
 #: The last line of a good summary: a count of tables, a count of rows, and where they came from.
+#: The two counts are captured so that a test can check them against what the loader read, instead
+#: of accepting any numeral that happens to be printed there.
 TOTAL_LINE = re.compile(
-    r"^[0-9]+ tables?, [0-9]+ rows?, named by reference/00_catalogue[.]md$")
+    r"^([0-9]+) tables?, ([0-9]+) rows?, named by reference/00_catalogue[.]md$")
 
 
 def _floor_interpreter():
@@ -213,14 +215,33 @@ class TestCataloguedTablesLoad(TreeCase):
         self.assertEqual("^[0-9]{2}\\.[0-9]$", rows["pattern"]["value"])
 
     def test_the_script_prints_a_summary_of_the_shipped_contract(self):
-        """One line per table and one total, so a new catalogue row does not break this test."""
+        """One line per table, in catalogue order, and one total.
+
+        No count is written out here - a story that adds a table or a row must not have to edit this
+        test - but every count printed is checked against what the loader read, so a summary that
+        counted the columns, or printed the same number everywhere, would not pass.
+        """
         status, out, err = _run_shipped()
         self.assertEqual(0, status, err)
         self.assertEqual("", err)
         lines = out.splitlines()
-        self.assertIn("catalogue\treference/00_catalogue.md\t1 row\tkeyed by table_id", lines)
-        self.assertTrue(TOTAL_LINE.match(lines[-1]), repr(lines[-1]))
-        self.assertEqual(len(contract.load(root=SHIPPED_ROOT)) + 1, len(lines))
+        tables = contract.load(root=SHIPPED_ROOT)
+        self.assertEqual(len(tables) + 1, len(lines), out)
+        index = 0
+        for table_id in tables:
+            table = tables[table_id]
+            fields = lines[index].split(contract.TAB)
+            self.assertEqual(4, len(fields), lines[index])
+            self.assertEqual([table_id, table.file], fields[:2])
+            self.assertEqual(str(len(table.rows)), fields[2].split(" ")[0], table_id)
+            self.assertEqual("keyed by " + table.key_column, fields[3], table_id)
+            index += 1
+        total = TOTAL_LINE.match(lines[-1])
+        self.assertTrue(total, repr(lines[-1]))
+        rows = 0
+        for table_id in tables:
+            rows += len(tables[table_id].rows)
+        self.assertEqual((str(len(tables)), str(rows)), total.groups())
 
 
 # --- block 2: only a marked table outside a fence is read -----------------------------------------
@@ -883,6 +904,143 @@ class TestPatternLint(unittest.TestCase):
                 found += 1
                 self.assertEqual([], contract.lint_pattern(value.pattern), name)
         self.assertTrue(found)
+
+
+class TestPatternColumnsAreLintedAtLoad(TreeCase):
+    """A column named `pattern`, or whose name ends `_pattern`, holds patterns, and load() lints and
+    compiles every non-empty cell of one. A pattern nobody can use is then a broken contract found
+    when the contract is read, instead of a surprise at the first line it was meant to match."""
+
+    def sample(self, columns, *rows):
+        """A catalogue naming one table, and that table, with the columns the test chooses.
+
+        The first column is always the key, so that nothing but the pattern column varies.
+        """
+        self.tree.catalogue("| sample | 01_example.md | " + ", ".join(columns) + " | " +
+                            columns[0] + " |")
+        body = ["<!-- table: sample -->",
+                "| " + " | ".join(columns) + " |",
+                "| " + " | ".join(["---"] * len(columns)) + " |"]
+        for row in rows:
+            body.append("| " + " | ".join(row) + " |")
+        self.tree.write("01_example.md", body)
+
+    def test_a_banned_escape_in_a_pattern_column_is_a_broken_contract(self):
+        self.sample(["key", "pattern"], ("blank", "^\\d*$"))
+        line = self.assert_one_failure()
+        self.assertIn("write the characters out", line)
+        self.assertIn("01_example.md:4", line)
+
+    def test_a_column_whose_name_ends_in_pattern_is_linted_too(self):
+        self.sample(["key", "line_pattern"], ("blank", "^\\s*$"))
+        self.assertIn("write the characters out", self.assert_one_failure())
+
+    def test_a_column_named_something_else_is_not_a_pattern_column(self):
+        """`patterns` and `pattern_notes` are not the convention: prose about a pattern is prose."""
+        for column in ("patterns", "pattern_notes", "example"):
+            self.sample(["key", column], ("blank", "^\\d*$"))
+            rows = self.tree.load()["sample"].rows
+            self.assertEqual("^\\d*$", rows["blank"][column], column)
+
+    def test_an_empty_pattern_cell_is_not_linted(self):
+        """A row may say that its subject is decided by something a pattern cannot express."""
+        self.sample(["key", "pattern"], ("in_fence", ""), ("blank", "^[ \\t]*$"))
+        rows = self.tree.load()["sample"].rows
+        self.assertEqual("", rows["in_fence"]["pattern"])
+        self.assertEqual("^[ \\t]*$", rows["blank"]["pattern"])
+
+    def test_a_pattern_that_lints_clean_but_re_cannot_compile(self):
+        """The lint reads a pattern for what means different things on two interpreters; it says
+        nothing about an unbalanced parenthesis, or a repeat whose bounds are the wrong way round,
+        so load() compiles as well as lints."""
+        for pattern in ("^(a", "a{2,1}"):
+            self.assertEqual([], contract.lint_pattern(pattern), pattern)
+            self.sample(["key", "pattern"], ("only", pattern))
+            self.assertIn("cannot be compiled", self.assert_one_failure(), pattern)
+
+    def test_a_repeat_too_large_to_compile_is_a_coded_failure_and_not_an_internal_one(self):
+        """re raises OverflowError here, not re.error. A defect in a contract table must never come
+        out as INTERNAL, which says the tool itself is broken."""
+        self.sample(["key", "pattern"], ("huge", "a{99999999999}"))
+        self.assertIn("cannot be compiled", self.assert_one_failure())
+
+    def test_a_pattern_cell_of_nothing_but_spaces_is_refused(self):
+        """It survives the padding rule, reads as empty to a person, and would quietly become a
+        pattern that matches a space."""
+        self.sample(["key", "pattern"], ("blank", "  "))
+        line = self.assert_one_failure()
+        self.assertIn("nothing but spaces or tabs", line)
+        self.assertIn("01_example.md:4", line)
+
+    def test_a_pattern_column_named_in_the_wrong_case_is_refused(self):
+        """Nothing else in the contract is read with the case ignored, so a column that only looks
+        like a pattern column is a broken contract rather than a column nobody lints."""
+        for column in ("Pattern", "PATTERN", "Line_Pattern"):
+            self.sample(["key", column], ("first", "^[0-9]+$"))
+            line = self.assert_one_failure()
+            self.assertIn(column, line)
+            self.assertIn("case", line)
+            self.assertIn("01_example.md:2", line)
+
+    def test_the_lint_reads_the_cell_after_the_escapes_are_undone(self):
+        """A cell written with a doubled backslash arrives as one. Read raw it would lint clean -
+        an escaped backslash followed by a letter - so this is what proves the lint sees the value
+        a tool would be handed, not the line as typed."""
+        self.sample(["key", "pattern"], ("shorthand", "^\\\\d+$"))
+        self.assertEqual([], contract.lint_pattern("^\\\\d+$"))
+        self.assertIn("write the characters out", self.assert_one_failure())
+
+    def test_an_escaped_pipe_arrives_as_alternation(self):
+        """The other direction: the one escape a pattern cell really needs. What the table holds is
+        two characters; what the loader hands over is a pipe, and it means alternation."""
+        self.sample(["key", "pattern"], ("either", "^(?:a\\|b)$"))
+        value = self.tree.load()["sample"].rows["either"]["pattern"]
+        self.assertEqual("^(?:a|b)$", value)
+        self.assertTrue(re.compile(value).match("b"))
+        self.assertIsNone(re.compile(value).match("a|b"))
+
+    def test_the_line_reported_is_the_row_that_holds_the_cell(self):
+        self.sample(["key", "pattern"], ("first", "^[0-9]+$"), ("second", "a*+"))
+        line = self.assert_one_failure()
+        self.assertIn("01_example.md:5", line)
+        self.assertIn("possessive", line)
+
+    def test_a_good_pattern_table_loads_whole(self):
+        self.sample(["key", "pattern"], ("first", "^[0-9]{1,9}[.)]$"), ("second", "^([ \\t]+)[^ \\t]"))
+        rows = self.tree.load()["sample"].rows
+        self.assertEqual(["first", "second"], list(rows))
+        self.assertEqual("^([ \\t]+)[^ \\t]", rows["second"]["pattern"])
+
+    def test_check_pattern_rejects_a_pattern_re_cannot_compile(self):
+        try:
+            contract.check_pattern("^(a", "reference/01_example.md", 12)
+        except contract.ContractError as broken:
+            self.assertTrue(FAILURE_LINE.match(broken.lines()[0]), broken.lines())
+            self.assertIn("cannot be compiled", broken.lines()[0])
+        else:
+            self.fail("check_pattern must raise on a pattern re cannot compile")
+
+
+class TestTheShippedPatternCells(unittest.TestCase):
+    """What the folder actually ships, read back through the loader."""
+
+    def test_every_pattern_cell_of_the_shipped_contract_lints_and_compiles(self):
+        tables = contract.load(root=SHIPPED_ROOT)
+        found = 0
+        for table_id in tables:
+            table = tables[table_id]
+            for column in table.columns:
+                if not contract._is_pattern_column(column):
+                    continue
+                for key in table.rows:
+                    value = table.rows[key][column]
+                    if value == "":
+                        continue
+                    found += 1
+                    where = table.id + " / " + key + " / " + column
+                    self.assertEqual([], contract.lint_pattern(value), where)
+                    re.compile(value)
+        self.assertTrue(found, "the shipped contract holds no pattern cell to check")
 
 
 # --- block 5: an interpreter below the floor ------------------------------------------------------
