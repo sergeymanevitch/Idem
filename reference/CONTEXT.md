@@ -2,14 +2,15 @@
 
 Everything enumerable about Idem is defined here once, and nowhere else: the tools load these
 tables, `rules.md` points at them, and a reader checks the output against them. Files are numbered
-in reading order. `00_catalogue.md`, `01_schema.md` and `04_snapshot-format.md` are written so far.
+in reading order. `00_catalogue.md`, `01_schema.md`, `03_breaking-terms.md` and
+`04_snapshot-format.md` are written so far.
 
 | File | What it is |
 | --- | --- |
 | `00_catalogue.md` | written — the strict-table grammar, and the name, file, columns and key of every contract table |
 | `01_schema.md` | written — the eight fields, the sentinel, the grammar, the canonical form, the header, the refusal and zero-ticket shapes, the size limit, in five tables; the `change` span and the date decision table come in Epic 5 |
 | `02_segmentation.md` | not written — what one change is; ancestor lines; the test for "is a changelog" |
-| `03_breaking-terms.md` | not written — the closed list of phrases that decide `breaking` |
+| `03_breaking-terms.md` | written — the closed list of phrases that decide `breaking`, each mapped to `yes` or `no`, in one table; the rule for reading a quote against it, and what the list deliberately does not decide; scoped and conditional wording comes in Epic 5 |
 | `04_snapshot-format.md` | written — snapshot header, separator, line prefix, line classes, HTML element lists, fetch limits, in five tables |
 | `05_checks.md` | not written — every validator check: key, code, what it checks, which requirement |
 
@@ -18,13 +19,13 @@ what it never reads — because that grammar is the one thing `contract.py` know
 A table becomes usable by a tool on the day its row appears in the catalogue, and not before: the
 loader reads the catalogue both ways and refuses a marked table nobody listed.
 
-Usable is not used. All three written files load today and nothing outside `contract.py` reads any
+Usable is not used. All four written files load today and nothing outside `contract.py` reads any
 of them yet, because no step script is written. A pattern is the one kind of cell the loader looks
 inside: a column named `pattern`, or ending `_pattern`, is linted and compiled as the contract
 loads, and `00_catalogue.md` states that convention.
 
 **Known debt.** A rule stated here that no pattern can carry is bound to no check until the tool
-that owns it exists. There are three groups of them:
+that owns it exists. There are four groups of them:
 
 - `04_snapshot-format.md` — the fence-pairing and open-item rules of `line-classes` are stated in
   `rule` cells, in English, and nothing enforces them until `snapshot.py` and its fixtures exist;
@@ -40,7 +41,20 @@ that owns it exists. There are three groups of them:
   in order; that a refusal reason is a row of `refusal-reasons`; that a header item's name is a row
   of `header-items`; that a filled value of a `copied` field is a substring of its own quote; and
   that `unnumbered` appears only under `line_numbers: none`. Each of these is a check, and a check
-  needs a key and a code, so they wait for `05_checks.md` in Story 1.7 as well.
+  needs a key and a code, so they wait for `05_checks.md` in Story 1.7 as well;
+- `03_breaking-terms.md`, the rules for reading a quote against `breaking-terms`. The table carries
+  the phrases and their values; the routines that read them are prose, and five rules are enforced
+  by nothing. Four are the choices of the lookup that fills the field: that only `A` to `Z` is
+  folded; that the scan runs left to right and continues after a phrase it keeps, rather than
+  taking the longest phrase found anywhere; that a phrase is taken only where the character before
+  it is not an ASCII letter or digit; and that two kept phrases carrying different values make the
+  quote support neither. The fifth is the FR-37 warning, which reads the same table by a different
+  rule — any phrase of it occurring anywhere in the folded line, with no scan, no left edge and no
+  disagreement — and so fires on a `no` phrase and on a phrase buried inside a word. `validate.py`
+  will own all five, `05_checks.md` in Story 1.7 gives them a key, and the Story 3.x fixtures
+  exercise them. The tests of `lib/tests/test_breaking_terms.py` run their own reading of the lookup,
+  which proves the table against the cases the file works through and never that a tool implements
+  it.
 
 - **Read by:** `lib/idemlib/contract.py` (marked tables only), the translator (the file a step names).
 - **Written by:** a person. Nothing here is generated.

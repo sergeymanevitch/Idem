@@ -161,16 +161,17 @@ row by that value.
 | header-items | 01_schema.md | item, value_pattern, holds | item |
 | refusal-reasons | 01_schema.md | reason, when | reason |
 | ticket-lines | 01_schema.md | line, pattern, rule | line |
+| breaking-terms | 03_breaking-terms.md | phrase, value | phrase |
 | snapshot-header | 04_snapshot-format.md | field, holds | field |
 | snapshot-constants | 04_snapshot-format.md | constant, value, meaning | constant |
 | line-classes | 04_snapshot-format.md | class, pattern, rule | class |
 | html-elements | 04_snapshot-format.md | element, parsing, output, marker | element |
 | fetch-limits | 04_snapshot-format.md | limit, value, meaning | limit |
 
-At this step the catalogue names itself, the five tables of the ticket schema and the five of the
-snapshot format, and the loader that reads them is written and tested. The `breaking` phrases and
-the validator's checks are added to this table by the stories that write those two files; a table is
-usable by a tool on the day its row appears here, and not before.
+At this step the catalogue names itself, the five tables of the ticket schema, the phrases that
+decide `breaking` and the five tables of the snapshot format, and the loader that reads them is
+written and tested. The validator's checks are added to this table by the story that writes
+`05_checks.md`; a table is usable by a tool on the day its row appears here, and not before.
 
 Listed is not the same as used. Every table above loads today, and nothing but `contract.py` reads
 any of them yet: `tickets.py`, `snapshot.py`, `fetch.py` and the validator are not written. A row

@@ -496,8 +496,8 @@ the item, several dates, nested headings. Both are translator prose rather than 
 Story 5.1 adds them to this file, after the translator has been run against real changelogs rather
 than before.
 
-Two neighbours are not written either, and this file points at both: `03_breaking-terms.md`, the
-closed list of phrases that fill `breaking` and the value each one maps to, and `05_checks.md`,
+Of the two neighbours this file points at, one is written — `03_breaking-terms.md`, the closed list
+of phrases that fill `breaking` and the value each one maps to — and one is not: `05_checks.md`,
 where every rule above gets the key and the code that make it enforceable.
 
 ## Nothing reads these tables yet
