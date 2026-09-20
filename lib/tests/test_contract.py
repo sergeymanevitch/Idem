@@ -35,6 +35,47 @@ FAILURE_LINE = re.compile(r"^CONTRACT_TABLE\t[^\t]+:[0-9]+\t[^\t]+$")
 #: The Cyrillic block, built from code points so that this file stays free of it itself.
 CYRILLIC = re.compile("[" + chr(0x0400) + "-" + chr(0x04ff) + "]")
 
+#: The last line of a good summary: a count of tables, a count of rows, and where they came from.
+TOTAL_LINE = re.compile(
+    r"^[0-9]+ tables?, [0-9]+ rows?, named by reference/00_catalogue[.]md$")
+
+
+def _floor_interpreter():
+    """A path to an interpreter reporting exactly the floor version, or None.
+
+    macOS Command Line Tools ships 3.9 at /usr/bin/python3, which is the reason the floor is 3.9;
+    elsewhere a `python3.9` on the path will do.
+    """
+    wanted = ".".join([str(number) for number in contract.FLOOR])
+    candidates = ["/usr/bin/python3", "python" + wanted, "python3"]
+    for candidate in candidates:
+        path = candidate if os.path.isabs(candidate) else shutil.which(candidate)
+        if path is None or not os.path.exists(path):
+            continue
+        try:
+            process = subprocess.Popen(
+                [path, "-c", "import sys;print('.'.join(str(n) for n in sys.version_info[:2]))"],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            out, _ = process.communicate()
+        except OSError:
+            continue
+        if process.returncode == 0 and out.decode("utf-8", "replace").strip() == wanted:
+            return path
+    return None
+
+
+def _run_shipped(argv=(), environment=None):
+    """Run the shipped script from a working directory that is not the Idem root."""
+    env = None
+    if environment is not None:
+        env = dict(os.environ)
+        env.update(environment)
+    process = subprocess.Popen([sys.executable, SOURCE] + list(argv),
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               cwd=tempfile.gettempdir(), env=env)
+    out, err = process.communicate()
+    return process.returncode, out.decode("utf-8", "replace"), err.decode("utf-8", "replace")
+
 
 class Tree(object):
     """A throwaway Idem root holding a copy of contract.py and the reference files a test writes."""
@@ -48,10 +89,15 @@ class Tree(object):
         shutil.copy(SOURCE, self.script)
 
     def write(self, name, lines):
+        self.write_bytes(name, ("\n".join(lines) + "\n").encode("utf-8"))
+
+    def write_bytes(self, name, data):
+        """Write a reference file byte for byte, for the cases the reader has to survive: CRLF, a
+        byte-order mark, an invalid byte, no final newline."""
         path = os.path.join(self.root, "reference", name)
-        handle = io.open(path, "w", encoding="utf-8", newline="\n")
+        handle = open(path, "wb")
         try:
-            handle.write("\n".join(lines) + "\n")
+            handle.write(data)
         finally:
             handle.close()
 
@@ -62,13 +108,18 @@ class Tree(object):
     def load(self):
         return contract.load(root=self.root)
 
-    def run(self):
+    def run(self, argv=(), environment=None):
         """Run the copy as a script, from a working directory that is not this tree."""
-        process = subprocess.Popen([sys.executable, self.script],
+        env = None
+        if environment is not None:
+            env = dict(os.environ)
+            env.update(environment)
+        process = subprocess.Popen([sys.executable, self.script] + list(argv),
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                   cwd=os.path.dirname(self.root))
+                                   cwd=os.path.dirname(self.root), env=env)
         out, err = process.communicate()
-        return process.returncode, out.decode("utf-8"), err.decode("utf-8")
+        return (process.returncode, out.decode("utf-8", "replace"),
+                err.decode("utf-8", "replace"))
 
     def remove(self):
         shutil.rmtree(self.root, ignore_errors=True)
@@ -129,7 +180,7 @@ class TestCataloguedTablesLoad(TreeCase):
             "Prose below the table.",
         ])
         tables = self.tree.load()
-        self.assertEqual(["catalogue", "sample"], sorted(tables))
+        self.assertEqual(["catalogue", "sample"], list(tables), "catalogue order, not sorted")
         self.assertEqual(["first", "second"], list(tables["sample"].rows))
         self.assertEqual("the second one", tables["sample"].rows["second"]["what it means"])
 
@@ -162,15 +213,14 @@ class TestCataloguedTablesLoad(TreeCase):
         self.assertEqual("^[0-9]{2}\\.[0-9]$", rows["pattern"]["value"])
 
     def test_the_script_prints_a_summary_of_the_shipped_contract(self):
-        process = subprocess.Popen([sys.executable, SOURCE],
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                   cwd=tempfile.gettempdir())
-        out, err = process.communicate()
-        self.assertEqual(0, process.returncode, err.decode("utf-8"))
-        text = out.decode("utf-8")
-        self.assertIn("catalogue", text)
-        self.assertIn("reference/00_catalogue.md", text)
-        self.assertEqual("", err.decode("utf-8"))
+        """One line per table and one total, so a new catalogue row does not break this test."""
+        status, out, err = _run_shipped()
+        self.assertEqual(0, status, err)
+        self.assertEqual("", err)
+        lines = out.splitlines()
+        self.assertIn("catalogue\treference/00_catalogue.md\t1 row\tkeyed by table_id", lines)
+        self.assertTrue(TOTAL_LINE.match(lines[-1]), repr(lines[-1]))
+        self.assertEqual(len(contract.load(root=SHIPPED_ROOT)) + 1, len(lines))
 
 
 # --- block 2: only a marked table outside a fence is read -----------------------------------------
@@ -226,9 +276,57 @@ class TestVisibility(TreeCase):
         self.assertIn("fenced", line)
 
     def test_an_unmarked_table_in_the_catalogue_file_is_ignored(self):
-        """The shipped catalogue carries both an unmarked table and a fenced one; it still loads."""
+        """The shipped catalogue carries both an unmarked table and a fenced one; it still loads,
+        and neither illustration is in it."""
         tables = contract.load(root=SHIPPED_ROOT)
-        self.assertEqual(["catalogue"], sorted(tables))
+        self.assertNotIn("not-a-real-table", tables)
+        self.assertNotIn("no marker above it", tables["catalogue"].rows)
+
+    def test_the_three_fence_forms_all_hide_a_marker(self):
+        """A tilde fence, a fence indented under a list, and a fence closed by a longer run."""
+        self.tree.write("01_example.md", [
+            "<!-- table: sample -->",
+            "| key | value |",
+            "| --- | --- |",
+            "| read | the only table here |",
+            "",
+            "~~~text",
+            "<!-- table: tilde -->",
+            "| key | value |",
+            "| --- | --- |",
+            "~~~",
+            "",
+            "  ```text",
+            "<!-- table: indented -->",
+            "| key | value |",
+            "| --- | --- |",
+            "  ```",
+            "",
+            "```text",
+            "<!-- table: longer-closer -->",
+            "| key | value |",
+            "| --- | --- |",
+            "`````",
+        ])
+        tables = self.tree.load()
+        self.assertEqual(["catalogue", "sample"], list(tables))
+        self.assertEqual(["read"], list(tables["sample"].rows))
+
+    def test_a_fence_that_never_closes_is_a_broken_contract(self):
+        """Left alone it would hide every table below it, which is the silence to avoid."""
+        self.tree.write("01_example.md", [
+            "<!-- table: sample -->",
+            "| key | value |",
+            "| --- | --- |",
+            "| read | the only table here |",
+            "",
+            "```text",
+            "<!-- table: hidden -->",
+            "| key | value |",
+        ])
+        line = self.assert_one_failure()
+        self.assertIn("never", line)
+        self.assertIn("01_example.md:6", line)
 
 
 # --- block 3: a broken contract is exit 2 and one line --------------------------------------------
@@ -274,7 +372,7 @@ class TestBrokenContract(TreeCase):
         ])
         self.assertIn("first", self.assert_one_failure())
 
-    def test_a_table_row_with_the_wrong_number_of_cells(self):
+    def test_a_table_row_with_too_many_cells_counts_them_in_the_plural(self):
         self.tree.catalogue("| sample | 01_example.md | key, value | key |")
         self.tree.write("01_example.md", [
             "<!-- table: sample -->",
@@ -282,7 +380,83 @@ class TestBrokenContract(TreeCase):
             "| --- | --- |",
             "| first | one | and a third |",
         ])
-        self.assertIn("cell", self.assert_one_failure())
+        self.assertIn("this row has 3 cells; the header has 2", self.assert_one_failure())
+
+    def test_a_table_row_with_one_cell_counts_it_in_the_singular(self):
+        self.tree.catalogue("| sample | 01_example.md | key, value | key |")
+        self.tree.write("01_example.md", [
+            "<!-- table: sample -->",
+            "| key | value |",
+            "| --- | --- |",
+            "| only |",
+        ])
+        self.assertIn("this row has 1 cell; the header has 2", self.assert_one_failure())
+
+    def test_a_table_id_listed_twice_is_one_line(self):
+        """One defect, one line: the catalogue is a catalogued table, so reading it would otherwise
+        report the same pair a second time as a duplicate key."""
+        self.tree.catalogue(
+            "| sample | 01_example.md | key, value | key |",
+            "| sample | 02_example.md | key, value | key |",
+        )
+        line = self.assert_one_failure()
+        self.assertIn("'sample' is listed twice", line)
+        self.assertIn("line 5", line)
+
+    def test_an_empty_table_id_cell(self):
+        self.tree.catalogue("|  | 01_example.md | key, value | key |")
+        self.assertIn("the table id cell is empty", self.assert_one_failure())
+
+    def test_a_columns_cell_that_repeats_a_name(self):
+        self.tree.catalogue("| sample | 01_example.md | key, key | key |")
+        self.tree.write("01_example.md", [
+            "<!-- table: sample -->",
+            "| key | key |",
+            "| --- | --- |",
+            "| first | one |",
+        ])
+        self.assertIn("names 'key' twice", self.assert_one_failure())
+
+    def test_a_columns_cell_with_an_empty_name(self):
+        self.tree.catalogue("| sample | 01_example.md | key, , value | key |")
+        self.tree.write("01_example.md", [
+            "<!-- table: sample -->",
+            "| key |  | value |",
+            "| --- | --- | --- |",
+            "| first | x | one |",
+        ])
+        self.assertIn("empty column", self.assert_one_failure())
+
+    def test_a_file_cell_with_a_backslash(self):
+        self.tree.catalogue("| sample | sub\\\\01_example.md | key, value | key |")
+        self.assertIn("bare file name", self.assert_one_failure())
+
+    def test_a_file_cell_whose_case_does_not_match_the_file(self):
+        """A case-insensitive filesystem would resolve this and a case-sensitive one would not."""
+        self.tree.catalogue("| sample | 01_EXAMPLE.md | key, value | key |")
+        self.tree.write("01_example.md", [
+            "<!-- table: sample -->",
+            "| key | value |",
+            "| --- | --- |",
+            "| first | one |",
+        ])
+        line = self.assert_one_failure()
+        self.assertIn("01_EXAMPLE.md", line)
+        self.assertIn("exactly that name", line)
+
+    def test_a_file_no_row_names_that_cannot_be_decoded(self):
+        """Nobody can say whether it holds a marked table, so it is not passed over in silence."""
+        self.tree.catalogue()
+        self.tree.write_bytes("01_example.md", b"<!-- table: sample -->\n| key |\xff\xfe |\n")
+        line = self.assert_one_failure()
+        self.assertIn("01_example.md", line)
+        self.assertIn("is not UTF-8", line)
+
+    def test_a_file_a_row_names_that_cannot_be_decoded(self):
+        """Named by a row, it is that row's problem and is reported once, not twice."""
+        self.tree.catalogue("| sample | 01_example.md | key, value | key |")
+        self.tree.write_bytes("01_example.md", b"<!-- table: sample -->\n| key |\xff\xfe |\n")
+        self.assertIn("is not UTF-8", self.assert_one_failure())
 
     def test_an_empty_key_cell(self):
         self.tree.catalogue("| sample | 01_example.md | key, value | key |")
@@ -363,6 +537,19 @@ class TestBrokenContract(TreeCase):
         ])
         self.assertIn("header", self.assert_one_failure())
 
+    def test_a_marked_table_above_the_catalogue_is_named_in_the_message(self):
+        """Whatever is marked first is read as the catalogue, so the message says which table it
+        read rather than blaming a column count on the catalogue."""
+        self.tree.write("00_catalogue.md", [
+            "<!-- table: other -->",
+            "| key | value |",
+            "| --- | --- |",
+            "| first | one |",
+            "",
+        ] + CATALOGUE_TABLE)
+        line = self.assert_one_failure()
+        self.assertIn("'other'", line)
+
     def test_a_catalogue_that_is_not_four_columns_wide(self):
         self.tree.write("00_catalogue.md", [
             "<!-- table: catalogue -->",
@@ -401,6 +588,12 @@ class TestBrokenContract(TreeCase):
         self.assertEqual("CONTRACT_TABLE\treference/01_example.md:7\tone\\ttwo\\nthree", line)
         self.assertEqual(3, len(line.split("\t")))
 
+    def test_a_tab_in_a_file_name_is_escaped_too(self):
+        """A file name is a name on disk, and a tab is legal in one; three fields, always."""
+        line = contract.coded_line(contract.Problem("odd\tname.md", 1, "a message"))
+        self.assertEqual("CONTRACT_TABLE\todd\\tname.md:1\ta message", line)
+        self.assertEqual(3, len(line.split("\t")))
+
     def test_an_uncaught_exception_is_one_internal_line(self):
         def explode(root=None):
             raise KeyError("something nobody expected")
@@ -419,6 +612,127 @@ class TestBrokenContract(TreeCase):
         self.assertTrue(lines[0].startswith("INTERNAL\t"))
         self.assertEqual(3, len(lines[0].split("\t")))
         self.assertNotIn("Traceback", lines[0])
+
+
+# --- the grammar clauses, each with a case that breaks it -----------------------------------------
+
+
+class TestGrammarNegatives(TreeCase):
+    """Every clause of the grammar that a test could otherwise leave unexercised."""
+
+    def setUp(self):
+        TreeCase.setUp(self)
+        self.tree.catalogue("| sample | 01_example.md | key, value | key |")
+
+    def test_an_indented_marker_is_not_a_marker(self):
+        self.tree.write("01_example.md", [
+            "  <!-- table: sample -->",
+            "| key | value |",
+            "| --- | --- |",
+            "| first | one |",
+        ])
+        self.assertIn("no marked table 'sample'", self.assert_one_failure())
+
+    def test_a_marker_with_trailing_text_is_not_a_marker(self):
+        self.tree.write("01_example.md", [
+            "<!-- table: sample --> and a word after it",
+            "| key | value |",
+            "| --- | --- |",
+            "| first | one |",
+        ])
+        self.assertIn("no marked table 'sample'", self.assert_one_failure())
+
+    def test_a_single_hyphen_delimiter_is_not_a_delimiter(self):
+        self.tree.write("01_example.md", [
+            "<!-- table: sample -->",
+            "| key | value |",
+            "| - | - |",
+            "| first | one |",
+        ])
+        self.assertIn("delimiter", self.assert_one_failure())
+
+    def test_a_blank_line_between_the_marker_and_the_header(self):
+        self.tree.write("01_example.md", [
+            "<!-- table: sample -->",
+            "",
+            "| key | value |",
+            "| --- | --- |",
+            "| first | one |",
+        ])
+        self.assertIn("not a table row", self.assert_one_failure())
+
+    def test_an_indented_body_row_does_not_end_the_table_in_silence(self):
+        self.tree.write("01_example.md", [
+            "<!-- table: sample -->",
+            "| key | value |",
+            "| --- | --- |",
+            "| first | one |",
+            "  | second | two |",
+            "| third | three |",
+        ])
+        line = self.assert_one_failure()
+        self.assertIn("starts with a pipe but is not a table row", line)
+        self.assertIn("01_example.md:5", line)
+
+    def test_a_body_row_with_no_closing_pipe_does_not_end_the_table_in_silence(self):
+        self.tree.write("01_example.md", [
+            "<!-- table: sample -->",
+            "| key | value |",
+            "| --- | --- |",
+            "| first | one |",
+            "| second | two",
+        ])
+        line = self.assert_one_failure()
+        self.assertIn("starts with a pipe but is not a table row", line)
+        self.assertIn("01_example.md:5", line)
+
+
+# --- the reader: bytes on the way in --------------------------------------------------------------
+
+
+class TestReader(TreeCase):
+    CATALOGUE_BYTES = ("\n".join(CATALOGUE_TABLE) + "\n").encode("utf-8")
+
+    def test_a_catalogue_written_with_crlf_loads(self):
+        self.tree.write_bytes("00_catalogue.md", self.CATALOGUE_BYTES.replace(b"\n", b"\r\n"))
+        self.assertEqual(["catalogue"], list(self.tree.load()))
+
+    def test_a_byte_order_mark_before_a_first_line_marker_loads(self):
+        self.tree.write_bytes("00_catalogue.md", b"\xef\xbb\xbf" + self.CATALOGUE_BYTES)
+        self.assertEqual(["catalogue"], list(self.tree.load()))
+
+    def test_a_marker_on_the_last_line_with_no_final_newline_is_a_coded_failure(self):
+        """A file that stops at the marker must be CONTRACT_TABLE, never INTERNAL."""
+        self.tree.catalogue("| sample | 01_example.md | key, value | key |")
+        self.tree.write_bytes("01_example.md", b"Prose.\n<!-- table: sample -->")
+        line = self.assert_one_failure()
+        self.assertIn("nothing follows this marker", line)
+        self.assertIn("01_example.md:2", line)
+
+    def test_a_catalogue_that_is_not_utf_8(self):
+        self.tree.write_bytes("00_catalogue.md", b"| key |\xff\xfe |\n")
+        self.assertIn("the catalogue is not UTF-8", self.assert_one_failure())
+
+
+# --- the script's interface -----------------------------------------------------------------------
+
+
+class TestScriptInterface(TreeCase):
+    def test_an_argument_gets_one_plain_usage_line_and_exit_two(self):
+        status, out, err = _run_shipped(["--help"])
+        self.assertEqual(2, status)
+        self.assertEqual([contract.USAGE], out.splitlines())
+        self.assertNotIn("Traceback", err)
+
+    def test_a_message_survives_a_stdout_that_cannot_encode_it(self):
+        """PYTHONIOENCODING=ascii and a non-ASCII file name: one coded line, not a traceback."""
+        self.tree.catalogue("| sample | 01_ex" + chr(0xe4) + "mple.md | key, value | key |")
+        status, out, err = self.tree.run(environment={"PYTHONIOENCODING": "ascii"})
+        self.assertEqual(2, status, out + err)
+        self.assertEqual(1, len(out.splitlines()), out)
+        self.assertTrue(out.startswith("CONTRACT_TABLE\t"), repr(out))
+        self.assertNotIn("Traceback", out)
+        self.assertNotIn("Traceback", err)
 
 
 # --- block 4: the source holds no contract, and the pattern lint ----------------------------------
@@ -462,6 +776,10 @@ class TestSourceHoldsNoContract(unittest.TestCase):
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 self.assertIsNone(node.returns, node.name)
 
+    def test_the_source_parses_against_the_floor_grammar(self):
+        """The denylist above is a guess at what is new; this asks the parser itself."""
+        ast.parse(self.text, feature_version=contract.FLOOR)
+
     def test_the_source_avoids_the_apis_the_spine_bans(self):
         self.assertNotIn("utcnow", self.text)
         self.assertNotIn("file_digest", self.text)
@@ -480,12 +798,43 @@ class TestPatternLint(unittest.TestCase):
                         "[+*]x",
                         "[]]x",
                         "[^]]x",
-                        "(a|b)+?"):
+                        "(a|b)+?",
+                        "^[a-z]}+$",
+                        "a[{]+b",
+                        "a{x}+b",
+                        "a{,}+b"):
+            self.assertEqual([], contract.lint_pattern(pattern), pattern)
+
+    def test_braces_that_are_not_a_repeat_do_not_make_a_quantifier(self):
+        """`{x}` is two literal characters to Python's re, so the `+` after it repeats the `}`.
+        Only `{m}`, `{m,}`, `{,n}` and `{m,n}` can be made possessive."""
+        self.assertEqual([], contract.lint_pattern("a{x}+b"))
+        self.assertIn("possessive", " ".join(contract.lint_pattern("a{2}+b")))
+        self.assertIn("possessive", " ".join(contract.lint_pattern("a{2,}+b")))
+        self.assertIn("possessive", " ".join(contract.lint_pattern("a{,2}+b")))
+
+    def test_the_groups_that_only_give_a_pattern_its_shape_are_accepted(self):
+        for pattern in ("(?:ab)+", "a(?=b)", "a(?!b)", "(?<=a)b", "(?<!a)b",
+                        "(?P<name>[0-9]+)", "(?P<name>[0-9])(?P=name)", "a(?#a comment)b"):
             self.assertEqual([], contract.lint_pattern(pattern), pattern)
 
     def test_word_and_boundary_escapes_are_rejected(self):
         for pattern in ("^\\w+$", "\\W", "\\bword\\b", "\\B", "[\\b]", "[\\w-]"):
             self.assertTrue(contract.lint_pattern(pattern), pattern)
+
+    def test_the_digit_and_space_shorthands_are_rejected(self):
+        """They are resolved against the interpreter's Unicode data, in a class as much as out."""
+        for pattern in ("^\\d{4}$", "\\D", "a\\sb", "\\S+", "[\\d-]", "[^\\s]"):
+            reasons = contract.lint_pattern(pattern)
+            self.assertTrue(reasons, pattern)
+            self.assertIn("write the characters out", " ".join(reasons))
+
+    def test_every_inline_flag_group_is_rejected(self):
+        for pattern in ("(?i)abc", "(?u)abc", "(?a)abc", "(?L)abc", "(?m)^a", "(?s)a.b",
+                        "(?x) a b", "(?im)abc", "(?i:abc)", "(?-i:abc)", "a(?i)b"):
+            reasons = contract.lint_pattern(pattern)
+            self.assertTrue(reasons, pattern)
+            self.assertIn("inline flag group", " ".join(reasons))
 
     def test_a_possessive_quantifier_is_rejected(self):
         for pattern in ("a*+", "a++", "a?+", "a{2,3}+", "(ab)++"):
@@ -500,6 +849,17 @@ class TestPatternLint(unittest.TestCase):
 
     def test_a_reason_names_the_offset(self):
         reasons = contract.lint_pattern("ab\\wcd")
+        self.assertEqual(1, len(reasons))
+        self.assertIn("offset 2", reasons[0])
+
+    def test_a_character_class_that_is_never_closed_is_rejected(self):
+        """Nothing inside an open class is read, so without this the pattern passes in silence."""
+        reasons = contract.lint_pattern("[a(?>x++")
+        self.assertTrue(reasons)
+        self.assertIn("never closed", " ".join(reasons))
+
+    def test_a_trailing_backslash_is_rejected(self):
+        reasons = contract.lint_pattern("ab\\")
         self.assertEqual(1, len(reasons))
         self.assertIn("offset 2", reasons[0])
 
@@ -543,6 +903,18 @@ class TestOldPython(unittest.TestCase):
 
     def test_the_running_interpreter_is_at_or_above_the_floor(self):
         self.assertGreaterEqual(tuple(sys.version_info)[:2], contract.FLOOR)
+
+    def test_the_shipped_contract_loads_on_a_floor_interpreter(self):
+        """Claiming 3.9 is not the same as running on it. Skipped where there is no 3.9 to find."""
+        floor = _floor_interpreter()
+        if floor is None:
+            self.skipTest("no interpreter reporting exactly " +
+                          ".".join([str(number) for number in contract.FLOOR]) + " on this machine")
+        process = subprocess.Popen([floor, SOURCE], stdout=subprocess.PIPE,
+                                   stderr=subprocess.PIPE, cwd=tempfile.gettempdir())
+        out, err = process.communicate()
+        self.assertEqual(0, process.returncode, err.decode("utf-8", "replace"))
+        self.assertIn("catalogue", out.decode("utf-8", "replace"))
 
 
 if __name__ == "__main__":

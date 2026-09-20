@@ -17,8 +17,8 @@ A **strict table** is the only thing a tool reads. It is four things in this ord
 line between them:
 
 1. a **marker line**, exactly `<!-- table: <id> -->`, where `<id>` is the table's name in the
-   catalogue below. The line begins at the start of the line, the spaces are single spaces, and the
-   id contains no space;
+   catalogue below. The line begins at the start of the line, the spaces are single spaces, nothing
+   follows the `-->`, and the id holds no space, no tab and no `>`;
 2. a **header row**, naming the columns;
 3. a **delimiter row**;
 4. one **body row** per entry, until the first line that is not a table row.
@@ -26,6 +26,10 @@ line between them:
 A **table row** begins at the start of the line with `|`, ends with `|`, and holds one cell between
 each pair of pipes. A **delimiter row** is a table row with one cell per column, each cell three or
 more hyphens, with an optional alignment colon at either end: `| --- | --- |`.
+
+A line that starts with a pipe but is not a table row — indented, or with no closing pipe — ends the
+table, so it and every row under it would be dropped in silence. That is a broken contract, not the
+end of a table.
 
 **Cell text is literal.** One space of padding is removed from each side of a cell, and what
 remains is the value, character for character. No Markdown is interpreted: a backtick, an asterisk
@@ -55,8 +59,10 @@ the file that states it. This is not a table either:
 | a | the first |
 ```
 
-A fence opens and closes with three or more backticks or tildes. Everything between the two lines
-is invisible, including a marker line.
+A fence opens and closes with three or more backticks or tildes, indented at most three spaces, and
+closes on a line of the same character at least as long as the one that opened it. Everything
+between the two lines is invisible, including a marker line. A fence that is never closed would
+hide every table below it, so it is a broken contract.
 
 ## Both ways
 
@@ -65,10 +71,11 @@ A contract only holds if the file and the code agree in both directions:
 - every row of the catalogue must name a table that is really in the file it names, with exactly
   the columns the row states;
 - every marked table in this folder must be a row of the catalogue. A marked table nobody listed
-  is not a private table; it is a broken contract.
+  is not a private table; it is a broken contract. So is a file of this folder that cannot be read
+  at all and that no row names — nobody can say whether it holds a table.
 
-No table id appears twice, in this folder or in the catalogue. Within one table, no two rows share
-the value in the key column, and no key cell is empty.
+No table id appears twice, in this folder or in the catalogue, and no id cell is empty. Within one
+table, no two rows share the value in the key column, and no key cell is empty.
 
 The catalogue describes itself. The first strict table in this file **is** the catalogue; its four
 columns are read left to right as the table id, the file, the columns and the key column; and it
@@ -80,8 +87,9 @@ names from it.
 
 A missing table, a missing delimiter row, columns that do not match the catalogue, a duplicate key,
 a file that is not there — none of these is a finding about a document. They mean a tool cannot
-run. Any tool that hits one exits **2** and prints one line per broken catalogue row, in catalogue
-order, and no traceback:
+run. Any tool that hits one exits **2**, prints one line per problem — the catalogue's own rows
+first, in their order, then what this folder holds that no row accounts for, in file order — and no
+traceback:
 
     CONTRACT_TABLE<TAB>file:line<TAB>message
 
@@ -92,24 +100,39 @@ can come from a table; every other code in Idem is read from `05_checks.md`.
 ## Patterns
 
 A pattern written in a contract table must mean the same thing on every Python that Idem supports,
-so it uses none of these:
+and it must mean what it says to the person reading the table. So it uses none of these:
 
-- `\w`, `\W`, `\b`, `\B` — each depends on what the running interpreter counts as a word character.
-  Write the characters out instead: `[0-9A-Za-z_]`.
+- the class shorthands `\w`, `\W`, `\b`, `\B`, `\d`, `\D`, `\s`, `\S` — each is resolved against
+  the interpreter's own Unicode data, so one pattern can match different text on two machines.
+  Write the characters out instead: `[0-9]`, `[0-9A-Za-z_]`, `[ \t]`. This holds inside a character
+  class as much as outside one: `[\d-]` is refused with the rest.
+- an **inline flag group**, whether it governs the whole pattern or a part of it — `(?i)`, `(?u)`,
+  `(?a)`, `(?L)`, `(?m)`, `(?s)`, `(?x)`, a combined form such as `(?im)`, and the scoped and
+  negated forms `(?i:...)` and `(?-i:...)`. A flag changes what the written pattern means, and the
+  table is read by people as well as by tools: what is written is what matches.
 - a possessive quantifier (`a*+`) or an atomic group (`(?>a)`) — a syntax error before Python 3.11.
+- anything that cannot be read as a pattern at all: a trailing backslash, a character class that is
+  never closed.
 
-`lint_pattern()` in `lib/idemlib/contract.py` rejects a pattern that breaks this rule, and names
-the offending offset. Which columns hold patterns is a property of each table, not of the
-catalogue.
+The groups that only give a pattern its shape are all allowed: `(?:` for grouping without a
+capture, the look-arounds `(?=`, `(?!`, `(?<=`, `(?<!`, the named forms `(?P<` and `(?P=`, and the
+comment `(?#`.
+
+`lint_pattern()` in `lib/idemlib/contract.py` rejects a pattern that breaks this rule and names the
+offending offset. Which columns hold patterns is a property of each table, not of the catalogue.
 
 ## The catalogue
 
-The `file` cell is a **bare file name**, resolved in this folder. A claude.ai Project stores its
-uploads flat, so every file of the contract is cited by bare name, here and in `rules.md`.
+The `file` cell is a **bare file name** — no folder, no slash — resolved in this folder, and it must
+match the file's name letter for letter: two filesystems disagree about upper and lower case, and a
+contract that loads on one machine and not on another is not a contract. The reason for bare names
+is that a claude.ai Project stores its uploads flat, with no folders to cite.
 
 The `columns` cell lists the column names separated by a comma and a space — a column name may
-contain a space, and a pipe would have to be escaped. The `key_column` cell names the column whose
-value identifies a row; a tool asks for a row by that value.
+contain a space, and a pipe would have to be escaped. No name is empty and no name is repeated:
+either would put two cells of a row under one name, and one of the two values would be lost without
+a word said. The `key_column` cell names the column whose value identifies a row; a tool asks for a
+row by that value.
 
 <!-- table: catalogue -->
 | table_id | file | columns | key_column |

@@ -32,7 +32,8 @@ catalogue row must name a table that is there: the check runs both ways.
 FAILURE
 
 A contract that cannot be read is not a finding about a document, it is a tool that cannot run:
-exit 2, one line on stdout per broken catalogue row, in catalogue order,
+exit 2, and one line on stdout per problem - the catalogue's own rows first, in their order, then
+what the folder holds that no row accounts for, in file order -
 
     CONTRACT_TABLE<TAB>file:line<TAB>message
 
@@ -41,6 +42,19 @@ written for a person. CONTRACT_TABLE and INTERNAL are the only two code strings 
 source: every other code is read from the checks table, but these two report that the table of
 codes itself could not be read, so they cannot come from a table. The exception is recorded in
 AD-7 (Sergey, 2026-09-20).
+
+PATTERNS
+
+A pattern written in a contract table has to mean the same thing on every Python Idem supports, so
+`lint_pattern()` rejects four families: the class shorthands `\\w`, `\\W`, `\\b`, `\\B`, `\\d`,
+`\\D`, `\\s`, `\\S`, inside a character class as much as outside one, because each is resolved
+against the interpreter's Unicode data; every inline flag group, global or scoped, `(?i)` through
+`(?x)`, their combined forms and `(?i:...)` and `(?-i:...)`, because a flag changes what the
+written pattern means and leaves a reader of the table wrong about it; the possessive quantifier
+and the atomic group, a syntax error before 3.11; and a pattern that cannot be read at all, a
+trailing backslash or a class never closed. The groups that only give a pattern its shape - `(?:`,
+`(?=`, `(?!`, `(?<=`, `(?<!`, `(?P<`, `(?P=`, `(?#` - are untouched. Write the characters out:
+`[0-9]`, `[ \\t]`.
 
 WHAT IT DOES NOT DO
 
@@ -85,19 +99,30 @@ INTERNAL = "INTERNAL"
 #: The interpreter floor (NFR-1).
 FLOOR = (3, 9)
 
-#: Escapes that turn a Unicode-dependent or version-dependent regex into a rejected one (AD-1).
-BANNED_ESCAPES = "wWbB"
-#: A `+` directly after one of these is a possessive quantifier, which is a syntax error below 3.11.
-QUANTIFIERS = "*+?}"
+#: Class-shorthand escapes a contract pattern may not use: each is resolved against the
+#: interpreter's Unicode data, so the same pattern can match different text on two machines (AD-1).
+BANNED_ESCAPES = "wWbBdDsS"
+#: The inline-flag letters Python accepts. A group of them changes what the written pattern means.
+FLAG_LETTERS = "aiLmsux"
+#: A `+` directly after a quantifier is a possessive quantifier, a syntax error below 3.11.
+QUANTIFIERS = "*+?"
+#: What may stand between `{` and `}` for the braces to be a repeat and not two literal characters.
+REPEAT_RE = re.compile(r"^(?:[0-9]+|[0-9]+,[0-9]*|,[0-9]+)$")
 
 TAB = "\t"
+
+#: The script takes no argument: what it reads is fixed by the contract, not chosen by a caller.
+USAGE = ("usage: python3 lib/idemlib/contract.py - it takes no argument, and reads the catalogue "
+         "from the Idem root of its own location")
 
 Problem = collections.namedtuple("Problem", "file line message")
 Table = collections.namedtuple("Table", "id file line columns key_column rows")
 
 
 class ContractError(Exception):
-    """The contract could not be read. Carries one Problem per broken catalogue row.
+    """The contract could not be read. Carries one Problem per problem, in reporting order: the
+    catalogue's own rows first, in their order, then what the folder holds that no row accounts for,
+    in file order.
 
     A caller that wants the coded lines of AD-6 asks for lines(); a caller that only wants to stop
     lets the exception reach main(), which prints them and exits 2.
@@ -146,7 +171,10 @@ def _flatten(message):
 
 
 def coded_line(problem):
-    return CODE + TAB + problem.file + ":" + str(problem.line) + TAB + _flatten(problem.message)
+    """One failure line. Both fields are flattened, so neither a file name nor a message holding a
+    tab can fake a fourth field."""
+    return (CODE + TAB + _flatten(problem.file) + ":" + str(problem.line) + TAB +
+            _flatten(problem.message))
 
 
 def _plural(count, word):
@@ -159,7 +187,11 @@ def _plural(count, word):
 
 
 def _read(path, label):
-    """Return (lines, problem). Lines are decoded, BOM-stripped and LF-split, without line ends."""
+    """Return (lines, problem). Lines are decoded, BOM-stripped and LF-split, without line ends.
+
+    A problem here has no line of its own - the whole file is the problem - so it carries `line`
+    None, and the caller decides where to report it.
+    """
     try:
         handle = open(path, "rb")
         try:
@@ -167,11 +199,11 @@ def _read(path, label):
         finally:
             handle.close()
     except EnvironmentError:
-        return None, Problem(label, 1, "cannot be read")
+        return None, Problem(label, None, "cannot be read")
     try:
         text = raw.decode("utf-8")
     except UnicodeDecodeError:
-        return None, Problem(label, 1, "is not UTF-8")
+        return None, Problem(label, None, "is not UTF-8")
     if text[:1] == "\ufeff":
         text = text[1:]
     text = text.replace("\r\n", "\n").replace("\r", "\n")
@@ -179,23 +211,30 @@ def _read(path, label):
 
 
 def _fenced(lines):
-    """One flag per line: True when the line is a code fence or lies inside one.
+    """Return (flags, unclosed): one flag per line, True when the line is a code fence or lies
+    inside one, and the 1-based line of a fence that never closes, or None.
 
-    A fenced table is invisible, so the grammar can be shown in the file that states it.
+    A fenced table is invisible, so the grammar can be shown in the file that states it. A fence
+    left open would make every table below it invisible, which is a broken contract and not a
+    silence to be lived with.
     """
     flags = []
     fence = None
-    for text in lines:
+    opened = None
+    for index in range(len(lines)):
+        text = lines[index]
         if fence is None:
             match = FENCE_RE.match(text)
             flags.append(match is not None)
             if match is not None:
                 fence = match.group(1)
+                opened = index + 1
             continue
         flags.append(True)
         if _closes(text, fence):
             fence = None
-    return flags
+            opened = None
+    return flags, opened
 
 
 def _closes(text, fence):
@@ -289,6 +328,11 @@ def _parse_table(lines, flags, marker_line, label):
     while index < len(lines) and not flags[index]:
         cells = split_cells(lines[index])
         if cells is None:
+            if lines[index].lstrip(" \t").startswith(PIPE):
+                problems.append(Problem(label, index + 1,
+                                        "this line starts with a pipe but is not a table row, so "
+                                        "it and every row under it would be dropped; a row begins "
+                                        "at the start of the line and ends with an unescaped pipe"))
             break
         if len(cells) != len(header):
             problems.append(Problem(label, index + 1,
@@ -317,26 +361,50 @@ class _Folder(object):
         self.root = root
         self.directory = directory
         self._files = {}
+        self._entries = None
+
+    def entries(self):
+        """The folder's entries, in name order.
+
+        A file is found only under exactly its own name: two filesystems disagree about case, and a
+        contract that loads on one machine and not on another is not a contract.
+        """
+        if self._entries is None:
+            try:
+                self._entries = sorted(os.listdir(self.directory))
+            except EnvironmentError:
+                self._entries = []
+        return self._entries
 
     def file(self, name):
         """Return (lines, flags, markers, problem) for a file of the folder, by bare name.
 
-        A problem's message is a predicate - "is not in the folder" - which the caller puts a
-        subject in front of, because who is asking decides how the file is named.
+        A problem with no location of its own carries `line` None and a message that is a predicate
+        - "is not in the folder under exactly that name" - which the caller puts a subject in front
+        of and reports where it belongs, usually at the catalogue row that named the file. A problem
+        that does have a location, such as a fence left open, carries its own line and a message
+        that stands on its own.
         """
         if name in self._files:
             return self._files[name]
         path = os.path.join(self.directory, name)
         label = _relative(path, self.root)
-        if not os.path.isfile(path):
-            result = (None, None, None, Problem(label, 1, "is not in the folder"))
+        if name not in self.entries() or not os.path.isfile(path):
+            result = (None, None, None,
+                      Problem(label, None, "is not in the folder under exactly that name"))
         else:
             lines, problem = _read(path, label)
             if problem is not None:
                 result = (None, None, None, problem)
             else:
-                flags = _fenced(lines)
-                result = (lines, flags, _markers(lines, flags), None)
+                flags, unclosed = _fenced(lines)
+                if unclosed is not None:
+                    result = (None, None, None,
+                              Problem(label, unclosed, "a code fence opens here and is never "
+                                                       "closed, so every table below it would be "
+                                                       "invisible"))
+                else:
+                    result = (lines, flags, _markers(lines, flags), None)
         self._files[name] = result
         return result
 
@@ -347,11 +415,7 @@ class _Folder(object):
         """Every file of the folder that could hold a contract table, in name order."""
         extension = os.path.splitext(CATALOGUE)[1]
         found = []
-        try:
-            entries = os.listdir(self.directory)
-        except EnvironmentError:
-            return found
-        for entry in sorted(entries):
+        for entry in self.entries():
             if entry.endswith(extension) and os.path.isfile(os.path.join(self.directory, entry)):
                 found.append(entry)
         return found
@@ -363,9 +427,10 @@ def load(root=None):
     A Table carries the id, the file it was read from, the line its marker is on, its columns in
     order, the column that keys a row, and rows as {key: {column: value}} in file order.
 
-    Raises ContractError - one Problem per broken catalogue row - when any catalogued table cannot
-    be read, when a marked table in the folder is in no catalogue row, or when the catalogue itself
-    does not describe itself.
+    Raises ContractError with one Problem per problem - the catalogue's own rows first, in their
+    order, then what the folder holds that no row accounts for, in file order - when a catalogued
+    table cannot be read, when the folder holds a marked table or an unreadable file no row
+    accounts for, or when the catalogue does not describe itself.
     """
     if root is None:
         root = idem_root()
@@ -380,21 +445,18 @@ def load(root=None):
     problems = []
     listed = {}
     owner = {}
+    named = []
     for line, cells in rows:
         table_id = cells[0]
-        if table_id in listed:
-            problems.append(Problem(catalogue_label, line,
-                                    "the table id '" + table_id + "' is listed twice; the first "
-                                    "row is on line " + str(listed[table_id])))
-            continue
         listed[table_id] = line
+        named.append(cells[1])
         table, row_problems = _load_row(folder, catalogue_label, line, cells)
         if table is None:
             problems.extend(row_problems[:1])
         else:
             tables[table_id] = table
             owner[table_id] = cells[1]
-    problems.extend(_unlisted(folder, listed, owner))
+    problems.extend(_unlisted(folder, listed, owner, named))
     if problems:
         raise ContractError(problems)
     return tables
@@ -408,8 +470,9 @@ def _catalogue_rows(folder, catalogue_name, catalogue_label):
     """
     lines, flags, markers, problem = folder.file(catalogue_name)
     if problem is not None:
-        raise ContractError([Problem(problem.file, problem.line,
-                                     "the catalogue " + problem.message)])
+        if problem.line is None:
+            raise ContractError([Problem(problem.file, 1, "the catalogue " + problem.message)])
+        raise ContractError([problem])
     if not markers:
         raise ContractError([Problem(catalogue_label, 1,
                                      "no marked table here; the catalogue is the first strict "
@@ -421,9 +484,11 @@ def _catalogue_rows(folder, catalogue_name, catalogue_label):
     header_line, header, rows = parsed
     if len(header) != CATALOGUE_WIDTH:
         raise ContractError([Problem(catalogue_label, header_line,
-                                     "the catalogue has " + _plural(len(header), "column") +
-                                     "; it needs " + str(CATALOGUE_WIDTH) + ", read as table id, "
-                                     "file, columns and key column")])
+                                     "the first marked table of this file is '" + marker_id +
+                                     "' and has " + _plural(len(header), "column") + "; the "
+                                     "catalogue is that first table, and it has " +
+                                     str(CATALOGUE_WIDTH) + ", read as table id, file, columns "
+                                     "and key column")])
     own = None
     for line, cells in rows:
         if cells[0] == marker_id:
@@ -442,26 +507,74 @@ def _catalogue_rows(folder, catalogue_name, catalogue_label):
                                      COLUMN_SEPARATOR.join(header) + "'")])
     if table_problems:
         raise ContractError(table_problems[:1])
+    broken = _id_problems(rows, catalogue_label)
+    if broken:
+        raise ContractError(broken)
     return rows
+
+
+def _id_problems(rows, catalogue_label):
+    """Table ids that cannot name a table, one problem each, in catalogue order.
+
+    This runs before any table is read, so that an id listed twice is one line and not two: the
+    catalogue is itself a catalogued table, and reading it would report the same duplicate a second
+    time as a duplicate key.
+    """
+    problems = []
+    seen = {}
+    for line, cells in rows:
+        table_id = cells[0]
+        if table_id == "":
+            problems.append(Problem(catalogue_label, line,
+                                    "the table id cell is empty; it is the name a tool asks for"))
+        elif table_id in seen:
+            problems.append(Problem(catalogue_label, line,
+                                    "the table id '" + table_id + "' is listed twice; the first "
+                                    "row is on line " + str(seen[table_id])))
+        else:
+            seen[table_id] = line
+    return problems
+
+
+def _column_problem(columns):
+    """Why this columns cell cannot name the columns of a table, or None.
+
+    An empty or repeated column name would put two cells of a row under one key, and one of the two
+    values would be lost without a word said - which is exactly the kind of silence a contract is
+    for.
+    """
+    seen = []
+    for column in columns:
+        if column == "":
+            return ("the columns cell names an empty column; every column has a name, or a row's "
+                    "values cannot be told apart")
+        if column in seen:
+            return ("the columns cell names '" + column + "' twice; a column is named once, or one "
+                    "of the two values is lost")
+        seen.append(column)
+    return None
 
 
 def _load_row(folder, catalogue_label, line, cells):
     """One catalogue row: find the table it names and read it. Returns (Table or None, problems)."""
     table_id, name, columns_cell, key_column = cells[0], cells[1], cells[2], cells[3]
-    if table_id == "":
-        return None, [Problem(catalogue_label, line, "the table id cell is empty")]
-    if name == "" or "/" in name or os.sep in name:
+    if name == "" or "/" in name or BACKSLASH in name or os.sep in name:
         return None, [Problem(catalogue_label, line,
                               "'" + name + "' is not a bare file name; a contract file is named "
                               "without a folder, because an upload set is flat")]
     columns = columns_cell.split(COLUMN_SEPARATOR)
+    named_wrong = _column_problem(columns)
+    if named_wrong is not None:
+        return None, [Problem(catalogue_label, line, named_wrong)]
     if key_column not in columns:
         return None, [Problem(catalogue_label, line,
                               "the key column '" + key_column + "' is not one of the columns '" +
                               columns_cell + "'")]
     lines, flags, markers, problem = folder.file(name)
     if problem is not None:
-        return None, [Problem(catalogue_label, line, "'" + name + "' " + problem.message)]
+        if problem.line is None:
+            return None, [Problem(catalogue_label, line, "'" + name + "' " + problem.message)]
+        return None, [problem]
     label = folder.label(name)
     marker_line = None
     for candidate_line, candidate_id in markers:
@@ -503,16 +616,26 @@ def _load_row(folder, catalogue_label, line, cells):
     return Table(table_id, label, marker_line, columns, key_column, rows), []
 
 
-def _unlisted(folder, listed, owner):
+def _unlisted(folder, listed, owner, named):
     """The other direction: what the folder holds that the catalogue does not account for.
 
-    Two ways a marker can be wrong here: no catalogue row names that id at all, or a row names it
-    but in a different file, which would leave two tables answering to one name.
+    Three ways the folder can be wrong here: a file no row names cannot be read at all, so nobody
+    knows whether it holds a table; no catalogue row names a marker's id; or a row names that id but
+    in a different file, which would leave two tables answering to one name. A file a row does name
+    is left alone, because that row has already spoken about it.
     """
     problems = []
     for name in folder.names():
         lines, flags, markers, problem = folder.file(name)
         if problem is not None:
+            if name not in named:
+                if problem.line is None:
+                    problems.append(Problem(problem.file, 1,
+                                            "'" + name + "' " + problem.message + "; every file of "
+                                            "this folder is read, because a marked table in it "
+                                            "would be contract"))
+                else:
+                    problems.append(problem)
             continue
         for line, table_id in markers:
             if table_id not in listed:
@@ -534,11 +657,23 @@ def _unlisted(folder, listed, owner):
 def lint_pattern(pattern):
     """Reasons this pattern may not be written in a contract table. An empty list means accepted.
 
-    A contract pattern has to mean the same thing on every supported interpreter, so it uses no
-    `\\w`, `\\W`, `\\b` or `\\B` - each depends on what the running Python counts as a word
-    character - and no possessive quantifier or atomic group, which are a syntax error below 3.11.
-    A character class is followed through, so `[+*]` is not mistaken for a quantifier, and `[\\b]`
-    is rejected with the rest rather than treated as a backspace.
+    A contract pattern must mean the same thing on every Python Idem supports, so four families are
+    rejected:
+
+    - `\\w`, `\\W`, `\\b`, `\\B`, `\\d`, `\\D`, `\\s`, `\\S`, in a character class as much as out of
+      one. Each is resolved against the interpreter's Unicode data, so the same pattern can match
+      different text on two machines. Write the characters out: `[0-9]`, `[ \\t]`.
+    - an inline flag group, global or scoped - `(?i)`, `(?u)`, `(?a)`, `(?L)`, `(?m)`, `(?s)`,
+      `(?x)`, a combined form such as `(?im)`, and the scoped and negated forms `(?i:...)` and
+      `(?-i:...)`. A flag changes what the written pattern means, which leaves a reader of the
+      table wrong about it.
+    - a possessive quantifier (`a*+`) and an atomic group (`(?>a)`), a syntax error before 3.11.
+    - a pattern that cannot be read at all: a trailing backslash, or a character class never closed.
+
+    The groups that only structure a pattern are untouched: `(?:`, `(?=`, `(?!`, `(?<=`, `(?<!`,
+    `(?P<`, `(?P=` and the comment `(?#`. A character class is followed through, so `[+*]` is not
+    mistaken for a quantifier, and a `}` counts as the end of a quantifier only when it closes a
+    `{m}`, `{m,}`, `{,n}` or `{m,n}` repeat.
 
     Story 1.4 decides how the pattern tables call this on every pattern they hold; here it is
     offered, and used on this module's own patterns by the test suite.
@@ -548,42 +683,85 @@ def lint_pattern(pattern):
     end = len(pattern)
     in_class = False
     class_start = -1
-    previous = ""
+    brace = -1
+    quantifier = ""
     while index < end:
         char = pattern[index]
         if char == BACKSLASH:
             if index + 1 >= end:
-                reasons.append("a backslash ends the pattern, at offset " + str(index))
+                reasons.append("a backslash ends the pattern, at offset " + str(index) +
+                               "; nothing is escaped")
                 break
             following = pattern[index + 1]
             if following in BANNED_ESCAPES:
-                reasons.append(BACKSLASH + following + " at offset " + str(index) +
-                               " depends on what the interpreter counts as a word character; "
-                               "write the characters out")
-            previous = ""
+                reasons.append(BACKSLASH + following + " at offset " + str(index) + " is resolved "
+                               "against the interpreter's Unicode data, so it can mean different "
+                               "text on two machines; write the characters out")
+            quantifier = ""
             index += 2
             continue
         if in_class:
             if char == "]" and not _class_literal(pattern, class_start, index):
                 in_class = False
-            previous = ""
+            quantifier = ""
             index += 1
             continue
         if char == "[":
             in_class = True
             class_start = index
-            previous = ""
+            quantifier = ""
             index += 1
             continue
-        if pattern[index:index + 3] == "(?>":
-            reasons.append("the atomic group (?> at offset " + str(index) +
-                           " is a syntax error before Python 3.11")
-        if char == "+" and previous != "" and previous in QUANTIFIERS:
-            reasons.append("the possessive quantifier " + previous + char + " at offset " +
-                           str(index - 1) + " is a syntax error before Python 3.11")
-        previous = char
+        if char == "(":
+            reason = _group_reason(pattern, index)
+            if reason is not None:
+                reasons.append(reason)
+        if char == "{":
+            brace = index
+        if char == "+" and quantifier != "":
+            reasons.append("the possessive quantifier " + quantifier + char + " at offset " +
+                           str(index - len(quantifier)) + " is a syntax error before Python 3.11")
+        if char in QUANTIFIERS:
+            quantifier = char
+        elif char == "}" and brace >= 0 and REPEAT_RE.match(pattern[brace + 1:index]) is not None:
+            quantifier = pattern[brace:index + 1]
+            brace = -1
+        else:
+            quantifier = ""
         index += 1
+    if in_class:
+        reasons.append("the character class opened at offset " + str(class_start) +
+                       " is never closed")
     return reasons
+
+
+def _group_reason(pattern, index):
+    """Why the group starting at `index` may not be written in a contract table, or None.
+
+    Only `(?` groups are looked at, and only two kinds are refused: the atomic group, and an inline
+    flag group. Everything a pattern needs in order to have a shape - a plain group, a
+    non-capturing group, a look-around, a named group or back reference, a comment - is untouched.
+    """
+    if pattern[index:index + 2] != "(?":
+        return None
+    if pattern[index:index + 3] == "(?>":
+        return ("the atomic group (?> at offset " + str(index) +
+                " is a syntax error before Python 3.11")
+    rest = pattern[index + 2:]
+    letters = ""
+    position = 0
+    if rest[:1] == "-":
+        letters = "-"
+        position = 1
+    while position < len(rest) and rest[position] in FLAG_LETTERS:
+        letters += rest[position]
+        position += 1
+    if letters in ("", "-"):
+        return None
+    if rest[position:position + 1] not in (")", ":"):
+        return None
+    return ("the inline flag group (?" + letters + rest[position] + " at offset " + str(index) +
+            " changes what the written pattern means; a contract pattern says what it matches")
 
 
 def _class_literal(pattern, class_start, index):
@@ -602,6 +780,21 @@ def check_pattern(pattern, file, line):
 
 
 # --- running as a script -------------------------------------------------------------------------
+
+
+def _emit(line):
+    """Write one line to stdout, whatever stdout can encode.
+
+    A cell of a contract table may hold any character, and a message quotes cells. On a stdout that
+    cannot encode one of them - an ASCII terminal, a redirect with no locale - `print` would raise
+    UnicodeEncodeError outside the handler in main(), and a traceback would reach the stream
+    instead of one coded line. So an unencodable character is backslash-escaped and the line goes
+    out.
+    """
+    encoding = getattr(sys.stdout, "encoding", None)
+    if encoding:
+        line = line.encode(encoding, "backslashreplace").decode(encoding, "replace")
+    print(line)
 
 
 def version_message(version_info=None):
@@ -642,26 +835,30 @@ def _internal_line():
         where = _relative(last.tb_frame.f_code.co_filename, idem_root())
         line = last.tb_lineno
     name = getattr(kind, "__name__", str(kind))
-    return INTERNAL + TAB + where + ":" + str(line) + TAB + _flatten(name + ": " + str(value))
+    return (INTERNAL + TAB + _flatten(where) + ":" + str(line) + TAB +
+            _flatten(name + ": " + str(value)))
 
 
 def main(argv=None, version_info=None):
     if version_info is None:
         version_info = sys.version_info
     if tuple(version_info)[:2] < FLOOR:
-        print(version_message(version_info))
+        _emit(version_message(version_info))
+        return 2
+    if argv:
+        _emit(USAGE)
         return 2
     try:
         tables = load()
     except ContractError as broken:
         for line in broken.lines():
-            print(line)
+            _emit(line)
         return 2
     except Exception:
-        print(_internal_line())
+        _emit(_internal_line())
         return 2
     for line in summary(tables):
-        print(line)
+        _emit(line)
     return 0
 
 

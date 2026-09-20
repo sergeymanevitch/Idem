@@ -32,9 +32,22 @@ interpreter you have as well as the newest: 3.9 is the floor (NFR-1), and on mac
 ## The one place two code strings are written
 
 `reference/` owns everything enumerable, and no tool holds a copy (AD-1). `contract.py` is the
-single exception and holds exactly four things: the path `reference/00_catalogue.md`, the grammar of
-a strict table, and the code strings `CONTRACT_TABLE` and `INTERNAL`. The two codes are there
-because they report that the table of codes itself could not be read, so they cannot be read from
-that table; the exception is recorded in AD-7 (Sergey, 2026-09-20). Every other code in Idem comes
-from `05_checks.md`. A test reads `contract.py` back and fails if any other upper-case code string
-or any other reference file name appears in it.
+single exception, and this is everything it holds:
+
+- **one path**, `reference/00_catalogue.md`. It is the one file whose location cannot be read out of
+  a file, because it is the file that says where everything else is.
+- **the grammar of a strict table**: the marker form, the row and delimiter shapes, the two
+  escapes, the fence, the four columns of the catalogue read by position, the separator between
+  column names in a `columns` cell, and the letters and forms a contract pattern may not use. These
+  are not a list the contract could own — they are how a table is read at all, so a table stating
+  them could not be read in order to state them. `00_catalogue.md` states the same grammar in
+  English for a person, and the two are kept in step by hand.
+- **two code strings**, `CONTRACT_TABLE` and `INTERNAL`, because they report that the table of
+  codes itself could not be read; the exception is recorded in AD-7 (Sergey, 2026-09-20). Every
+  other code in Idem comes from `05_checks.md`.
+- **the interpreter floor**, 3.9, which is NFR-1 and belongs to the README and the tools, not to the
+  contract a tickets file is checked against.
+
+No field name, no phrase, no check key, no limit on a value. A test reads `contract.py` back and
+fails if any other upper-case code string or any other reference file name appears in it, and
+another lints every pattern the module itself compiles against the rule the module enforces.
