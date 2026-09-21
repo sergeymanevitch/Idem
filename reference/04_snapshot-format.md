@@ -36,10 +36,10 @@ source_url: https://example.com/changelog
 final_url: https://example.com/changelog
 http_status: 200
 content_type: text/markdown; charset=utf-8
-retrieved: <when the fetch happened, in UTC>
-routine: <which routine produced the body>
-routine_version: <that routine's version>
-sha256: <the digest of the body>
+retrieved: 20260901T094512Z
+routine: as-served
+routine_version: 1
+sha256: f79ab20d4abfa9d297a92c64036194bc9b53e2dff3e29e8c5a96187150c998ca
 --- body ---
       1: # Changelog
       2: ## 2026-09-01
@@ -47,11 +47,21 @@ sha256: <the digest of the body>
       4: - Deprecated: the legacy sort parameter.
 ```
 
-Four values are written in angle brackets on purpose. What form each of those takes — how a
-timestamp is spelled, how a routine is named, how long a digest is — is not settled in this file,
-and this file invents nothing. They are settled by the story that writes `fetch.py`, which is what
-produces them; `05_checks.md` is written and keys what a snapshot faces, but no key of it says what
-a timestamp or a digest looks like, and none will until `fetch.py` says so first.
+**The four values fetch invents have these forms** (Sergey, 2026-09-21). `retrieved` is the time of
+the fetch in UTC, written `YYYYMMDDTHHMMSSZ` — four digits of year, two of month, two of day, the
+letter `T`, two digits each of hour, minute and second, the letter `Z` — and the same string stands
+in the file name. `routine` is the name of the routine that turned the response into the body,
+`as-served` when the bytes are stored as they came, whatever the response called them.
+`routine_version` is that routine's version as a bare number, `1` today. `sha256` is 64 lower-case
+hexadecimal characters. The other four are not invented at all — the URL as it was asked for, the
+URL the body was read from, the status of the response that carried it, and the Content-Type header
+as served, folded lines joined by one space and **empty when the response carried none** — in which
+case the body is stored all the same, because what the server called the bytes is recorded and what
+they are is the reader's judgment. The forms get no check key, and that
+is a decision rather than an omission: nothing but `fetch.py` writes a snapshot, so a value of the
+wrong form here would be a defect in that tool and not a finding about a document.
+`00_fetch/test_fetch.py` holds this paragraph and what `fetch.py` produces together, so the two
+cannot drift apart.
 
 The header ends at the **first** line that is exactly the separator. A body line that happens to
 read the same is body: it is numbered like every other line, and nothing looks for a second
@@ -268,15 +278,23 @@ a crash, and never a snapshot of the part that arrived in time.
 
 ## What reads these tables
 
-`contract.py` loads all five with the rest of the contract and lints the patterns. **Three of them
-are read by a tool: `snapshot-header`, `snapshot-constants` and `line-classes`, by `snapshot.py`,**
+`contract.py` loads all five with the rest of the contract and lints the patterns. **Four of them
+are read by a tool.** `snapshot-header`, `snapshot-constants` and `line-classes` are `snapshot.py`'s,
 which writes a snapshot, reads one back, numbers its lines and classifies them, and holds no field
-name, no count, no separator and no pattern of its own. The other two wait for the tool that owns
-them: `html-elements` and `fetch-limits` are fetch's, and `fetch.py` is not written.
+name, no count, no separator and no pattern of its own. `fetch-limits` is `00_fetch/fetch.py`'s,
+which asks inside that envelope — the timeout on every network operation, the redirect cap, the
+size cap counted as received, and the User-Agent every request carries — and holds none of the four
+values. The fifth waits for the tool that owns it: `html-elements` is fetch's too, and the routine
+that reads it is not written.
 
 A number, a name or a pattern that appears in a tool's source as well as in this file is a defect
-and not a convenience (AD-1) — excepting the strict-table grammar `contract.py` must hold in order
-to read `reference/` at all, which is about the shape of these files and never about the shape of a
-snapshot body, and the seven class names `snapshot.py` must hold in order to state a condition
-about more than one line. Both exceptions are tested from the other side: a test reads the source
-back and fails if anything else of these tables is written in it.
+and not a convenience (AD-1). There are three exceptions and no more. The strict-table grammar
+`contract.py` must hold in order to read `reference/` at all, which is about the shape of these
+files and never about the shape of a snapshot body. The seven class names `snapshot.py` must hold
+in order to state a condition about more than one line. And **the eight field names of
+`snapshot-header`, which `fetch.py` must hold** in order to hand a value over for each of them: a
+writer that supplies the values cannot ask without naming the fields, where a reader is handed
+them (Sergey, 2026-09-21). All three are tested from the other side: a test reads the source back
+and fails if anything else of these tables is written in it, and the fetch tests hold those eight
+names against the rows above, both ways, so a field renamed by decision fails there rather than
+quietly writing a header nothing can read.

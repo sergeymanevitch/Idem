@@ -22,20 +22,23 @@ imports `idemlib`. Python 3.9 or later, standard library only, no install step.
 
 ## Running the tests
 
-There are **two** commands, and "the tests" means both. From the Idem root:
+There are **three** commands, and "the tests" means all three. From the Idem root:
 
     python3 -m unittest discover -s lib/tests -t lib
     python3 -m unittest discover -s 02_validate -t 02_validate
+    python3 -m unittest discover -s 00_fetch -t 00_fetch
 
 The first is this folder's suite: `idemlib`, one module per written file of `reference/`, and one
 holding `identity.md` and `rules.md` at the Idem root. The second is one file,
 `02_validate/test_manifest.py`, and it holds the **reconciliation between `reference/05_checks.md`
 and `02_validate/00_fixtures/manifest.md`** — every check named by a fixture, every code a fixture
-expects defined as a check (AD-7). Nothing under `lib/tests/` runs it, so a person who runs only the
-first command has not run it.
+expects defined as a check (AD-7). The third is one file, `00_fetch/test_fetch.py`, and it holds
+`fetch.py` against a stub server on 127.0.0.1 and a temporary directory — no network, and nothing
+written into the snapshot folder. Nothing under `lib/tests/` runs either of the last two, so a
+person who runs only the first command has run neither.
 
-`-t lib` puts `lib/` on the path, so a test imports `idemlib` the way a step script does; the second
-command's file puts `lib/` on the path itself, for the same reason. Both suites are stdlib
+`-t lib` puts `lib/` on the path, so a test imports `idemlib` the way a step script does; each of
+the other two files puts `lib/` on the path itself, for the same reason. All three suites are stdlib
 `unittest` — there is nothing to install and no runner to configure. Run them on the oldest
 interpreter you have as well as the newest: 3.9 is the floor (NFR-1), and on macOS
 `/usr/bin/python3` is usually it.
@@ -108,3 +111,9 @@ every literal of the source that is one character or holds no space must be one 
 so a value smuggled in under a new name fails the day it is written. A fifth asserts that the seven
 class names are exactly the rows of the table, so a class renamed by decision fails there rather
 than being classified into silence.
+
+A step script outside this folder has an allowance of its own, granted where the table it names is
+defined and never here: `04_snapshot-format.md` grants `00_fetch/fetch.py` the eight header field
+names, because a writer that supplies a value for each field cannot ask without naming them, and
+`05_checks.md` says that a fetch failure key is an address a tool asks by while the code that row
+carries is a value no tool writes.

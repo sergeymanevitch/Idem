@@ -7,7 +7,7 @@ Three filters that never call each other. Each reads files the previous one wrot
 
 | Step | Reads | Writes | A person checks |
 | --- | --- | --- | --- |
-| `00_fetch/` | a URL, or a file of URLs | one snapshot per URL in `00_fetch/00_snapshots/` | the snapshot against the page it came from |
+| `00_fetch/` | one URL — a file of URLs is not built | one snapshot per URL in `00_fetch/00_snapshots/` | the snapshot against the page it came from |
 | `01_translate/` | one snapshot; `identity.md`, `rules.md`, the reference files each step names | one file in `01_translate/00_tickets/` | `Unmapped`, and every `not in source` row |
 | `02_validate/` | a tickets file and the snapshot it names | nothing; an exit code and coded failure lines | that the exit code is 0 before the tickets are used |
 | `03_examples/` | validated pairs named in its manifest | `examples.md` at the root | nothing by hand — the file is generated |

@@ -532,16 +532,25 @@ class TestNoCodeLeaksIntoSource(unittest.TestCase):
             self.assertFalse(_written(code, "s" + code + "x"), code)
 
     def test_no_shipped_tool_writes_a_check_key_either(self):
-        """The other half of AD-1. A code is what a reader sees, but a key is what a tool registers
-        a check under, and a tool holding one as a literal is the same defect: two owners for one
-        name. There is no exception for a key - `contract.py` is allowed its two codes and nothing
-        more - and a whole literal is enough, because a key is what a lookup is written with.
+        """The other half of AD-1, for the keys of `checks`. A code is what a reader sees, but a
+        key is what a tool registers a check under, and a tool holding one as a literal is the same
+        defect: two owners for one name. There is no exception for a key of that table -
+        `contract.py` is allowed its two codes and nothing more - and a whole literal is enough,
+        because a key is what a lookup is written with.
 
-        Test modules are exempt, and only they. A test exists to say something about a named row,
-        so it has to be able to name one; what AD-1 forbids is a *tool* keeping a copy of the
-        contract it is supposed to read.
+        The keys of `fetch-failures` are not swept, and that is a decision of 2026-09-21 rather
+        than a hole. A fetch failure is not registered anywhere: this file says outright that
+        `fetch-failures` is reconciled with nothing and that the tool which raises them gives them
+        the tests they deserve, so a key there is the **address** a tool asks a row by and not a
+        value it keeps a copy of - the same distinction under which `snapshot.py` may name the
+        tables and constants it asks for. What the tool must not hold is the **code**, and the test
+        above sweeps every code of both tables out of every file.
+
+        Test modules are exempt from the sweep, and only they. A test exists to say something about
+        a named row, so it has to be able to name one; what AD-1 forbids is a *tool* keeping a copy
+        of the contract it is supposed to read.
         """
-        keys = set([row[KEY] for row in cells(CHECKS) + cells(FETCH_FAILURES)])
+        keys = set([row[KEY] for row in cells(CHECKS)])
         swept = 0
         for path in python_files():
             if os.path.basename(path).startswith("test_"):
@@ -555,6 +564,28 @@ class TestNoCodeLeaksIntoSource(unittest.TestCase):
             for literal in string_literals(source):
                 self.assertNotIn(literal, keys, path + " " + repr(literal))
         self.assertTrue(swept)
+
+    def test_a_fetch_failure_key_is_asked_by_and_its_code_is_not_written(self):
+        """The line the decision above draws, held from both sides. Every key of `fetch-failures`
+        a tool asks by is a row of that table, and no code of it is written in any tool."""
+        rows = cells(FETCH_FAILURES)
+        keys = set([row[KEY] for row in rows])
+        codes = [row[CODE] for row in rows]
+        asked = []
+        for path in python_files():
+            if os.path.basename(path).startswith("test_"):
+                continue
+            handle = io.open(path, "r", encoding="utf-8")
+            try:
+                source = handle.read()
+            finally:
+                handle.close()
+            for literal in string_literals(source):
+                if literal in keys:
+                    asked.append(literal)
+                for code in codes:
+                    self.assertFalse(_written(code, literal), path + " " + repr(literal))
+        self.assertTrue(asked, "no tool asks for a fetch failure by its key")
 
 
 if __name__ == "__main__":

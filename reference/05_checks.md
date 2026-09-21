@@ -284,7 +284,8 @@ share this file because they are the same kind of thing to a reader — a coded 
 wrong — and because the one place a person looks up a code should be one place.
 
 So: `checks` is reconciled with the manifest both ways; `fetch-failures` is reconciled with nothing,
-and the story that writes `fetch.py` gives it whatever tests it deserves.
+and what it has instead is `00_fetch/test_fetch.py`, where every row `fetch.py` can raise is raised
+against a stub server and a temporary directory, one named test per row.
 
 <!-- table: fetch-failures -->
 | key | code | what it reports | FR |
@@ -304,6 +305,12 @@ and the story that writes `fetch.py` gives it whatever tests it deserves.
 Every one of them is a **failed URL**: reported, skipped, no snapshot written, and the remaining
 URLs carry on. Fetch exits non-zero if any URL failed (FR-2). None of them is ever a crash, and none
 of them is ever a snapshot of the part that arrived.
+
+**A fetch failure line points at a URL, not at a line of a file.** Its second field is the URL as it
+was given, flattened like every other field, and carries no `:line` — there is no file to point
+into, because nothing was written (AD-6, amended by Sergey on 2026-09-21). That is the one
+difference from the form the section above states for a check, and it is what tells the two apart at
+a glance.
 
 ## Rules that get no key
 
@@ -375,10 +382,19 @@ this folder, no pattern cell linted. A manifest row is a claim about a file; a r
 Today the manifest is a skeleton: the rows and their expected codes are written, and not one of the
 fixture files they name exists. Epic 3 writes them.
 
-## Nothing reads these tables yet
+## One of these tables is read
 
-Today `contract.py` loads all three with the rest of the contract and lints the one pattern cell, and
-no other tool reads them, because `validate.py`, `run_fixtures.py` and `fetch.py` are not written.
-When they are, they take every key, every code and that pattern from here and keep no copy: a code
+Today `contract.py` loads all three with the rest of the contract and lints the one pattern cell,
+and `00_fetch/fetch.py` reads `fetch-failures`: it asks for a row by its key and prints the code
+that row carries. `checks` and `warn-patterns` wait, because `validate.py` and `run_fixtures.py`
+are not written. Every tool takes every code and that pattern from here and keeps no copy: a code
 that appears in a tool's source as well as in this file is a defect and not a convenience (AD-1) —
 excepting `CONTRACT_TABLE` and `INTERNAL`, for the reason stated above.
+
+**A key is an address and a code is a value** (Sergey, 2026-09-21). A tool that asks for a row has
+to name it, so the ten keys of `fetch-failures` that `fetch.py` can raise are written in its
+source; what stands in the row — the code a person reads in a failure line — is read as the
+contract loads and is written nowhere. The sweep in `lib/tests/test_checks.py` holds both halves:
+no code of either table appears in any tool, no key of `checks` appears in one, and a key of
+`fetch-failures` may, because nothing registers a fetch failure the way the validator registers a
+check, and the section above says so.

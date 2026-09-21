@@ -6,8 +6,8 @@ written for the person using or judging the folder; this file is the route for a
 work in it. It routes and holds no rule.
 
 **State: `reference/` is written whole and can be read, `identity.md` is written and `rules.md` is
-written as a first draft, `lib/idemlib/` holds the contract loader and the snapshot module, and no
-step script is built.**
+written as a first draft, `lib/idemlib/` holds the contract loader and the snapshot module, and the
+first step script is built — `00_fetch/fetch.py`, for one URL.**
 `reference/00_catalogue.md` states the strict-table grammar and names every contract table;
 `reference/01_schema.md` holds the five tables of the ticket schema — the eight fields, the
 constants and the canonical form, the header items, the refusal reasons, the classes of line — with
@@ -25,12 +25,17 @@ contract for its own work: it writes a snapshot, reads one back, hashes a body t
 it, and classifies every body line, taking the header fields, the constants and the line-class
 patterns from the tables and keeping no copy of them. It is a library and no step script — it opens
 no file and writes nothing to disk.
+`00_fetch/fetch.py` is the first step script and the only writer of evidence: one `http` or `https`
+URL to one numbered, hashed snapshot, written through `snapshot.py` and created exclusively, with
+every limit read from `fetch-limits` and every failed URL coded from `fetch-failures`. It takes one
+URL and no file of URLs, classifies no content — whatever decodes is stored as served — and reduces
+no HTML; `00_fetch/CONTEXT.md` says what it does and what it holds.
 `02_validate/00_fixtures/manifest.md` is a skeleton naming every fixture and the codes it must
 raise, held against `05_checks.md` by `02_validate/test_manifest.py`; not one of the fixture files
 exists. `identity.md` says what Idem is, takes, returns and refuses; `rules.md` is the first-draft
 procedure — six numbered steps, each naming the file and the section it depends on, the self-check
 of FR-27 before the emit step, and the prohibitions under them — and it says where it is still a
-draft and that Epic 5 finishes it. No other tool reads anything yet: `fetch.py`, `tickets.py` and
+draft and that Epic 5 finishes it. No other tool reads anything yet: `tickets.py` and
 the validator are not written. Nothing else below is built —
 each folder's `CONTEXT.md` says what it will hold.
 
@@ -60,15 +65,18 @@ The pipeline on one screen: `CONTEXT.md`.
 
 ## Running the tests
 
-Two commands, and "the tests" means both. From this folder:
+Three commands, and "the tests" means all three. From this folder:
 
     python3 -m unittest discover -s lib/tests -t lib
     python3 -m unittest discover -s 02_validate -t 02_validate
+    python3 -m unittest discover -s 00_fetch -t 00_fetch
 
 The first covers `lib/idemlib/`, every written file of `reference/`, and `identity.md` and
 `rules.md` together. The second is `02_validate/test_manifest.py` alone, and it holds the
-reconciliation between `reference/05_checks.md` and `02_validate/00_fixtures/manifest.md`; discovery
-under `lib/tests/` never reaches it. `lib/CONTEXT.md` says more.
+reconciliation between `reference/05_checks.md` and `02_validate/00_fixtures/manifest.md`. The third
+is `00_fetch/test_fetch.py` alone, and it holds `fetch.py` against a stub server on 127.0.0.1 — no
+network, and every snapshot in a temporary directory. Discovery under `lib/tests/` reaches neither
+of the last two. `lib/CONTEXT.md` says more.
 
 ## If you have no shell
 

@@ -1,0 +1,745 @@
+#!/usr/bin/env python3
+"""One http or https URL, to one numbered, hashed snapshot of whatever text it served.
+
+    python3 00_fetch/fetch.py [--out DIR] <url>
+
+Fetch is the only writer of evidence. Everything a ticket later points at - a line number, a quote,
+a digest - is true of the file this tool leaves on disk and of nothing else, so what this tool does
+is deliberately small: it asks for one URL inside the envelope the contract fixes, decodes the bytes
+by the charset the response declared, and hands the header values and the body text to the one
+writer of the snapshot format. It numbers nothing, hashes nothing and parses nothing itself.
+
+No model is involved, and after decoding nothing touches the text (FR-8).
+
+WHAT IS READ FROM THE CONTRACT
+
+The timeout, the redirect cap, the size cap and the User-Agent come from the fetch limits; the code
+of every failure comes from the fetch failures; the shape of the file, its field order, its
+separator and its line prefix come from the snapshot module, which reads its own tables. None of
+them is written here (AD-1). What is written here is addresses - the two table ids, the two column
+names, the ten failure keys the tool asks by - and the eight header field names, which are this
+tool's one sanctioned exception: fetch hands a value over for each field, so it cannot ask without
+naming them (Sergey, 2026-09-21). A test reads this source back, holds those eight names against
+the rows of the header table both ways, and fails if any limit value, any User-Agent or any code is
+typed here.
+
+WHAT IT PRODUCES
+
+One file, `<slug>-<retrieved>.txt`, created exclusively: a name already on disk is a failed URL and
+the file on disk is not touched. The slug is the host and path of the URL as asked, lower-cased,
+every run outside `a-z0-9` one hyphen, trimmed and cut; no query, no fragment, no userinfo, no
+port. `retrieved` is the same string in the name and in the header. The four values fetch invents -
+the timestamp, the routine's name, its version and the digest - have their forms written in the
+snapshot format reference, and the tests of this folder hold that paragraph and this tool together.
+
+FAILURE
+
+A failed URL is one line on stdout and exit 1:
+
+    CODE<TAB>url<TAB>message
+
+The second field is the URL as it was given, flattened, and carries no line number: a fetch failure
+is about a URL and not about a place in a file (AD-6, amended by Sergey on 2026-09-21). Every code
+is read from the fetch failures table. Nothing is written for a failed URL - no snapshot, no partial
+file - and nothing is ever retried without certificate verification.
+
+A tool that could not run at all exits 2: bad usage, an interpreter below the floor, a contract that
+cannot be read (one coded line per problem, under the loader's own code), or an uncaught exception,
+which becomes one internal line naming this file and the line in it, and never a traceback.
+
+This file keeps to syntax that every Python 3 accepts - no f-strings, no annotations - so that an
+interpreter below the floor reaches the version check and says what is needed. It uses the standard
+library only, and none of the three things the architecture rules out: the deprecated CGI module,
+the naive UTC clock and the newer file-digest helper.
+"""
+import datetime
+import http.client
+import os
+import re
+import socket
+import ssl
+import sys
+import urllib.error
+import urllib.parse
+import urllib.request
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(os.path.dirname(_HERE), "lib"))
+
+from idemlib import contract, snapshot  # noqa: E402  - the path has to be set first
+
+# --- what to ask the contract for -----------------------------------------------------------------
+
+#: The two tables this tool reads, and the columns it reads them by. A table id and a column name
+#: are addresses: what stands at them is read at run time.
+LIMITS_TABLE = "fetch-limits"
+FAILURES_TABLE = "fetch-failures"
+VALUE = "value"
+CODE = "code"
+
+#: The four limits, by the keys the table gives them. The unit is in the key and never in the value.
+TIMEOUT_SECONDS = "timeout_seconds"
+MAX_REDIRECTS = "max_redirects"
+MAX_BYTES = "max_bytes"
+USER_AGENT = "user_agent"
+
+#: The ten failure keys this tool can raise. The eleventh row of the table, the unsupported content
+#: type, belongs to the tool that classifies content: here whatever decodes is stored as served.
+HTTP_STATUS = "http_status"
+TIMEOUT = "timeout"
+CERTIFICATE = "certificate"
+TOO_LARGE = "too_large"
+TOO_MANY_REDIRECTS = "too_many_redirects"
+UNDECODABLE = "undecodable"
+EMPTY_BODY = "empty_body"
+BAD_SCHEME = "bad_scheme"
+SNAPSHOT_EXISTS = "snapshot_exists"
+UNREACHABLE = "unreachable"
+
+# --- the one exception: the eight fields a header carries -----------------------------------------
+
+#: The header fields, in the order the table writes them. This tool hands a value over for each of
+#: them, so it cannot ask without naming them; a test holds this list against the rows of the
+#: snapshot header table both ways, so a field renamed by decision fails there and not in silence.
+FIELDS = ["source_url", "final_url", "http_status", "content_type", "retrieved", "routine",
+          "routine_version", "sha256"]
+SOURCE_URL, FINAL_URL, STATUS, CONTENT_TYPE, RETRIEVED, ROUTINE, VERSION, SHA256 = FIELDS
+
+# --- what this tool invents, and the forms the reference states ------------------------------------
+
+#: The retrieval time, in UTC, as it is written in the header and in the file name.
+STAMP = "%Y%m%dT%H%M%SZ"
+#: The routine that produced the body, and its version. Nothing is reduced here: the bytes that
+#: decoded are the body, whatever the content type said they were.
+AS_SERVED = "as-served"
+AS_SERVED_VERSION = "1"
+EXTENSION = ".txt"
+#: The folder a snapshot goes to when no other is named: the one beside this tool.
+SNAPSHOTS = "00_snapshots"
+#: A slug is host and path; everything outside this alphabet becomes one hyphen.
+OUTSIDE_THE_SLUG = re.compile("[^a-z0-9]+")
+HYPHEN = "-"
+SLUG_LIMIT = 80
+#: What a slug of nothing is called. A URL with no host and no path still gets a file name.
+NOTHING_TO_SLUG = "snapshot"
+
+# --- the request ------------------------------------------------------------------------------------
+
+SCHEMES = ("http", "https")
+#: The request asks for no content encoding, so that the bytes counted against the size cap are the
+#: bytes of the body (AD-12).
+ACCEPT_ENCODING = "Accept-Encoding"
+IDENTITY = "identity"
+USER_AGENT_HEADER = "User-Agent"
+CONTENT_TYPE_HEADER = "Content-Type"
+CONTENT_ENCODING_HEADER = "Content-Encoding"
+CONTENT_LENGTH_HEADER = "Content-Length"
+LOCATION_HEADER = "location"
+URI_HEADER = "uri"
+#: A 2xx status, and nothing else, carries a body worth storing.
+LOWEST_SUCCESS = 200
+FIRST_REDIRECT = 300
+#: The permanent redirect, and the temporary one it is read as. Older interpreters do not follow the
+#: first at all, so it is mapped to the second before the standard handler sees it and one page
+#: gives one snapshot whatever interpreter fetched it (AD-12).
+PERMANENT = 308
+TEMPORARY = 307
+#: How much is asked for in one read. Not a limit of the contract: a buffer size.
+CHUNK = 65536
+
+ENCODING = "utf-8"
+SPACE = " "
+#: A header value folded across lines comes back with its line endings in it; the fold is one space.
+FOLD = re.compile("[\r\n]+[ \t]*")
+#: Everything below the space, and the delete character, is a control character. One left in a
+#: header value means the response cannot be read as the text it claims to be.
+LOWEST_PRINTABLE = 32
+DELETE = 127
+
+DASH = "-"
+OUT = "--out"
+USAGE = ("usage: python3 00_fetch/fetch.py [--out DIR] <url> - one http or https URL, and a "
+         "directory that is there and can be written; the snapshot is written beside this tool "
+         "when no directory is named")
+
+
+class FetchFailure(Exception):
+    """This URL failed. Carries the key of the row that codes it, and a message for a person.
+
+    No code: what a failure is called is read from the contract by the caller that prints the line,
+    so the key is what the tool asks by and the code is never written here.
+    """
+
+    def __init__(self, key, message):
+        self.key = key
+        self.message = message
+        Exception.__init__(self, key + ": " + message)
+
+
+class _Usage(Exception):
+    """The tool was not asked for something it could do. One usage line, exit 2, no code."""
+
+
+# --- the contract, by the addresses above -----------------------------------------------------------
+
+
+def _limits(tables):
+    """The fetch limits, as {key: value cell}. The values are read; nothing is held here."""
+    rows = tables[LIMITS_TABLE].rows
+    return dict([(name, rows[name][VALUE]) for name in rows])
+
+
+def _codes(tables):
+    """The fetch failure codes, as {key: code}."""
+    rows = tables[FAILURES_TABLE].rows
+    return dict([(name, rows[name][CODE]) for name in rows])
+
+
+def failure_line(codes, url, failure):
+    """One failed URL as AD-6 writes it: the code, the URL as given, the message.
+
+    Both fields are flattened by the same function the contract loader uses, so neither a URL nor a
+    message holding a tab can fake a fourth field.
+    """
+    return (codes[failure.key] + contract.TAB + contract._flatten(url) + contract.TAB +
+            contract._flatten(failure.message))
+
+
+# --- where the snapshot goes ------------------------------------------------------------------------
+
+
+def default_directory():
+    """The snapshot folder beside this tool, which is where evidence lives."""
+    return os.path.join(_HERE, SNAPSHOTS)
+
+
+def slug(url):
+    """The first half of a file name: the host and path of the URL as asked for.
+
+    Lower-cased, every run of characters outside `a-z0-9` written as one hyphen, trimmed of hyphens
+    and cut to a length a file name can carry; trimmed again after the cut, so that the hyphen
+    before the timestamp is the only one there. The query, the fragment, the userinfo and the port
+    are left out: they say how the page was asked for and not which page it is, and a query string
+    in a file name is unreadable. A URL that leaves nothing to slug is named for what it is.
+    """
+    parts = _split(url)
+    host = parts.hostname or ""
+    found = OUTSIDE_THE_SLUG.sub(HYPHEN, (host + parts.path).lower()).strip(HYPHEN)
+    found = found[:SLUG_LIMIT].strip(HYPHEN)
+    return found or NOTHING_TO_SLUG
+
+
+def _split(url):
+    """The parts of a URL, or a failed URL when it cannot be read as one at all."""
+    try:
+        return urllib.parse.urlsplit(url)
+    except ValueError as broken:
+        raise FetchFailure(UNREACHABLE, "this is not a URL that can be requested: " + str(broken))
+
+
+# --- following a redirect -----------------------------------------------------------------------------
+
+
+class _Redirects(urllib.request.HTTPRedirectHandler):
+    """Counts the hops of one URL against the cap, and refuses a target that leaves http or https.
+
+    Both checks run before the standard handler does anything with the target, because the standard
+    handler allows one scheme this tool does not and refuses another with a status error, and either
+    would report a failed URL under the wrong code. The counter belongs to one fetch, so a handler
+    is built for each URL and never shared.
+    """
+
+    def __init__(self, cap):
+        self.cap = cap
+        self.hops = 0
+        # The standard handler has counters of its own, and they would fire first on a URL that
+        # redirects to itself. Held above the cap, so the cap is what decides.
+        self.max_repeats = cap + 2
+        self.max_redirections = cap + 2
+
+    def http_error_302(self, request, fp, code, message, headers):
+        target = headers.get(LOCATION_HEADER, headers.get(URI_HEADER, ""))
+        if target:
+            self._check(self._target(request, target, fp), fp)
+        if code == PERMANENT:
+            code = TEMPORARY
+        return urllib.request.HTTPRedirectHandler.http_error_302(
+            self, request, fp, code, message, headers)
+
+    http_error_301 = http_error_303 = http_error_307 = http_error_308 = http_error_302
+
+    def _target(self, request, target, fp):
+        """Where this Location points, or a failed URL when it cannot be read as a URL at all.
+
+        A server may send anything in that header, and resolving it is the first thing done with
+        it. A header nobody can resolve is the host failing to say where the page went, which is a
+        failed URL and not a defect in this tool.
+        """
+        try:
+            return urllib.parse.urljoin(request.full_url, target)
+        except ValueError as broken:
+            fp.close()
+            raise FetchFailure(UNREACHABLE, "this URL redirects to '" + target + "', which cannot "
+                               "be read as a URL: " + str(broken))
+
+    def _check(self, target, fp):
+        # Reading the scheme cannot fail here: what `_target` gives back has been parsed once
+        # already, by the resolution that produced it, and a target nobody could parse never
+        # reaches this method.
+        scheme = urllib.parse.urlsplit(target).scheme.lower()
+        if scheme not in SCHEMES:
+            fp.close()
+            raise FetchFailure(BAD_SCHEME, "this URL redirects to '" + target + "', and fetch "
+                               "asks for http or https and nothing else")
+        self.hops += 1
+        if self.hops > self.cap:
+            fp.close()
+            raise FetchFailure(TOO_MANY_REDIRECTS, "this URL redirected more than " +
+                               str(self.cap) + " times, which is the cap the contract sets")
+
+
+def _opener(limits):
+    """An opener for one URL: no proxy, no other scheme, and the default certificate verification.
+
+    The handlers are named one by one rather than taken from the standard set, so that nothing this
+    tool refuses can be opened by a handler nobody asked for - a redirect to a file or to an FTP
+    server reaches no handler at all. Proxies are ignored, from the environment and from the system
+    settings alike: a proxy would put a second reader between the page and the evidence. The
+    HTTPS handler is built with no context of its own, which is the verified default; certificate
+    verification is never relaxed and nothing is ever retried without it (AD-12).
+    """
+    director = urllib.request.OpenerDirector()
+    director.addheaders = []
+    for handler in (urllib.request.ProxyHandler({}),
+                    urllib.request.HTTPHandler(),
+                    urllib.request.HTTPSHandler(),
+                    _Redirects(int(limits[MAX_REDIRECTS])),
+                    urllib.request.HTTPErrorProcessor(),
+                    urllib.request.HTTPDefaultErrorHandler()):
+        director.add_handler(handler)
+    return director
+
+
+def _request(url, limits):
+    request = urllib.request.Request(url)
+    request.add_header(USER_AGENT_HEADER, limits[USER_AGENT])
+    request.add_header(ACCEPT_ENCODING, IDENTITY)
+    return request
+
+
+def _attempt(action, timeout):
+    """Run one network operation and turn every way it can fail into a failed URL.
+
+    One place for the mapping, because the same failures reach a caller opening a connection and a
+    caller reading a body. A certificate failure arrives wrapped in a URL error or bare, depending
+    on where it was raised, so both forms are read and the reason of a URL error is unwrapped.
+    """
+    try:
+        return action()
+    except FetchFailure:
+        raise
+    except urllib.error.HTTPError as error:
+        _let_go(error)
+        raise FetchFailure(HTTP_STATUS, "the server answered " + str(error.code) + " " +
+                           str(error.reason) + "; a snapshot is written from a 2xx response only")
+    except urllib.error.URLError as error:
+        raise _reason(getattr(error, "reason", None), error, timeout)
+    except ssl.SSLCertVerificationError as error:
+        raise FetchFailure(CERTIFICATE, _certificate(error))
+    except socket.timeout:
+        raise FetchFailure(TIMEOUT, _timed_out(timeout))
+    except http.client.HTTPException as error:
+        raise FetchFailure(UNREACHABLE, "the server did not answer with HTTP this tool can read: " +
+                           _named(error))
+    except ValueError as error:
+        # A URL the request machinery cannot send: a character it cannot put on the wire, a host it
+        # cannot read. Decision 12 - a malformed URL is a failed URL and not a defect in this tool.
+        raise FetchFailure(UNREACHABLE, "this URL cannot be requested as it is written: " +
+                           _named(error))
+    except EnvironmentError as error:
+        raise FetchFailure(UNREACHABLE, "the host could not be reached: " + _named(error))
+
+
+def _let_go(response):
+    """Let go of a response nobody will read: a failed URL leaves no socket open behind it.
+
+    An error raised for a status carries the response it was raised about, and the tool that will
+    one day fetch a list of URLs would hold one of them open per failure. Best effort - a response
+    that cannot be closed is not a second failure to report.
+    """
+    try:
+        response.close()
+    except (EnvironmentError, AttributeError):
+        pass
+
+
+def _reason(reason, error, timeout):
+    """The failure a URL error stands for, read off the reason it carries."""
+    if isinstance(reason, ssl.SSLCertVerificationError):
+        return FetchFailure(CERTIFICATE, _certificate(reason))
+    if isinstance(reason, socket.timeout):
+        return FetchFailure(TIMEOUT, _timed_out(timeout))
+    if reason is None:
+        return FetchFailure(UNREACHABLE, "the host could not be reached: " + _named(error))
+    return FetchFailure(UNREACHABLE, "the host could not be reached: " + _named(reason))
+
+
+def _named(error):
+    text = str(error)
+    if text == "":
+        return type(error).__name__
+    return type(error).__name__ + ": " + text
+
+
+def _timed_out(timeout):
+    return ("one network operation took longer than " + str(timeout) + " seconds, which is the "
+            "timeout the contract sets; nothing of a page that arrives late is stored")
+
+
+def _certificate(error):
+    return ("the server's certificate could not be verified (" + str(error) + "). Fetch never "
+            "retries without verification: install or update the system root certificates - on "
+            "macOS run the 'Install Certificates.command' that ships with Python - or open the "
+            "page yourself and take a snapshot of a source you trust")
+
+
+# --- reading the response -----------------------------------------------------------------------------
+
+
+def _body_bytes(response, cap, timeout):
+    """The response body, read in a loop, and one byte more than the cap allows if it is there.
+
+    One read is not the body: a socket gives back what has arrived, and a body that arrives in
+    pieces would otherwise be stored truncated and hashed as though it were whole. One byte over the
+    cap is asked for on purpose, so that a body of exactly the cap passes and a body of one more
+    does not.
+    """
+    chunks = []
+    total = 0
+    while total <= cap:
+        wanted = min(CHUNK, cap + 1 - total)
+        chunk = _attempt(lambda: response.read(wanted), timeout)
+        if not chunk:
+            break
+        chunks.append(chunk)
+        total += len(chunk)
+    return b"".join(chunks)
+
+
+def _one_line(value):
+    """A header value as one line: a fold is one space, and a value nobody sent is empty.
+
+    A response with no Content-Type leaves that field empty and the body is stored all the same:
+    what the server called the bytes is recorded, and what they are is the reader's judgment.
+    """
+    if value is None:
+        return ""
+    return FOLD.sub(SPACE, value).strip(" \t")
+
+
+def _refuse_control_characters(value, what):
+    for character in value:
+        if ord(character) < LOWEST_PRINTABLE or ord(character) == DELETE:
+            raise FetchFailure(UNDECODABLE, "the " + what + " holds a control character, so this "
+                               "response cannot be read as the text it says it is")
+
+
+def _refuse_an_encoded_body(values):
+    """A body this tool did not ask to be encoded is a body it cannot count or decode.
+
+    Every Content-Encoding header of the response is read, not the first: a response carrying two
+    of them is encoded by both, and the one that matters is as likely to be the second.
+    """
+    for value in values or ():
+        for part in value.split(","):
+            if part.strip().lower() not in ("", IDENTITY):
+                raise FetchFailure(UNDECODABLE, "the response is encoded as '" + value.strip() +
+                                   "', and fetch asks for no content encoding, so the bytes are "
+                                   "neither the body nor countable against the size cap")
+
+
+def _refuse_a_body_cut_short(declared, data):
+    """A body shorter than the length the server stated is a connection that broke, not a page.
+
+    A length this tool cannot read is no length: `isdigit` is true of digits no `int` accepts - a
+    superscript two among them - so the number is taken and not assumed, and a header that is not a
+    count of bytes says nothing about whether the body arrived whole.
+    """
+    if declared is None:
+        return
+    try:
+        length = int(declared.strip())
+    except ValueError:
+        return
+    if len(data) >= length:
+        return
+    raise FetchFailure(UNREACHABLE, "the server said the body is " + str(length) + " bytes and "
+                       "sent " + str(len(data)) + "; the connection ended before the page did")
+
+
+def _decode(data, charset):
+    try:
+        return data.decode(charset)
+    except UnicodeDecodeError as broken:
+        raise FetchFailure(UNDECODABLE, "the bytes are not " + charset + ", which is the charset "
+                           "the response declared: " + str(broken))
+    except (LookupError, ValueError) as broken:
+        raise FetchFailure(UNDECODABLE, "the response declares the charset '" + charset +
+                           "', which this interpreter cannot decode: " + str(broken))
+
+
+# --- writing the file ---------------------------------------------------------------------------------
+
+
+def _create(path, data):
+    """Write these bytes under a name nothing has yet, or report the name as taken.
+
+    The file is created exclusively, so a snapshot already on disk is never opened for writing and
+    never truncated: fetch does not overwrite evidence, and a refetch is a new file beside the old
+    one. Two fetches of one URL inside one second want the same name, so the second of them is a
+    failed URL - the timestamp is the second, and a name is not made unique behind a reader's back.
+    The bytes are built whole before the file is opened and written in one call; a write that fails
+    leaves no half-written snapshot behind.
+    """
+    try:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)
+    except FileExistsError:
+        raise FetchFailure(SNAPSHOT_EXISTS, "'" + os.path.basename(path) + "' is already in the "
+                           "snapshot directory. Fetch never overwrites a snapshot; a refetch is a "
+                           "new file, and two fetches of one URL inside one second ask for one name")
+    try:
+        stream = os.fdopen(descriptor, "wb")
+    except EnvironmentError:
+        _close(descriptor)
+        _remove(path)
+        raise
+    try:
+        try:
+            stream.write(data)
+        finally:
+            stream.close()
+    except EnvironmentError:
+        _remove(path)
+        raise
+    return path
+
+
+def _remove(path):
+    try:
+        os.remove(path)
+    except EnvironmentError:
+        pass
+
+
+def _close(descriptor):
+    """Let go of a descriptor no stream took over. Best effort: the failure being cleaned up after
+    is the one worth reporting, and a descriptor already gone is nothing to report at all."""
+    try:
+        os.close(descriptor)
+    except EnvironmentError:
+        pass
+
+
+# --- one URL ---------------------------------------------------------------------------------------
+
+
+def fetch_one(url, directory, limits, now, opener):
+    """Fetch this URL into this directory and return the path of the snapshot written.
+
+    `limits` is the fetch limits as {key: value}, `now` the retrieval time as a datetime, and
+    `opener` an opener to use, or None for one built from the limits for this URL alone. Raises
+    FetchFailure, carrying the key of the row that codes it, for every way one URL can fail; the
+    caller prints the coded line, because the codes live in a table and this function reads none.
+
+    Nothing is written unless everything else succeeded: the bytes of the whole snapshot are built
+    first, and the file is created last.
+    """
+    _refuse_a_url_that_is_not_one(url)
+    _refuse_other_schemes(url)
+    if opener is None:
+        opener = _opener(limits)
+    timeout = float(limits[TIMEOUT_SECONDS])
+    cap = int(limits[MAX_BYTES])
+    request = _request(url, limits)
+    response = _attempt(lambda: opener.open(request, timeout=timeout), timeout)
+    try:
+        status = response.status
+        if not LOWEST_SUCCESS <= status < FIRST_REDIRECT:
+            raise FetchFailure(HTTP_STATUS, "the server answered " + str(status) +
+                               "; a snapshot is written from a 2xx response only")
+        final_url = _one_line(response.geturl())
+        _refuse_control_characters(final_url, "URL the body was read from")
+        headers = response.headers
+        content_type = _one_line(headers.get(CONTENT_TYPE_HEADER))
+        _refuse_control_characters(content_type, CONTENT_TYPE_HEADER + " header")
+        _refuse_an_encoded_body(headers.get_all(CONTENT_ENCODING_HEADER))
+        data = _body_bytes(response, cap, timeout)
+        if len(data) > cap:
+            raise FetchFailure(TOO_LARGE, "the body is more than " + str(cap) + " bytes, which is "
+                               "the cap the contract sets; no part of it is stored")
+        _refuse_a_body_cut_short(headers.get(CONTENT_LENGTH_HEADER), data)
+        charset = headers.get_content_charset() or ENCODING
+    finally:
+        response.close()
+    body = snapshot.normalise(_decode(data, charset))
+    if body == "":
+        raise FetchFailure(EMPTY_BODY, "the body is empty, so there is nothing to number, hash or "
+                           "quote; a page that needs a browser to show its text reduces to this")
+    stamp = _stamp(now)
+    values = {}
+    values[SOURCE_URL] = url
+    values[FINAL_URL] = final_url
+    values[STATUS] = str(status)
+    values[CONTENT_TYPE] = content_type
+    values[RETRIEVED] = stamp
+    values[ROUTINE] = AS_SERVED
+    values[VERSION] = AS_SERVED_VERSION
+    values[SHA256] = snapshot.digest(body)
+    return _create(os.path.join(directory, slug(url) + HYPHEN + stamp + EXTENSION),
+                   snapshot.write(values, body))
+
+
+def _refuse_a_url_that_is_not_one(url):
+    """A URL holding a control character is refused before anything is asked of it.
+
+    Two reasons, and either would do. The URL as given is written into the header of the snapshot,
+    and a line ending there would end the header line; a tab there would be a character the record
+    cannot carry back. And the parser drops a tab and a line ending silently, so the page that
+    arrived would not be the page the header names. It is a failed URL rather than a defect in this
+    tool, under the same reading as a URL with no host: what was handed over is not a URL.
+    """
+    for character in url:
+        if ord(character) < LOWEST_PRINTABLE or ord(character) == DELETE:
+            raise FetchFailure(UNREACHABLE, "this URL holds a control character at offset " +
+                               str(url.index(character)) + ", so it is not a URL that can be "
+                               "requested or recorded")
+
+
+def _refuse_other_schemes(url):
+    scheme = _split(url).scheme.lower()
+    if scheme not in SCHEMES:
+        raise FetchFailure(BAD_SCHEME, "the scheme of this URL is '" + scheme + "', and fetch asks "
+                           "for http or https and nothing else")
+
+
+def _stamp(now):
+    """The retrieval time, in UTC, in the form the snapshot format states.
+
+    A time with no zone is refused rather than guessed. The stamp ends in the letter that says UTC,
+    and a naive clock reading stamped with it would put a local hour in the header and in the file
+    name under a name that says otherwise - the one error of this kind nothing downstream could
+    ever detect.
+    """
+    if now.tzinfo is None or now.tzinfo.utcoffset(now) is None:
+        raise ValueError("the retrieval time carries no time zone, and a snapshot records it in "
+                         "UTC; hand over an aware datetime")
+    return now.astimezone(datetime.timezone.utc).strftime(STAMP)
+
+
+def _now():
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+# --- running as a script -------------------------------------------------------------------------------
+
+
+def _arguments(argv):
+    """The URL and the directory, or a usage failure.
+
+    An unknown flag, a flag with no value, no URL at all, an empty one, a second URL, a directory
+    that is not there and a directory that cannot be written are all the same thing: the tool was
+    not asked for something it could do. None of them is an internal error, and none of them makes
+    a request. An empty URL is nothing to fetch rather than a URL that failed, which is why it is
+    usage and carries no code - a coded line would point at a URL that is not there.
+    """
+    directory = None
+    url = None
+    index = 0
+    while index < len(argv):
+        word = argv[index]
+        if word == OUT:
+            index += 1
+            if index >= len(argv):
+                raise _Usage()
+            directory = argv[index]
+        elif word.startswith(DASH):
+            raise _Usage()
+        elif url is not None:
+            raise _Usage()
+        else:
+            url = word
+        index += 1
+    if not url:
+        raise _Usage()
+    if directory is None:
+        directory = default_directory()
+    if not os.path.isdir(directory) or not os.access(directory, os.W_OK | os.X_OK):
+        raise _Usage()
+    return url, directory
+
+
+def _internal_line():
+    """One line for an uncaught exception: the code, where it was raised, and what it said.
+
+    A traceback never reaches stdout (AD-6). An internal error is a defect in a tool, so what the
+    line points at is the tool's own source and never the URL - which is the one thing a failed URL
+    line points at, and the reason the two cannot be confused.
+
+    The frame reported is the deepest one **inside this repository**, and not the deepest one there
+    is. A standard-library file is where many an exception is finally raised, and naming it would
+    print the path of the machine's Python installation - a place the reader cannot open, cannot
+    change, and did not write - while saying nothing about where the defect is. With no frame of
+    this repository at all, the line points here.
+    """
+    kind, value, trace = sys.exc_info()
+    root = contract.idem_root()
+    where = contract._relative(os.path.abspath(__file__), root)
+    line = 1
+    inside = os.path.join(os.path.abspath(root), "")
+    while trace is not None:
+        name = os.path.abspath(trace.tb_frame.f_code.co_filename)
+        if name.startswith(inside):
+            where = contract._relative(name, root)
+            line = trace.tb_lineno
+        trace = trace.tb_next
+    name = getattr(kind, "__name__", str(kind))
+    return (contract.INTERNAL + contract.TAB + contract._flatten(where) + ":" + str(line) +
+            contract.TAB + contract._flatten(name + ": " + str(value)))
+
+
+def main(argv=None, version_info=None):
+    if version_info is None:
+        version_info = sys.version_info
+    if tuple(version_info)[:2] < contract.FLOOR:
+        contract._emit(contract.version_message(version_info))
+        return 2
+    try:
+        url, directory = _arguments(list(argv) if argv is not None else [])
+    except _Usage:
+        contract._emit(USAGE)
+        return 2
+    try:
+        tables = contract.load()
+        limits = _limits(tables)
+        codes = _codes(tables)
+    except contract.ContractError as broken:
+        for line in broken.lines():
+            contract._emit(line)
+        return 2
+    except Exception:
+        contract._emit(_internal_line())
+        return 2
+    try:
+        path = fetch_one(url, directory, limits, _now(), None)
+    except FetchFailure as failed:
+        contract._emit(failure_line(codes, url, failed))
+        return 1
+    except Exception:
+        contract._emit(_internal_line())
+        return 2
+    contract._emit(contract._relative(path, contract.idem_root()))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

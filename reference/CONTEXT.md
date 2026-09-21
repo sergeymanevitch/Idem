@@ -20,10 +20,12 @@ what it never reads — because that grammar is the one thing `contract.py` know
 A table becomes usable by a tool on the day its row appears in the catalogue, and not before: the
 loader reads the catalogue both ways and refuses a marked table nobody listed.
 
-Usable is not used, but it is no longer unused. The five files that hold tables load today; three
+Usable is not used, but it is no longer unused. The five files that hold tables load today; five
 of their tables are read by a tool — `snapshot-header`, `snapshot-constants` and `line-classes`, by
-`lib/idemlib/snapshot.py`, which writes and reads a snapshot and classifies its body lines — and
-the other twelve wait for `fetch.py`, `tickets.py` and the validator, none of which is written.
+`lib/idemlib/snapshot.py`, which writes and reads a snapshot and classifies its body lines, and
+`fetch-limits` and `fetch-failures`, by `00_fetch/fetch.py`, which turns one URL into one snapshot
+inside that envelope and codes every failed URL from that table — and the other ten wait for
+`tickets.py`, the validator and the HTML routine, none of which is written.
 `02_segmentation.md` holds no table, so the loader never opens it at all. A pattern is the one kind
 of cell the loader looks inside: a column named `pattern`, or ending `_pattern`, is linted and
 compiled as the contract loads, and `00_catalogue.md` states that convention.

@@ -22,8 +22,9 @@ Nothing on disk. Exit 0, 1 or 2, and one line per failure.
 
     python3 -m unittest discover -s 02_validate -t 02_validate
 
-This is the second of Idem's two test commands; the first,
-`python3 -m unittest discover -s lib/tests -t lib`, does not reach this file. The reconciliation
+This is the second of Idem's three test commands; neither of the other two —
+`python3 -m unittest discover -s lib/tests -t lib` and
+`python3 -m unittest discover -s 00_fetch -t 00_fetch` — reaches this file. The reconciliation
 below runs under this command and no other.
 
 `test_manifest.py` reconciles `00_fixtures/manifest.md` with the `checks` table both ways — every
