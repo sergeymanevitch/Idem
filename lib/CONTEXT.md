@@ -10,7 +10,7 @@ imports `idemlib`. Python 3.9 or later, standard library only, no install step.
 | `idemlib/contract.py` | built — loads every table `reference/00_catalogue.md` names, lints every pattern cell in them, and reads one strict table outside that folder when a caller hands it a path |
 | `idemlib/snapshot.py` | not built — the snapshot format, the coordinate system, the line classifier |
 | `idemlib/tickets.py` | not built — parse and serialise a tickets file, and its canonical form |
-| `tests/` | the `unittest` suite: `idemlib` itself, and one module per written file of `reference/`, which reads the shipped tables back and holds them to what their prose says |
+| `tests/` | the `unittest` suite: `idemlib` itself, and one module per written file of `reference/`, each holding that file to what its prose says — by reading its tables back where it has tables, and by cutting its worked examples where it has none |
 
 - **Read by:** every step script and the harness. Nothing here reads a step's output folder.
 - **Writes:** nothing. `contract.py` finds the Idem root from its own location, never the working

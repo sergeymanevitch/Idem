@@ -37,7 +37,7 @@ them.
 
 The `ancestor` column is citation scope (AD-9, FR-13). `no` — a row of this field may cite only a
 line inside its own ticket's `source` range. `yes` — it may also cite an **ancestor** line: a
-heading the change sits under, or a parent list item, as `02_segmentation.md` will define. An empty
+heading the change sits under, or a parent list item, as `02_segmentation.md` defines. An empty
 cell is neither, and `source` is the one field with an empty cell: it cites nothing, it carries the
 range itself. The cell is empty and never `no`, because `no` is a scope and `source` has none.
 
@@ -338,7 +338,7 @@ translation.
 <!-- table: refusal-reasons -->
 | reason | when |
 | --- | --- |
-| not a changelog | the input does not pass the test for a changelog that 02_segmentation.md will state (FR-22, FR-24) |
+| not a changelog | the input does not pass the test for a changelog that 02_segmentation.md states (FR-22, FR-24) |
 | no body | the input has no body line that is not blank: a header and nothing under it, or nothing at all |
 | a bare URL and nothing to fetch it | the input is a URL and nothing else, and nothing in reach can fetch it. In a claude.ai Project there is no fetch step at all (FR-22) |
 | over the size limit | the body is more lines than max_body_lines. The user then supplies a body line range and the translation runs on that range, which the header records (FR-26) |
