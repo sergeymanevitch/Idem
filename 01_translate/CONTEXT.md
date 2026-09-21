@@ -1,10 +1,11 @@
 # 01_translate — snapshot to tickets
 
-One job: turn one snapshot into one tickets file. Done by Claude, not by a script. Not built yet.
+One job: turn one snapshot into one tickets file. Done by Claude, not by a script. The procedure it
+runs on is written — `../rules.md`, as a first draft — and nothing in this folder is built yet.
 
 ## Inputs
 - Working: one file from `../00_fetch/00_snapshots/`, or pasted text.
-- Reference: `../identity.md`, `../rules.md`, and the file under `../reference/` that each step of `rules.md` names.
+- Reference: `../identity.md`, `../rules.md`, and the files under `../reference/` that each step of `rules.md` names — two of the steps name three each.
 
 Do NOT load: `../02_validate/00_fixtures/`, `../examples.md` as a source of values, or any snapshot other than the one supplied.
 

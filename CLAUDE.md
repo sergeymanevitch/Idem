@@ -5,7 +5,8 @@ from the source with its quote and line number, every gap marked `not in source`
 written for the person using or judging the folder; this file is the route for an agent about to
 work in it. It routes and holds no rule.
 
-**State: `reference/` is written whole and can be read; no step script is built.**
+**State: `reference/` is written whole and can be read, `identity.md` is written and `rules.md` is
+written as a first draft, and no step script is built.**
 `reference/00_catalogue.md` states the strict-table grammar and names every contract table;
 `reference/01_schema.md` holds the five tables of the ticket schema — the eight fields, the
 constants and the canonical form, the header items, the refusal reasons, the classes of line — with
@@ -21,14 +22,18 @@ parts marked. `lib/idemlib/contract.py` loads the five that hold tables, lints t
 `lib/tests/` proves it.
 `02_validate/00_fixtures/manifest.md` is a skeleton naming every fixture and the codes it must
 raise, held against `05_checks.md` by `02_validate/test_manifest.py`; not one of the fixture files
-exists. No other tool reads anything yet. Nothing else below is built — each folder's `CONTEXT.md`
-says what it will hold.
+exists. `identity.md` says what Idem is, takes, returns and refuses; `rules.md` is the first-draft
+procedure — six numbered steps, each naming the file and the section it depends on, the self-check
+of FR-27 before the emit step, and the prohibitions under them — and it says where it is still a
+draft and that Epic 5 finishes it. No other tool reads anything yet. Nothing else below is built —
+each folder's `CONTEXT.md` says what it will hold.
 
 ## To translate a snapshot
 
 1. `identity.md` — what Idem is and what it refuses.
-2. `rules.md` — the procedure, step by step. Each step names the one reference file it needs.
-3. `reference/` — only the file a step names, never the folder end to end. `reference/CONTEXT.md` routes.
+2. `rules.md` — the procedure, step by step. Each step names the reference file or files it needs,
+   and the section of each that owns what the step points at.
+3. `reference/` — only the files a step names, never the folder end to end. `reference/CONTEXT.md` routes.
 4. Write the result to `01_translate/00_tickets/<snapshot-stem>.tickets.md` and nowhere else.
 
 Never write or edit anything under `00_fetch/00_snapshots/`: a snapshot is evidence.
@@ -54,10 +59,10 @@ Two commands, and "the tests" means both. From this folder:
     python3 -m unittest discover -s lib/tests -t lib
     python3 -m unittest discover -s 02_validate -t 02_validate
 
-The first covers `lib/idemlib/` and every written file of `reference/`. The second is
-`02_validate/test_manifest.py` alone, and it holds the reconciliation between
-`reference/05_checks.md` and `02_validate/00_fixtures/manifest.md`; discovery under `lib/tests/`
-never reaches it. `lib/CONTEXT.md` says more.
+The first covers `lib/idemlib/`, every written file of `reference/`, and `identity.md` and
+`rules.md` together. The second is `02_validate/test_manifest.py` alone, and it holds the
+reconciliation between `reference/05_checks.md` and `02_validate/00_fixtures/manifest.md`; discovery
+under `lib/tests/` never reaches it. `lib/CONTEXT.md` says more.
 
 ## If you have no shell
 

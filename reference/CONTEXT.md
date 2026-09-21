@@ -95,7 +95,7 @@ a position, which `breaking_value` covers although no phrase of the shipped list
 and a false `not in source`, where what is keyed is the backstop — `unmapped_missing` and the two
 warnings — and never the defect itself.
 
-- **Read by:** `lib/idemlib/contract.py` (marked tables only), the translator (the file a step names).
+- **Read by:** `lib/idemlib/contract.py` (marked tables only), the translator (the files a step names).
 - **Written by:** a person. Nothing here is generated.
 - **Human check:** a rule stated here is the rule the validator enforces; no tool holds a copy.
 

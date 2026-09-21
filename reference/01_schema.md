@@ -405,8 +405,8 @@ line_numbers: snapshot
 | field | value | line | quote |
 | --- | --- | --- | --- |
 | change | The sort parameter of GET /v1/gadgets is removed | 9 | The sort parameter of GET /v1/gadgets is removed. |
-| affected_surface | GET /v1/gadgets | 9 | The sort parameter of GET /v1/gadgets is removed. |
 | affected_surface | sort | 9 | The sort parameter of GET /v1/gadgets is removed. |
+| affected_surface | GET /v1/gadgets | 9 | The sort parameter of GET /v1/gadgets is removed. |
 | breaking | yes | 5 | Breaking changes |
 | entry_date | 2026-04-02 | 3 | 2026-04-02 |
 | effective_date | not in source |  |  |

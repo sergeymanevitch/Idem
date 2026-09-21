@@ -886,6 +886,37 @@ class TestTheRowsOfTheExamples(unittest.TestCase):
                 tickets += 1
         self.assertTrue(tickets)
 
+    def test_rows_of_one_field_on_one_line_stand_in_the_order_their_values_begin(self):
+        """Story 2.2 fixed the order of several rows of one field in `rules.md`: their values stand
+        in the order the values stand in the input, first by line and then by where each begins on
+        that line. Where two rows of a field cite the same line with the same quote, the quote is
+        that line's text and the order is readable off it, so the published examples can be held to
+        the rule the procedure states.
+
+        The mutation: the two `affected_surface` rows of Ticket 2 put back the way they were, with
+        the endpoint before the parameter although the parameter stands first on line 9. Nothing
+        else in this module reads row order inside one field - the field-order test collapses each
+        run to a single name - so without this the example and the rule could drift apart.
+        """
+        fields = table("fields").rows
+        checked = 0
+        for index, block in enumerate(examples()):
+            for group in rows_of(block):
+                seen = {}
+                for cells in group:
+                    field, value, line, quote = cells
+                    if quote == "" or fields[field]["kind"] != COPIED:
+                        continue
+                    key = (field, line, quote)
+                    where = ("example " + str(index + 1) + " " + field + " line " + line + " " +
+                             repr(value))
+                    if key in seen:
+                        self.assertLess(seen[key], quote.find(value), where)
+                        checked += 1
+                    self.assertNotEqual(-1, quote.find(value), where)
+                    seen[key] = quote.find(value)
+        self.assertTrue(checked, "no example holds two rows of one field citing one line")
+
     def test_a_cell_that_holds_a_pipe_or_a_backslash_is_read_through_the_escapes(self):
         """`split_cells` is the loader's own reader, and it is the one this uses, so a row of an
         example means here exactly what it will mean to `tickets.py`."""

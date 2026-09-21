@@ -10,7 +10,7 @@ imports `idemlib`. Python 3.9 or later, standard library only, no install step.
 | `idemlib/contract.py` | built — loads every table `reference/00_catalogue.md` names, lints every pattern cell in them, and reads one strict table outside that folder when a caller hands it a path |
 | `idemlib/snapshot.py` | not built — the snapshot format, the coordinate system, the line classifier |
 | `idemlib/tickets.py` | not built — parse and serialise a tickets file, and its canonical form |
-| `tests/` | the `unittest` suite: `idemlib` itself, and one module per written file of `reference/`, each holding that file to what its prose says — by reading its tables back where it has tables, and by cutting its worked examples where it has none |
+| `tests/` | the `unittest` suite: `idemlib` itself, one module per written file of `reference/`, and one for `identity.md` and `rules.md` together — each holding its file to what its prose says, by reading its tables back where it has tables and by cutting its worked examples where it has none. The last holds the two procedure files to their structure and their citations, and to holding no key or value of `breaking-terms`, `refusal-reasons`, `schema-constants`, `snapshot-constants` or `fetch-limits`, and no pattern of `line-classes`, `ticket-lines` or `header-items` |
 
 - **Read by:** every step script and the harness. Nothing here reads a step's output folder.
 - **Writes:** nothing. `contract.py` finds the Idem root from its own location, never the working
@@ -27,11 +27,12 @@ There are **two** commands, and "the tests" means both. From the Idem root:
     python3 -m unittest discover -s lib/tests -t lib
     python3 -m unittest discover -s 02_validate -t 02_validate
 
-The first is this folder's suite: `idemlib`, and one module per written file of `reference/`. The
-second is one file, `02_validate/test_manifest.py`, and it holds the **reconciliation between
-`reference/05_checks.md` and `02_validate/00_fixtures/manifest.md`** — every check named by a
-fixture, every code a fixture expects defined as a check (AD-7). Nothing under `lib/tests/` runs it,
-so a person who runs only the first command has not run it.
+The first is this folder's suite: `idemlib`, one module per written file of `reference/`, and one
+holding `identity.md` and `rules.md` at the Idem root. The second is one file,
+`02_validate/test_manifest.py`, and it holds the **reconciliation between `reference/05_checks.md`
+and `02_validate/00_fixtures/manifest.md`** — every check named by a fixture, every code a fixture
+expects defined as a check (AD-7). Nothing under `lib/tests/` runs it, so a person who runs only the
+first command has not run it.
 
 `-t lib` puts `lib/` on the path, so a test imports `idemlib` the way a step script does; the second
 command's file puts `lib/` on the path itself, for the same reason. Both suites are stdlib
