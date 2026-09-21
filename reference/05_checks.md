@@ -295,15 +295,17 @@ against a stub server and a temporary directory, one named test per row.
 | certificate | CERTIFICATE | the server's certificate could not be verified. The message names the remedy, and fetch never retries unverified | FR-2 |
 | too_large | TOO_LARGE | the body is more bytes than max_bytes, counted as received | FR-2 |
 | too_many_redirects | TOO_MANY_REDIRECTS | the URL redirected more times than max_redirects | FR-2 |
-| undecodable | UNDECODABLE | the bytes cannot be decoded by the charset the response declared | FR-2 |
+| undecodable | UNDECODABLE | the response cannot be turned into text as it was served: the bytes do not decode by the charset the response declared, the charset it declared is not one Python knows, a header value holds a control character, or the body came under a Content-Encoding nobody asked for | FR-2 |
 | unsupported_type | UNSUPPORTED_TYPE | the content is JSON, a PDF, an archive or a binary, and no routine turns it into a body | FR-2 |
 | empty_body | EMPTY_BODY | the body is empty after reduction, which is what a page needing JavaScript reduces to | FR-2 |
 | bad_scheme | BAD_SCHEME | the URL's scheme is neither http nor https | FR-1 |
 | snapshot_exists | SNAPSHOT_EXISTS | a snapshot of that name is already on disk. Fetch never overwrites one; a refetch is a new file | FR-5 |
-| unreachable | UNREACHABLE | the host could not be reached at all: a name that does not resolve, a refused connection, a read that broke | FR-2 |
+| unreachable | UNREACHABLE | no whole response came back: a URL that cannot be parsed or names no host, a name that does not resolve, a refused connection, a protocol error, a read that broke, or a body shorter than its Content-Length | FR-2 |
 
 Every one of them is a **failed URL**: reported, skipped, no snapshot written, and the remaining
-URLs carry on. Fetch exits non-zero if any URL failed (FR-2). None of them is ever a crash, and none
+URLs carry on. Fetch exits non-zero if any URL failed (FR-2). **No tool raises `unsupported_type`
+yet**: `fetch.py` classifies no content and stores whatever decodes as served, so the row waits for
+the classification that would choose a routine. None of them is ever a crash, and none
 of them is ever a snapshot of the part that arrived.
 
 **A fetch failure line points at a URL, not at a line of a file.** Its second field is the URL as it
@@ -314,7 +316,7 @@ a glance.
 
 ## Rules that get no key
 
-Two rules are written down in this contract and have no row above, so nothing will ever be able to
+Three rules are written down in this contract and have no row above, so nothing will ever be able to
 raise a code for them. Each is named here so that nobody has to discover it by finding a mutation
 that passes.
 
@@ -331,6 +333,12 @@ anywhere: each row is true of its own quote. `breaking_quote` catches disagreeme
 quote and says nothing about two. This is a named limit rather than a check because the honest
 answer is a rule about which quote a ticket should have cited, and that is segmentation, which the
 validator never re-does (AD-2).
+
+**The forms of the four values fetch invents.** `04_snapshot-format.md` states a form for
+`retrieved`, `routine`, `routine_version` and `sha256`, and no row above holds a header value to it.
+That file says why: nothing but `fetch.py` writes a snapshot, so a value of the wrong form is a
+defect in that tool and not a finding about a document, and a test of `00_fetch/test_fetch.py`
+holds the forms and the tool together.
 
 ## Keyed, but not decidable today
 
