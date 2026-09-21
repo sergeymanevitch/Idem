@@ -40,6 +40,10 @@ SOURCE = os.path.abspath(snapshot.__file__)
 FILE = "reference/04_snapshot-format.md"
 SHAPE_HEADING = "## The shape of one"
 FENCE_MARK = "```"
+#: The paragraph the carriage-return rule stands after, and what that rule has to say.
+BODY_PARAGRAPH = "**The body is its lines, each ended by LF.**"
+CR_RULE_PHRASES = ["snapshot file", "carriage return", "is refused", "never converted",
+                   "byte for byte", "as the server sent it", "(Sergey, 2026-09-21)"]
 
 #: The three tables this module owns.
 HEADER = "snapshot-header"
@@ -738,6 +742,31 @@ class TestAMalformedSnapshotRaisesATypedError(unittest.TestCase):
     def test_a_snapshot_written_with_crlf_is_not_a_snapshot(self):
         data = compose(sample_values(), ["body"]).replace(b"\n", b"\r\n")
         self.raises(snapshot.SnapshotEndingError, data)
+
+    def test_the_file_says_a_carriage_return_is_refused_and_read_refuses_it(self):
+        """The rule and the tool, held together: the paragraph that follows "The body is its
+        lines" says a snapshot file holding a carriage return is refused and never converted, and
+        `read` does exactly that while `normalise` still converts the body as served."""
+        handle = io.open(os.path.join(contract.idem_root(), "reference",
+                                      os.path.basename(FILE)), encoding="utf-8")
+        try:
+            paragraphs = handle.read().split("\n\n")
+        finally:
+            handle.close()
+        opening = [place for place, text in enumerate(paragraphs)
+                   if text.startswith(BODY_PARAGRAPH)]
+        self.assertEqual(1, len(opening))
+        sentence = " ".join(paragraphs[opening[0] + 1].split())
+        for phrase in CR_RULE_PHRASES:
+            self.assertIn(phrase, sentence)
+        self.assertNotIn("|", sentence)
+
+        served = "one\r\ntwo\rthree\n"
+        self.assertEqual("one\ntwo\nthree\n", snapshot.normalise(served))
+        good = compose(sample_values(), ["one", "two"])
+        self.assertEqual(["one", "two"], snapshot.read(good).lines)
+        for bad in (good.replace(b"\n", b"\r\n"), good.replace(b"one", b"o\rne")):
+            self.raises(snapshot.SnapshotEndingError, bad)
 
     def test_every_reader_error_is_one_family(self):
         """The caller codes all of them as one check; the classes are for a person reading a

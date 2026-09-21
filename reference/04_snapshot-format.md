@@ -20,6 +20,11 @@ is a body of zero lines. So converting a body twice changes nothing the second t
 lets a snapshot be read and written back byte for byte (AD-3). Whether an empty body is a failed
 URL is fetch's to say, and this file does not.
 
+A snapshot file that holds a carriage return is refused by `snapshot.py` and never converted,
+because a converted file could not be written back byte for byte (AD-3): turning CRLF and a lone CR
+into LF is done to the body as the server sent it, before anything is written, and never to a
+snapshot file already on disk (Sergey, 2026-09-21).
+
 Five tables below hold everything enumerable about that shape — the header fields, the format
 constants, the line classes, the HTML routine's element lists and the limits fetch works inside. All
 five are in the catalogue, so a tool loads them; none of them is copied into any tool (AD-1).
