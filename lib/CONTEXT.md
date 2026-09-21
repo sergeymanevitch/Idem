@@ -8,9 +8,9 @@ imports `idemlib`. Python 3.9 or later, standard library only, no install step.
 | Entry | What it is |
 | --- | --- |
 | `idemlib/contract.py` | built — loads every table `reference/00_catalogue.md` names, lints every pattern cell in them, and reads one strict table outside that folder when a caller hands it a path |
-| `idemlib/snapshot.py` | not built — the snapshot format, the coordinate system, the line classifier |
+| `idemlib/snapshot.py` | built — the snapshot format: `normalise` and `digest` for the body FR-4 defines, `write` and `read` for the file, `classify` for the coordinate system and the line classes. Reads `snapshot-header`, `snapshot-constants` and `line-classes` through `contract.load()`, holds no value of any of them, writes nothing to disk and opens no file |
 | `idemlib/tickets.py` | not built — parse and serialise a tickets file, and its canonical form |
-| `tests/` | the `unittest` suite: `idemlib` itself, one module per written file of `reference/`, and one for `identity.md` and `rules.md` together — each holding its file to what its prose says, by reading its tables back where it has tables and by cutting its worked examples where it has none. The last holds the two procedure files to their structure and their citations, and to holding no key or value of `breaking-terms`, `refusal-reasons`, `schema-constants`, `snapshot-constants` or `fetch-limits`, and no pattern of `line-classes`, `ticket-lines` or `header-items` |
+| `tests/` | the `unittest` suite: `idemlib` itself — `test_contract.py` and `test_snapshot.py` — one module per written file of `reference/`, and one for `identity.md` and `rules.md` together — each holding its file to what its prose says, by reading its tables back where it has tables and by cutting its worked examples where it has none. The last holds the two procedure files to their structure and their citations, and to holding no key or value of `breaking-terms`, `refusal-reasons`, `schema-constants`, `snapshot-constants` or `fetch-limits`, and no pattern of `line-classes`, `ticket-lines` or `header-items` |
 
 - **Read by:** every step script and the harness. Nothing here reads a step's output folder.
 - **Writes:** nothing. `contract.py` finds the Idem root from its own location, never the working
@@ -53,10 +53,13 @@ linted; no both-ways check. `read_table()` raises `ContractError` like the loade
 Problem per problem — two rows of the wrong width are two — so a caller can print one coded line
 each and stop. A table with a header, a delimiter row and no body rows is a table, not a defect.
 
-## The one place two code strings are written
+## What a tool here is allowed to hold
 
-`reference/` owns everything enumerable, and no tool holds a copy (AD-1). `contract.py` is the
-single exception, and this is everything it holds:
+`reference/` owns everything enumerable, and no tool holds a copy (AD-1). There are two exceptions
+in this folder, each of them a thing a table could not state, and each held to its limits by a test
+that reads the module's own source back.
+
+`contract.py` is the first, and this is everything it holds:
 
 - **one path**, `reference/00_catalogue.md`. It is the one file whose location cannot be read out of
   a file, because it is the file that says where everything else is.
@@ -77,3 +80,31 @@ single exception, and this is everything it holds:
 No field name, no phrase, no check key, no limit on a value. A test reads `contract.py` back and
 fails if any other upper-case code string or any other reference file name appears in it, and
 another lints every pattern the module itself compiles against the rule the module enforces.
+
+`snapshot.py` is the second, and what it holds is **names and characters, never a value**. A name a
+tool asks by is an address — what stands at it is still read at run time — and this is all of it:
+
+- **the ids of the three tables it asks for**: `snapshot-header`, `snapshot-constants`,
+  `line-classes`. A tool cannot ask for a table without naming it.
+- **the keys of the six constants it asks by** — the separator, the prefix width, the two colons,
+  the two gaps — and **the name of the column a value stands in**, `value`. What the cells hold is
+  read; only the addresses are written.
+- **the seven class names**, `fence` to `plain`. Four of them are the subject of a condition about
+  more than one line — an item opens on `item_start` and closes on a `heading` or on any unindented
+  non-blank line, a `fence` pairs with a later `fence`, and a line between the two is `in_fence`
+  whatever it reads as — and code that says "on this class, do that" cannot read the class out of a
+  cell.
+- **the characters no table states**: the line feed, the carriage return, the space, the tab, the
+  byte-order mark, the ten digits, and `utf-8`. A table of constants counts characters and holds
+  none, deliberately, so the characters themselves have to be written somewhere.
+- **the names of its own two record types**, `Line` and `Snapshot`, and their fields. They are this
+  module's, not the contract's.
+
+Everything else is read: the field names and their order, the separator, the prefix width, the
+colons, the gaps, and the pattern of every class. Three tests read the source back and fail if a
+string literal equals a value of `snapshot-constants`, a field of `snapshot-header` or a pattern of
+`line-classes`, or if a number literal equals one of those counts; a fourth is a **whitelist** —
+every literal of the source that is one character or holds no space must be one of the names above,
+so a value smuggled in under a new name fails the day it is written. A fifth asserts that the seven
+class names are exactly the rows of the table, so a class renamed by decision fails there rather
+than being classified into silence.

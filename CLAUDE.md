@@ -6,7 +6,8 @@ written for the person using or judging the folder; this file is the route for a
 work in it. It routes and holds no rule.
 
 **State: `reference/` is written whole and can be read, `identity.md` is written and `rules.md` is
-written as a first draft, and no step script is built.**
+written as a first draft, `lib/idemlib/` holds the contract loader and the snapshot module, and no
+step script is built.**
 `reference/00_catalogue.md` states the strict-table grammar and names every contract table;
 `reference/01_schema.md` holds the five tables of the ticket schema — the eight fields, the
 constants and the canonical form, the header items, the refusal reasons, the classes of line — with
@@ -19,13 +20,18 @@ table of their own, and the pattern a warning looks for; `reference/02_segmentat
 one change is — the unit, leaf items and parents, paragraphs, the one narrowing, ancestor lines,
 five worked examples and a first-draft test for a changelog — in prose and no table, with its draft
 parts marked. `lib/idemlib/contract.py` loads the five that hold tables, lints their patterns, and
-`lib/tests/` proves it.
+`lib/tests/` proves it. `lib/idemlib/snapshot.py` is the second module and the first that reads the
+contract for its own work: it writes a snapshot, reads one back, hashes a body the way FR-4 defines
+it, and classifies every body line, taking the header fields, the constants and the line-class
+patterns from the tables and keeping no copy of them. It is a library and no step script — it opens
+no file and writes nothing to disk.
 `02_validate/00_fixtures/manifest.md` is a skeleton naming every fixture and the codes it must
 raise, held against `05_checks.md` by `02_validate/test_manifest.py`; not one of the fixture files
 exists. `identity.md` says what Idem is, takes, returns and refuses; `rules.md` is the first-draft
 procedure — six numbered steps, each naming the file and the section it depends on, the self-check
 of FR-27 before the emit step, and the prohibitions under them — and it says where it is still a
-draft and that Epic 5 finishes it. No other tool reads anything yet. Nothing else below is built —
+draft and that Epic 5 finishes it. No other tool reads anything yet: `fetch.py`, `tickets.py` and
+the validator are not written. Nothing else below is built —
 each folder's `CONTEXT.md` says what it will hold.
 
 ## To translate a snapshot

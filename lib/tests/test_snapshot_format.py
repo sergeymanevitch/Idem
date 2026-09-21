@@ -5,10 +5,11 @@
 These read the shipped contract and never a temp tree: what is under test is what the folder says,
 and a copy written for the test would prove nothing about it.
 
-Nothing here classifies a line. There is no classifier yet - `snapshot.py` is not written - so the
-line-class tests run one pattern against one sample line, which is exactly what a row of the table
-promises on its own. The rules that need state, the fence pairing and the open item, are stated in
-the `rule` column and are the classifier's to honour when it exists.
+Nothing here classifies a line. `snapshot.py` owns the classifier and `lib/tests/test_snapshot.py`
+holds it to these rows; the line-class tests below run one pattern against one sample line, which
+is exactly what a row of the table promises on its own. The rules that need state, the fence
+pairing and the open item, are stated in the `rule` column, and what honours them is tested there
+and not here: this file is about the table, that one is about the tool.
 
 No test pins the catalogue's row set: a story that adds a table must not have to edit this file.
 """
@@ -115,8 +116,9 @@ class TestTheHeader(unittest.TestCase):
             self.assertNotEqual("", rows[field]["holds"], field)
 
     def test_there_is_no_pattern_column(self):
-        """A header-form rule would need a check key, and 05_checks.md is not written: the table
-        says what a field holds and stops there."""
+        """A header-form rule would need a check key, and the two keys `05_checks.md` gives a
+        snapshot say nothing about the form of a value: the table says what a field holds and stops
+        there, and what a value looks like waits for the story that writes `fetch.py`."""
         self.assertNotIn("pattern", table("snapshot-header").columns)
 
 

@@ -7,15 +7,17 @@ a copy written for the test would prove nothing about it.
 
 NOTHING HERE IS THE SEGMENTER
 
-`snapshot.py` is not written. When it is, it owns the line classifier and takes every pattern from
-the `line-classes` table (AD-1, AD-8), and `validate.py` owns the range checks. The helper below is
-a reading of that table plus the open-item rule, written here so that the worked examples of the
-file can be cut and the ranges they claim held against AD-2 - on the precedent of `lookup()` in
-`test_breaking_terms.py`. It holds no pattern of its own: every pattern is compiled from the table.
-What it does hold are the names of four classes, because a condition of the classifier is written
-in terms of them - an item opens on one class and closes on another - and each is asserted to be a
-row of the table. That the helper still says what the prose says is enforced by nothing, which is
-why the debt is named in `reference/CONTEXT.md` with `snapshot.py` beside it as the owner.
+`snapshot.py` owns the line classifier and takes every pattern from the `line-classes` table
+(AD-1, AD-8); `validate.py`, which owns the range checks, is not written. The helper below is a
+second reading of that table plus the open-item rule, written here before that module existed so
+that the worked examples of the file could be cut and the ranges they claim held against AD-2 - on
+the precedent of `lookup()` in `test_breaking_terms.py`. It holds no pattern of its own: every
+pattern is compiled from the table. What it does hold are the names of four classes, because a
+condition of the classifier is written in terms of them - an item opens on one class and closes on
+another - and each is asserted to be a row of the table. **Every answer it gives is now compared
+with `snapshot.classify`**, so the two readings cannot drift apart in silence; that the reading
+still says what the prose says is enforced by nothing, and the debt of the helper's existence is
+named in `reference/CONTEXT.md`, whose owner is the story that replaces it.
 
 The file under test is **prose**: it holds no table, nothing loads it, and no tool reads a line of
 it. So what can be proved today is that it is not contract by accident, that every name it cites
@@ -39,7 +41,7 @@ import os
 import re
 import unittest
 
-from idemlib import contract
+from idemlib import contract, snapshot
 from tests.test_contract import CYRILLIC, _run_shipped
 
 FILE = "reference/02_segmentation.md"
@@ -247,6 +249,12 @@ def classify(body):
     A `fence` line raises. Pairing two fence lines is a rule about two lines, it belongs to
     `snapshot.py`, and this helper does not do it - so a body holding one is out of its reach and
     says so rather than being read wrongly.
+
+    **Every answer is cross-checked against `snapshot.classify`**, which reads the same table and
+    states the same rules. The two are one rule with two readings - this helper was written before
+    the module existed - and a reading nobody compares is a second owner waiting to drift. So every
+    body any test in this file passes through here goes through both, and a disagreement is an
+    error here rather than a difference nobody notices.
     """
     compiled = class_patterns()
     order = list(table(CLASSES).rows)
@@ -272,7 +280,22 @@ def classify(body):
             open_item = None
         elif claimed != BLANK and indent_of(line) == 0:
             open_item = None
+    _agrees_with_the_module(body, found)
     return found
+
+
+def _agrees_with_the_module(body, found):
+    """Raise unless `snapshot.classify` gives this body the same classes, line for line."""
+    theirs = [line.cls for line in snapshot.classify(body)]
+    if theirs == found:
+        return
+    for index in range(len(found)):
+        if theirs[index] != found[index]:
+            raise AssertionError(
+                "line " + str(index + 1) + " of " + repr(body) + ": this helper reads " +
+                found[index] + " and snapshot.classify reads " + theirs[index] +
+                "; the two read one table and must agree")
+    raise AssertionError(repr(body) + ": the two readings differ in length")
 
 
 def is_separator(line, klass):
@@ -1198,8 +1221,35 @@ class TestTheHelperItself(unittest.TestCase):
     def test_a_body_holding_a_fence_is_out_of_this_helper_s_reach(self):
         """Pairing two fence lines is a rule about two lines and belongs to `snapshot.py`. The
         helper says so instead of reading the body wrongly, which is what makes "no example holds a
-        fence" a claim worth asserting."""
+        fence" a claim worth asserting. `snapshot.classify` does pair them, and the body below is
+        the one kind this file's corpus cannot put through both readings."""
         self.assertRaises(ValueError, classify, self.body("```text", "- an item", "```"))
+        self.assertEqual([FENCE, IN_FENCE, FENCE],
+                         [line.cls for line in snapshot.classify(["```text", "- an item", "```"])])
+
+    def test_the_two_readings_agree_on_every_body_this_file_works_through(self):
+        """The helper above and `snapshot.classify` read one table by two readings. Every body any
+        test here classifies goes through both - `classify()` cross-checks each answer - and this
+        test names the corpus that makes that claim worth something: the five worked examples of
+        the file, the body of the reconstruction, and the made-up bodies of this class, each of
+        which reaches the helper through one of the tests above."""
+        bodies = [example(heading)[0] for heading in EXAMPLES]
+        bodies.append(self.body("- Storage API",
+                                "  - PUT /v1/blobs takes a checksum.",
+                                "",
+                                "  - DELETE /v1/blobs is removed.",
+                                "  Both ship together."))
+        bodies.append(self.body("## 2026-04-02", "", "### Breaking changes", "",
+                                "- GET /v1/widgets takes a tenant.",
+                                "  ---",
+                                "- - -",
+                                "Release 4.0",
+                                "===========",
+                                "\tan indented line with no item open"))
+        for body in bodies:
+            theirs = [line.cls for line in snapshot.classify(body)]
+            self.assertEqual(classify(body), theirs, repr(body))
+        self.assertTrue(len(bodies) > len(EXAMPLES))
 
     def test_two_ranges_are_disjoint_or_identical_and_nothing_else(self):
         """AD-2 (1). The two illegal shapes are a partial overlap and one range inside another."""

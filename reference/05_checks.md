@@ -136,7 +136,7 @@ every run under `line_numbers: none` prints it, whatever else that run finds and
 | header_value | HEADER_VALUE | a header value fails the value_pattern of its item, disagrees with the mode the header selects, gives a body_range whose first number is not below its second, or gives a body_range that runs past the last line of the snapshot body. Every defect of a header value is this one code | FR-33, AD-10 |
 | snapshot_name | SNAPSHOT_NAME | a / in the snapshot header item, which holds a bare file name and never a path | FR-35, AD-5 |
 | snapshot_missing | SNAPSHOT_MISSING | the snapshot the header names is not in the snapshot directory. A missing snapshot is a failure, never a skip | FR-35 |
-| snapshot_format | SNAPSHOT_FORMAT | the file named as the snapshot cannot be read as one: no separator line, or a header that is not fields | FR-3 |
+| snapshot_format | SNAPSHOT_FORMAT | the file named as the snapshot cannot be read as one: bytes that are not UTF-8, lines not ended by a line feed alone, no separator line, a header that is not the fields in order, or a body line without its number prefix in sequence. Every way the file fails to be a snapshot is this one code | FR-3 |
 | snapshot_sha256 | SNAPSHOT_SHA256 | the snapshot body does not match the digest the snapshot's own header carries for it | FR-36 |
 | pair_sha256 | PAIR_SHA256 | the sha256 of the tickets header is not the digest recomputed from that snapshot's body | FR-35, AD-5 |
 | pair_source_url | PAIR_SOURCE_URL | the source_url of the tickets header is not the source_url the snapshot's own header carries | FR-35, AD-5 |

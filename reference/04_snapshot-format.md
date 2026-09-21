@@ -3,15 +3,22 @@
 A **snapshot** is the file Idem works from: one changelog page, fetched once, written to disk as
 plain text, and never edited afterwards. A ticket quotes a snapshot and cites a line number in it;
 the validator reads the same file back and checks the quote against that line. The snapshot is the
-input of record, so its shape is written down here once, for the three readers who have to agree
-about it — `fetch.py`, which writes one; `snapshot.py`, which reads one; and the person checking a
-ticket by hand.
+input of record, so its shape is written down here once, for the readers who have to agree about
+it — `snapshot.py`, which writes one and reads one back, and is the only code that does either;
+`fetch.py` and the validator, which call it; and the person checking a ticket by hand.
 
 A snapshot is three things in this order: a **header** of named fields, one **separator** line, and
 the **body**, with every line carrying its number. The body is the text as it was served, decoded by
 its declared charset — the one the `content_type` field records — with a byte-order mark removed and
 line endings turned into LF, and nothing else changed (FR-4): tabs, non-breaking spaces, smart
-quotes and zero-width characters stay exactly as they came.
+quotes and zero-width characters stay exactly as they came. A line ending means CRLF **and** a lone
+CR: both become LF, and a lone CR is never left standing inside a line (Sergey, 2026-09-21).
+
+**The body is its lines, each ended by LF.** A last line served without its line feed is given one
+before the digest is taken; a final line feed numbers no line of its own; a body of no characters
+is a body of zero lines. So converting a body twice changes nothing the second time, which is what
+lets a snapshot be read and written back byte for byte (AD-3). Whether an empty body is a failed
+URL is fetch's to say, and this file does not.
 
 Five tables below hold everything enumerable about that shape — the header fields, the format
 constants, the line classes, the HTML routine's element lists and the limits fetch works inside. All
@@ -76,6 +83,15 @@ and a check needs a key and a code in `05_checks.md`. That table is written, and
 checks a snapshot faces — that the file can be read as a snapshot at all, and that its body matches
 its own digest — but the form of a header value belongs to the story that writes `fetch.py`, which
 produces it. So this table says what each field holds, and stops there.
+
+**Three things a header cannot be written from, and they are refusals rather than checks** (Sergey,
+2026-09-21). A value holding a line feed or a carriage return: a header value is one line, and a
+second line would be read back as another field or as the separator. A set of values that is not
+this table's, whether a field is missing or one nobody names has been added: a header carries all
+eight, in this order. And a body with more lines than the number prefix can hold. None of these has
+a check key, because none of them can happen to a file on disk — nothing writes a snapshot but
+`snapshot.py`, and it refuses all three before a byte is produced. What a value must *look* like is
+still nobody's rule here; what is settled is that whatever it is, it is one line.
 
 ## The constants
 
@@ -151,7 +167,7 @@ sits, not by how it reads, and `plain` is reached by matching nothing.
 <!-- table: line-classes -->
 | class | pattern | rule |
 | --- | --- | --- |
-| fence | ^[ ]{0,3}(?:[`]{3,}\|[~]{3,}) | A run of three or more backticks, or three or more tildes, indented at most three spaces. Its condition: no fence is open, or one is open and this line closes it. A fence closes on a later line of the same character whose run is at least as long as the opening run; a fence that never closes runs to the end of the body. A line matching this pattern inside an open fence that it does not close is in_fence. That pairing is the one rule in this table no pattern can carry, because it is about two lines and a pattern sees one. |
+| fence | ^[ ]{0,3}(?:[`]{3,}\|[~]{3,}) | A run of three or more backticks, or three or more tildes, indented at most three spaces. Its condition: no fence is open, or one is open and this line closes it. A fence closes on a later line of the same character whose run is at least as long as the opening run and that carries nothing after the run but spaces and tabs; a fence that never closes runs to the end of the body. A line matching this pattern inside an open fence that it does not close is in_fence. That pairing is the one rule in this table no pattern can carry, because it is about two lines and a pattern sees one. |
 | in_fence |  | Every line after a fence that opens and before the fence that closes it, whatever it looks like: the other fence character, a shorter run, a heading, a list item. No pattern: what makes a line in_fence is where it sits, not how it reads, and nothing inside a fence is classified any further (AD-8). |
 | heading | ^[ ]{0,3}[#]{1,6}(?:[ \t]\|$) | ATX headings only: up to three spaces of indent, one to six hashes, then a space, a tab, or the end of the line. The level is the number of hashes. A line underlined with equals signs or hyphens, a setext heading, is not a heading here: no class is decided by reading a second line. A hash with no space after it is not a heading either. |
 | item_start | ^([ \t]*)(?:[-*+]\|[0-9]{1,9}[.)])(?:[ \t]\|$) | The first line of a list item: any indent, then one of the three bullet characters, or one to nine digits followed by a full stop or a closing bracket, then a space, a tab, or the end of the line. Group 1 is the indent. Tested before continuation, because an indented item start matches both. A thematic break written as three spaced bullets is an item_start here: a class is a fixed reading of one line, not a Markdown parser. |
@@ -159,8 +175,18 @@ sits, not by how it reads, and `plain` is reached by matching nothing.
 | blank | ^[ \t]*$ | Nothing but spaces and tabs, or nothing at all. The set is exactly those two characters. A line of non-breaking spaces, or of zero-width characters, is plain and not blank: the body keeps what was served (FR-4), and a character nobody can see is still a character. |
 | plain |  | Everything else, and the only class a line reaches by matching nothing. That is why it has no pattern and why it is written last: a body line no row above claims is plain. |
 
-Nothing implements this yet. `snapshot.py` is not written; when it is, it reads this table and keeps
-no copy of it.
+`snapshot.py` implements this table and holds no copy of it: it compiles every pattern from these
+cells as it classifies, tries the rows in the order they are written here, and takes the two rules
+no pattern can carry — the fence pairing and the open item — from the `rule` cells above. The
+clause about what a closing line may carry after its run was added to the `fence` cell by Sergey on
+2026-09-21, when the classifier was built and the cell had to say what closes a fence and what only
+looks as though it does.
+
+It does hold the **seven class names**, because a condition written in terms of a class cannot be
+read out of a cell, and its own tests assert that those names are the rows of this table. It also
+holds the ids of the three tables it asks for and the keys of the constants it asks by: a name a
+tool asks by is an address, and what stands at it is still read. No value, no field name and no
+pattern is written in it, and a test reads its source back and fails if one is.
 
 ## What the HTML routine does
 
@@ -235,11 +261,17 @@ nothing has to parse a unit off the end of one.
 Passing one of these is a failed URL: reported, skipped, and no snapshot written (FR-2). It is never
 a crash, and never a snapshot of the part that arrived in time.
 
-## Nothing reads these tables yet
+## What reads these tables
 
-Today `contract.py` loads all five with the rest of the contract and lints the patterns, and no
-other tool reads them, because `snapshot.py`, `fetch.py` and the validator are not written. When
-they are, they take every name, count, element and pattern from here. A number, a name or a pattern
-that appears in a tool's source as well as in this file is a defect and not a convenience (AD-1) —
-excepting the strict-table grammar `contract.py` must hold in order to read `reference/` at all,
-which is about the shape of these files and never about the shape of a snapshot body.
+`contract.py` loads all five with the rest of the contract and lints the patterns. **Three of them
+are read by a tool: `snapshot-header`, `snapshot-constants` and `line-classes`, by `snapshot.py`,**
+which writes a snapshot, reads one back, numbers its lines and classifies them, and holds no field
+name, no count, no separator and no pattern of its own. The other two wait for the tool that owns
+them: `html-elements` and `fetch-limits` are fetch's, and `fetch.py` is not written.
+
+A number, a name or a pattern that appears in a tool's source as well as in this file is a defect
+and not a convenience (AD-1) — excepting the strict-table grammar `contract.py` must hold in order
+to read `reference/` at all, which is about the shape of these files and never about the shape of a
+snapshot body, and the seven class names `snapshot.py` must hold in order to state a condition
+about more than one line. Both exceptions are tested from the other side: a test reads the source
+back and fails if anything else of these tables is written in it.

@@ -20,11 +20,13 @@ what it never reads — because that grammar is the one thing `contract.py` know
 A table becomes usable by a tool on the day its row appears in the catalogue, and not before: the
 loader reads the catalogue both ways and refuses a marked table nobody listed.
 
-Usable is not used. The five files that hold tables load today and nothing outside `contract.py`
-reads any of them yet, because no step script is written; `02_segmentation.md` holds no table, so
-the loader never opens it at all. A pattern is the one kind of cell the loader looks
-inside: a column named `pattern`, or ending `_pattern`, is linted and compiled as the contract
-loads, and `00_catalogue.md` states that convention.
+Usable is not used, but it is no longer unused. The five files that hold tables load today; three
+of their tables are read by a tool — `snapshot-header`, `snapshot-constants` and `line-classes`, by
+`lib/idemlib/snapshot.py`, which writes and reads a snapshot and classifies its body lines — and
+the other twelve wait for `fetch.py`, `tickets.py` and the validator, none of which is written.
+`02_segmentation.md` holds no table, so the loader never opens it at all. A pattern is the one kind
+of cell the loader looks inside: a column named `pattern`, or ending `_pattern`, is linted and
+compiled as the contract loads, and `00_catalogue.md` states that convention.
 
 **Known debt.** A rule stated here that no pattern can carry is enforced by nothing until the tool
 that owns it exists. Story 1.7 closed half of that: `05_checks.md` now gives almost every one of
@@ -36,7 +38,9 @@ that owns each rule is written and its fixtures pass. There are five groups.
   `rule` cells, in English. **These get no key, and that is a decision of 2026-09-20**: they are the
   line classifier's rules, owned by `snapshot.py` and proved by its own tests, not findings about a
   tickets file. A tickets file cannot violate them, so no check of `05_checks.md` could fire on
-  one. Owner: `snapshot.py` and its fixtures.
+  one. **This one is closed** (2026-09-21): `snapshot.py` implements both, `lib/tests/test_snapshot.py`
+  holds it to them case by case, and a run that broke each of them in turn on a copy of the tree
+  left no rule of the two without a test that names it.
 - `01_schema.md`, rules about a whole tickets file, which a pattern that reads one line cannot
   carry. Each now has a key: which blocks each of the three shapes has and in what order —
   `grammar_shape`; that the rows of one field are consecutive — `fields`; that ticket numbers run
@@ -85,7 +89,9 @@ that owns each rule is written and its fixtures pass. There are five groups.
   the rest, which is translator prose. Separately, `lib/tests/test_segmentation.py` cuts that
   file's worked examples with a helper of its own — the patterns of `line-classes` plus the
   open-item rule — which proves the examples against the rule the file states and never that a tool
-  implements it. Owner of that debt: `snapshot.py` and its fixtures.
+  implements it. That helper now has a tool beside it: `snapshot.classify` reads the same table and
+  the same rules, and until the helper is replaced by it two readings of one rule stand side by
+  side. Owner of that debt: the story that replaces it.
 
 `05_checks.md` names two further lists of its own, and they are there rather than here because
 naming them is part of what that file is for. **Rules that get no key**: FR-16's "'Deprecated on X'
