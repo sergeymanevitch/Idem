@@ -111,6 +111,16 @@ including its value or its line cell reading the sentinel, which field 8 is allo
 `state_sentinel`'s alone: without the carve-out a sentinel carrying a line would raise two codes
 for one cell, and a fixture of one mutation would fail for a neighbour's reason.
 
+**Three readings of two cells, closed** (Sergey, 2026-09-22). `line_form`'s cell names two forms
+and the mode decides which is the right one: under `line_numbers: snapshot` a filled line cell of
+fields 1 to 7 is a positive integer and the unnumbered word fails; under `line_numbers: none` it is
+the unnumbered word and a number fails — a number the translator did not read is an invented fact,
+so it is a failure and not a form the row tolerates. The cell says neither carve-out above and need
+not: an empty line cell is `state_filled`'s and a sentinel row is `state_sentinel`'s, as this
+section states. And `state_filled`'s "a filler that is not the sentinel" names no list, because
+there is none: a filler with no line and no quote is exactly that row, whatever word it uses, and a
+filler carrying both is a value, held by `value_quote` to its own quote.
+
 `snapshot_name` was added to that list by Sergey on 2026-09-22, and it is the one of the five that
 is about **safety** and not only about material. A header reading `../../../README.md` holds a
 slash, so the check fires; if the phase went on, every check under it would join that name to the

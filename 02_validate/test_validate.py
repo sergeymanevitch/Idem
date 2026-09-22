@@ -1377,6 +1377,24 @@ class TestTheRowStates(ValidatorCase):
         path = self.write("u.tickets.md", as_bytes(self.unnumbered()))
         self.assert_silent(validate.STATES, self.bytes_of(path))
 
+    def test_a_number_under_the_unnumbered_header_is_that_failure_and_no_other(self):
+        """The other direction (Sergey, 2026-09-22): the header says the input carried no line
+        numbers, so a number in a filled line cell is a number the translator did not read. The
+        published unnumbered example with one cell turned into a number raises this one code."""
+        block = list(self.unnumbered())
+        word = constant(validate.UNNUMBERED_CELL)
+        at = [index for index in range(len(block)) if "| " + word + " |" in block[index]][0]
+        block[at] = block[at].replace("| " + word + " |", "| 12 |", 1)
+        data = as_bytes(block)
+        self.assertEqual([], tickets.parse(data).findings)
+        raised = self.raised_by(validate.STATES, LINE_CELL, data)
+        self.assertEqual(1, len(raised), raised)
+        self.assertEqual(at + 1, raised[0].line)
+        for key in keys_of(validate.STATES):
+            if key == keys_of(validate.STATES)[LINE_CELL]:
+                continue
+            self.assertEqual([], registry()[key](self.a_run(data)), key)
+
     # --- a range that runs backwards ------------------------------------------------------------
 
     def test_an_unmapped_range_whose_last_line_is_below_its_first_is_a_failure(self):

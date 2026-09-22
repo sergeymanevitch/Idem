@@ -975,24 +975,33 @@ def check_line_form(run):
     sentinel is passed over here for the same reason - every defect of such a row is
     `state_sentinel`'s alone, so that one row raises one code.
 
-    The cell reading the unnumbered word under a header that says its lines are numbered is this
-    failure: the word says no line was read, and the header says every line was.
+    The mode decides which of the two forms is the right one, and the other is this failure in
+    either direction (Sergey, 2026-09-22): the unnumbered word under a header that says its lines
+    are numbered says no line was read where the header says every line was; and a number under a
+    header that says there are no line numbers is a number the translator did not read, which is
+    the one thing this format is built to prevent.
 
     Nothing to read where there is no model or no ticket: it returns an empty list.
     """
     sentinel = _constant(run, tickets.SENTINEL)
     unnumbered = _constant(run, UNNUMBERED_CELL)
+    numbered = _mode_value(run) != _mode(tickets.unnumbered_mode)
     found = []
     for row in _rows(run)[0]:
         if row.value == sentinel or row.line == tickets.EMPTY:
             continue
-        if _is_number(row.line):
+        if numbered and _is_number(row.line):
             continue
-        if row.line == unnumbered and _mode_value(run) == _mode(tickets.unnumbered_mode):
+        if not numbered and row.line == unnumbered:
             continue
-        found.append(Failure(row.at, "the line cell of this row reads '" + row.line + "', and a "
-                                     "filled row of these fields carries the number of the body "
-                                     "line its quote is on"))
+        if numbered:
+            message = ("the line cell of this row reads '" + row.line + "', and a filled row of "
+                       "these fields carries the number of the body line its quote is on")
+        else:
+            message = ("the line cell of this row reads '" + row.line + "', and the header says "
+                       "the input carried no line numbers, so a filled row of these fields reads "
+                       "the one word that says so")
+        found.append(Failure(row.at, message))
     return found
 
 

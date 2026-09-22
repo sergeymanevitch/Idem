@@ -446,24 +446,43 @@ class TestEachFailure(SuiteCase):
 
     def test_a_real_warning_nobody_expected_fails_the_row(self):
         """The one direction of the set rule the temporary manifest could not otherwise reach: a
-        run that raises **more** than the row names. The file is `clean-01` with its mode item set
-        to the unnumbered mode, which is a real warning out of `validate.main` and not a line
-        composed here; the row is left as the manifest writes it, so the exit still matches and the
-        surprise code is the only thing wrong."""
+        run that raises **more** than the row names. The file is `clean-01` rewritten into the
+        unnumbered mode through the parser - the mode item, every filled line cell of fields 1 to
+        7 reading the unnumbered word, the source rows' line cells reading the sentinel, every
+        unmapped entry as text alone - which is a real warning out of `validate.main` and not a
+        line composed here; the row is left as the manifest writes it, so the exit still matches
+        and the surprise code is the only thing wrong."""
         name = CLEAN
         handle = open(os.path.join(TICKETS_FOLDER, name), "rb")
         try:
-            block = handle.read().decode("utf-8").split("\n")
+            model = tickets.parse(handle.read()).model
         finally:
             handle.close()
-        colon = SHIPPED["schema-constants"].rows["header_colon"]["value"]
-        gap = " " * int(SHIPPED["schema-constants"].rows["header_gap_spaces"]["value"])
-        changed = [line if not line.startswith(validate.MODE_ITEM + colon)
-                   else validate.MODE_ITEM + colon + gap + tickets.unnumbered_mode()
-                   for line in block]
-        handle = io.open(os.path.join(self.tickets, name), "w", encoding="utf-8")
+        constants = SHIPPED["schema-constants"].rows
+        sentinel = constants["sentinel"]["value"]
+        word = constants["unnumbered_cell"]["value"]
+        header = [item if item.name != validate.MODE_ITEM
+                  else item._replace(value=tickets.unnumbered_mode()) for item in model.header]
+        fields = list(SHIPPED["fields"].rows)
+        changed = []
+        for ticket in model.tickets:
+            rows = []
+            for row in ticket.rows:
+                if row.field == fields[-1]:
+                    rows.append(row._replace(line=sentinel))
+                elif row.line != "":
+                    rows.append(row._replace(line=word))
+                else:
+                    rows.append(row)
+            changed.append(ticket._replace(rows=rows))
+        entries = [entry._replace(number=None, last=None) for entry in model.unmapped.entries]
+        unmapped = model.unmapped._replace(entries=entries)
+        data = tickets.serialise(model._replace(header=header, mode=tickets.unnumbered_mode(),
+                                                tickets=changed, unmapped=unmapped))
+        self.assertEqual([], tickets.parse(data).findings)
+        handle = open(os.path.join(self.tickets, name), "wb")
         try:
-            handle.write("\n".join(changed))
+            handle.write(data)
         finally:
             handle.close()
         self.patched()
