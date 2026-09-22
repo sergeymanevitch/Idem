@@ -652,7 +652,7 @@ class TestEveryFailureIsOneCodedLine(FetchCase):
         code, lines = self.run_main(["--out", self.directory, url])
         self.assertEqual(1, code)
         self.assertEqual(3, len(lines[0].split("\t")))
-        self.assertIn(contract._flatten(url), lines[0])
+        self.assertIn(contract.flatten(url), lines[0])
 
     def test_no_failure_line_carries_a_line_number(self):
         """The second field is the URL and nothing else. A check points into a tickets file and
@@ -673,8 +673,8 @@ class TestEveryFailureIsOneCodedLine(FetchCase):
         self.assertNotIn("\n", line)
         self.assertNotIn("\r", line)
         self.assertEqual(codes()[BAD_SCHEME], line.split("\t")[0])
-        self.assertEqual(contract._flatten("ftp://example.com/a\tb"), line.split("\t")[1])
-        self.assertEqual(contract._flatten("one\ttwo\nthree\r\nfour"), line.split("\t")[2])
+        self.assertEqual(contract.flatten("ftp://example.com/a\tb"), line.split("\t")[1])
+        self.assertEqual(contract.flatten("one\ttwo\nthree\r\nfour"), line.split("\t")[2])
 
     def test_every_code_it_can_print_is_a_row_of_the_table(self):
         for key in EVERY_KEY:
@@ -1059,7 +1059,7 @@ class TestTheToolThatCouldNotRun(FetchCase):
             datetime.datetime.strptime("not a year", "%Y")
             self.fail("nothing was raised")
         except ValueError:
-            line = fetch._internal_line()
+            line = contract.internal_line(fetch.__file__)
         fields = line.split("\t")
         self.assertEqual(contract.INTERNAL, fields[0])
         where = fields[1].rsplit(":", 1)
@@ -1069,7 +1069,7 @@ class TestTheToolThatCouldNotRun(FetchCase):
 
     def test_a_line_for_no_exception_at_all_points_at_the_tool(self):
         """The fallback, when no frame of this repository is in the traceback or there is none."""
-        line = fetch._internal_line()
+        line = contract.internal_line(fetch.__file__)
         self.assertEqual("00_fetch/fetch.py:1", line.split("\t")[1])
 
     def test_a_crash_inside_the_tool_names_the_tool(self):
@@ -1082,7 +1082,7 @@ class TestTheToolThatCouldNotRun(FetchCase):
         except fetch.FetchFailure:
             self.fail("a response that is not a response is a defect, not a failed URL")
         except AttributeError:
-            line = fetch._internal_line()
+            line = contract.internal_line(fetch.__file__)
         fields = line.split("\t")
         self.assertEqual(contract.INTERNAL, fields[0])
         self.assertEqual("00_fetch/fetch.py", fields[1].split(":")[0])
@@ -1327,6 +1327,16 @@ class TestTheToolNamesNothingTheTablesOwn(FetchCase):
         self.assertNotIn(agent, strings)
         for part in agent.split():
             self.assertNotIn(part, strings, part)
+
+    def test_the_tool_keeps_no_copy_of_the_shared_failure_line(self):
+        """One line for an uncaught exception, in one place. `contract.py` owns flatten, relative,
+        emit and internal_line; this tool had a copy of the last, and a second copy would be a
+        second reading of AD-6 the day one of them was changed (Sergey, 2026-09-22)."""
+        self.assertFalse(hasattr(fetch, "_internal_line"))
+        self.assertNotIn("def _internal_line", self.source())
+        for name in ("flatten", "relative", "emit", "internal_line"):
+            self.assertTrue(callable(getattr(contract, name)), name)
+            self.assertFalse(hasattr(contract, "_" + name), name)
 
     def test_the_three_modules_ad12_names_are_not_used(self):
         text = self.source()

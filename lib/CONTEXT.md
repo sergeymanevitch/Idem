@@ -7,9 +7,9 @@ imports `idemlib`. Python 3.9 or later, standard library only, no install step.
 
 | Entry | What it is |
 | --- | --- |
-| `idemlib/contract.py` | built — loads every table `reference/00_catalogue.md` names, lints every pattern cell in them, and reads one strict table outside that folder when a caller hands it a path |
+| `idemlib/contract.py` | built — loads every table `reference/00_catalogue.md` names, lints every pattern cell in them, and reads one strict table outside that folder when a caller hands it a path. It also owns the failure line every step script prints through: `flatten`, `relative`, `emit` and `internal_line(tool_file)` |
 | `idemlib/snapshot.py` | built — the snapshot format: `normalise` and `digest` for the body FR-4 defines, `write` and `read` for the file, `classify` for the coordinate system and the line classes. Reads `snapshot-header`, `snapshot-constants` and `line-classes` through `contract.load()`, holds no value of any of them, writes nothing to disk and opens no file |
-| `idemlib/tickets.py` | built — the tickets file: `parse` gives a data model and every finding about the bytes, `serialise` writes a model back in canonical form, and `serialise(parse(x).model) == x` on every canonical file. Reads `fields`, `schema-constants`, `header-items` and `ticket-lines` through `contract.load()`, holds no value of any of them, raises nothing on any input bytes, writes nothing to disk and opens no file |
+| `idemlib/tickets.py` | built — the tickets file: `parse` gives a data model and every finding about the bytes, `serialise` writes a model back in canonical form, and `serialise(parse(x).model) == x` on every canonical file. `parse` also gives back the **header block** whenever it read at all and the **shape** of what follows it, so a caller can say what a refused file claims to be a translation of; `numbered_mode()` and `unnumbered_mode()` give the two modes, read out of the rule cells that name them. Reads `fields`, `schema-constants`, `header-items` and `ticket-lines` through `contract.load()`, holds no value of any of them, raises nothing on any input bytes, writes nothing to disk and opens no file |
 | `tests/` | the `unittest` suite: `idemlib` itself — `test_contract.py`, `test_snapshot.py` and `test_tickets.py` — one module per written file of `reference/`, and one for `identity.md` and `rules.md` together — each holding its file to what its prose says, by reading its tables back where it has tables and by cutting its worked examples where it has none. The last holds the two procedure files to their structure and their citations, and to holding no key or value of `breaking-terms`, `refusal-reasons`, `schema-constants`, `snapshot-constants` or `fetch-limits`, and no pattern of `line-classes`, `ticket-lines` or `header-items` |
 
 - **Read by:** every step script and the harness. Nothing here reads a step's output folder.
@@ -134,4 +134,17 @@ A step script outside this folder has an allowance of its own, granted where the
 defined and never here: `04_snapshot-format.md` grants `00_fetch/fetch.py` the eight header field
 names, because a writer that supplies a value for each field cannot ask without naming them, and
 `05_checks.md` says that a fetch failure key is an address a tool asks by while the code that row
-carries is a value no tool writes.
+carries is a value no tool writes. The same file refuses one in the other direction:
+`02_validate/validate.py` asks for **every** row of `checks`, and forty-eight keys typed into one
+file would be a second copy of that table, so a key stands there as the suffix of a `check_`
+function name instead — an address a reader can see and a string sweep cannot (Sergey, 2026-09-22).
+
+## The failure line, in one place
+
+`contract.py` owns four functions every step script prints through, and none of them is private to
+it: `flatten(message)` escapes the tab and the newline that are the field and the record separator;
+`relative(path, root)` names a file from the Idem root, absolutely when it is not under one;
+`emit(line)` writes one line whatever stdout can encode; and `internal_line(tool_file)` is the one
+line an uncaught exception becomes — the deepest frame **inside this repository**, falling back to
+the calling tool, and never a traceback (AD-6). `fetch.py` carried a copy of the last of these
+until Story 3.3; two copies would be two readings of AD-6 the day one of them changed.

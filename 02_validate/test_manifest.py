@@ -8,10 +8,11 @@ AD-7 puts the suite's expectations in `00_fixtures/manifest.md` and requires tha
 nothing defines, the second alone lets a check exist that nothing exercises - which is the comp_12
 defect this whole entry is built against.
 
-Nothing here runs the validator. `validate.py`, `run_fixtures.py` and the fixture files are Epic 3;
-what exists today is the manifest skeleton, and what this file proves is that the skeleton and the
-contract agree. It does not read the fixture tree either: a row naming a file that is not there is
-correct today and is `run_fixtures.py`'s business when there is one.
+Nothing here runs the validator, and nothing here reads the fixture tree. Both are
+`run_fixtures.py`'s, which is written and stands beside this file; what this one proves is that the
+manifest and the contract agree, whether or not a single one of the files it names has been
+written. A row naming a file that is not there is a correct row here, and the suite is what says
+how many of them there are.
 
 This test lives beside the manifest rather than in `lib/tests/`, because it is about a file of this
 step and not about `idemlib`. Like a step script it puts `lib/` on `sys.path` itself.

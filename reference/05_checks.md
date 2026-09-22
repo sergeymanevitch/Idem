@@ -10,16 +10,23 @@ AD-9, AD-10 — and **not** from what is built. That order is deliberate and it 
 comp_12: a check invented to describe code already written stands beside the thing it should hold
 instead of holding it. So the table was written before `validate.py`, every row names the provision
 it comes from, and every row but the two exempt ones is named by a row of the fixture manifest
-(AD-7). Named, not yet exercised: no fixture file exists, and Epic 3 writes them.
+(AD-7). The validator now stands on this table — it registers a check under every key here and
+prints the code that key's row carries — and the fixture corpus is being written one row at a time
+beside it.
 
 Three tables live here. `checks` is the validator's list. `fetch-failures` is fetch's, kept apart
 for the reason the next-but-one section gives. `warn-patterns` holds the one pattern a warning looks
 for. All three are in the catalogue, so a tool loads them; none of them is copied into any tool
 (AD-1), with the one exception named under **The two codes that cannot come from a table**.
 
-**Keyed is not enforced.** Nothing below is built. `validate.py` is not written, `run_fixtures.py`
-is not written, and no fixture file exists. A row here says what the validator will check and under
-what code, never that anything checks it today.
+**Keyed is not the same as enforced.** `validate.py` and `run_fixtures.py` are written, and most of
+what is below is still a row and no more. Every row is registered under its key as a callable: the
+checks of the reading stage and of the pairing phase are written, the two rows the frame itself
+raises are raised by the frame, and every other row is registered with nothing behind it. A row
+here says what the validator will check and under what code, never that anything checks it today —
+and `run_fixtures.py` prints, on every run, how many rows nothing exercises yet, so the distance
+between this list and what is enforced is a number a reader gets for free rather than a claim
+anybody has to make.
 
 ## The key, the code and the requirement
 
@@ -88,12 +95,20 @@ one phase, two rules:
 - **a check with nothing to read does not run.** It is not a pass and it is not a failure; there was
   no material for it.
 
-Four checks end their phase outright, because everything after them in it would have nothing to
+Five checks end their phase outright, because everything after them in it would have nothing to
 read: `encoding` — an undecodable file has no lines; `header` — an unreadable header has no values
-to check; `snapshot_missing` — an absent snapshot has no body; `snapshot_format` — a file that is
-not a snapshot has no body either. Each of those is one code and one line, and the phase stops
-there. That is why a fixture built on one of them expects exactly one code and not the rest of its
-phase as well.
+to check; `snapshot_name` — a name that is a path names nothing in the snapshot directory, and
+nothing is opened by it; `snapshot_missing` — an absent snapshot has no body; `snapshot_format` —
+a file that is not a snapshot has no body either. Each of those is one code and one line, and the
+phase stops there. That is why a fixture built on one of them expects exactly one code and not the
+rest of its phase as well.
+
+`snapshot_name` was added to that list by Sergey on 2026-09-22, and it is the one of the five that
+is about **safety** and not only about material. A header reading `../../../README.md` holds a
+slash, so the check fires; if the phase went on, every check under it would join that name to the
+snapshot directory and open a file outside it — which is the whole of what a bare name is for
+(AD-5). The name is not normalised and nothing of it is looked for: the phase ends at the
+character.
 
 ### What each mode skips
 
@@ -136,7 +151,7 @@ every run under `line_numbers: none` prints it, whatever else that run finds and
 | header_value | HEADER_VALUE | a header value fails the value_pattern of its item, disagrees with the mode the header selects, gives a body_range whose first number is not below its second, or gives a body_range that runs past the last line of the snapshot body. Every defect of a header value is this one code | FR-33, AD-10 |
 | snapshot_name | SNAPSHOT_NAME | a / in the snapshot header item, which holds a bare file name and never a path | FR-35, AD-5 |
 | snapshot_missing | SNAPSHOT_MISSING | the snapshot the header names is not in the snapshot directory. A missing snapshot is a failure, never a skip | FR-35 |
-| snapshot_format | SNAPSHOT_FORMAT | the file named as the snapshot cannot be read as one: bytes that are not UTF-8, lines not ended by a line feed alone, no separator line, a header that is not the fields in order, or a body line without its number prefix in sequence. Every way the file fails to be a snapshot is this one code | FR-3 |
+| snapshot_format | SNAPSHOT_FORMAT | the file named as the snapshot cannot be read as one: bytes that are not UTF-8, lines not ended by a line feed alone, no separator line, a header that is not the fields in order, a body line without its number prefix in sequence, or a file that is there and cannot be opened at all — a permission that is not there (Sergey, 2026-09-22). Every way the file fails to be a snapshot is this one code. A name that is not a file — a directory carrying it — is snapshot_missing, because what is missing is the file | FR-3 |
 | snapshot_sha256 | SNAPSHOT_SHA256 | the snapshot body does not match the digest the snapshot's own header carries for it | FR-36 |
 | pair_sha256 | PAIR_SHA256 | the sha256 of the tickets header is not the digest recomputed from that snapshot's body | FR-35, AD-5 |
 | pair_source_url | PAIR_SOURCE_URL | the source_url of the tickets header is not the source_url the snapshot's own header carries | FR-35, AD-5 |
@@ -387,15 +402,18 @@ what tools enforce; the manifest is what a suite expects of files, it lives outs
 `contract.py` reads it through `read_table()` by path — no catalogue row, no both-ways check against
 this folder, no pattern cell linted. A manifest row is a claim about a file; a row here is a rule.
 
-Today the manifest is a skeleton: the rows and their expected codes are written, and not one of the
-fixture files they name exists. Epic 3 writes them.
+The rows and their expected codes were all written before any of the files they name; the files are
+being written one row at a time, as the checks that read them are built, and `run_fixtures.py`
+counts the rows still waiting.
 
-## One of these tables is read
+## Two of these tables are read
 
-Today `contract.py` loads all three with the rest of the contract and lints the one pattern cell,
-and `00_fetch/fetch.py` reads `fetch-failures`: it asks for a row by its key and prints the code
-that row carries. `checks` and `warn-patterns` wait, because `validate.py` and `run_fixtures.py`
-are not written. Every tool takes every code and that pattern from here and keeps no copy: a code
+Today `contract.py` loads all three with the rest of the contract and lints the one pattern cell;
+`00_fetch/fetch.py` reads `fetch-failures`, asking for a row by its key and printing the code that
+row carries; and `02_validate/validate.py` and `02_validate/run_fixtures.py` read `checks` — the
+validator registers a check under every key of it and prints the code each row carries, and the
+suite counts the rows no fixture exercises. `warn-patterns` waits for the two warnings that read a
+line of `Unmapped`. Every tool takes every code and that pattern from here and keeps no copy: a code
 that appears in a tool's source as well as in this file is a defect and not a convenience (AD-1) —
 excepting `CONTRACT_TABLE` and `INTERNAL`, for the reason stated above.
 
@@ -406,3 +424,15 @@ contract loads and is written nowhere. The sweep in `lib/tests/test_checks.py` h
 no code of either table appears in any tool, no key of `checks` appears in one, and a key of
 `fetch-failures` may, because nothing registers a fetch failure the way the validator registers a
 check, and the section above says so.
+
+**The validator writes no key either, and it asks for all forty-eight** (Sergey, 2026-09-22,
+amending AD-7). The rule above would let it: a key is an address. But the validator is the one tool
+that asks for *every* row of `checks`, and forty-eight keys typed into one file is a second copy of
+this table in all but name. So a key stands in `validate.py` as the **suffix of a `check_` function
+name** — `check_snapshot_missing` is the check the row `snapshot_missing` keys — which is an
+address a reader can see and a string sweep cannot. The registry walks this table, asks the module
+for the function named for each key, and takes what it finds; a row with no function is registered
+as pending, and a function whose suffix is no row here stops the run under `CONTRACT_TABLE`,
+because what has gone wrong is exactly that the table of codes and the tool reading it disagree.
+The sweep in `lib/tests/test_checks.py` is unchanged and unwidened by this: no key of `checks` is a
+string literal in any tool, `validate.py` and `run_fixtures.py` included.

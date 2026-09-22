@@ -9,6 +9,7 @@ own location, and that a failure is exit 2 with one line and no traceback.
 """
 import ast
 import contextlib
+import datetime
 import io
 import os
 import re
@@ -633,6 +634,36 @@ class TestBrokenContract(TreeCase):
         self.assertTrue(lines[0].startswith("INTERNAL\t"))
         self.assertEqual(3, len(lines[0].split("\t")))
         self.assertNotIn("Traceback", lines[0])
+
+    def test_the_internal_line_names_the_deepest_frame_of_this_repository(self):
+        """Decision 5 of Story 3.3: one internal line for every tool, under the rule fetch wrote.
+        A standard-library file is where many an exception is finally raised, and naming it would
+        print the path of the machine's Python installation instead of the defect."""
+        try:
+            datetime.datetime.strptime("not a year", "%Y")
+            self.fail("nothing was raised")
+        except ValueError:
+            line = contract.internal_line(contract.__file__)
+        fields = line.split(contract.TAB)
+        self.assertEqual(contract.INTERNAL, fields[0])
+        where, at = fields[1].rsplit(":", 1)
+        self.assertEqual("lib/tests/test_contract.py", where)
+        self.assertTrue(at.isdigit(), fields[1])
+
+    def test_the_internal_line_falls_back_to_the_tool_it_was_given(self):
+        """No frame of this repository, or no exception at all: the line points at the caller's own
+        source. The loader's earlier fallback, the catalogue, is withdrawn - a table is not a place
+        a defect lives."""
+        line = contract.internal_line(contract.__file__)
+        self.assertEqual("lib/idemlib/contract.py:1", line.split(contract.TAB)[1])
+        self.assertNotIn(contract.CATALOGUE, line)
+
+    def test_the_four_shared_names_are_public(self):
+        """`fetch.py`, `validate.py` and `run_fixtures.py` all print through them, so none of them
+        is private to this module any more."""
+        for name in ("flatten", "relative", "emit", "internal_line"):
+            self.assertTrue(callable(getattr(contract, name)), name)
+            self.assertFalse(hasattr(contract, "_" + name), name)
 
 
 # --- the grammar clauses, each with a case that breaks it -----------------------------------------

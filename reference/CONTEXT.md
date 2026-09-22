@@ -28,8 +28,11 @@ inside that envelope and codes every failed URL from that table; and `fields`, `
 `header-items` and `ticket-lines`, by `lib/idemlib/tickets.py`, which reads a tickets file into a
 data model, writes one back in canonical form and reports every departure it finds. `catalogue` is
 read by the loader itself, on every load, because it is the table that says where the others are.
-The remaining five — `refusal-reasons`, `breaking-terms`, `html-elements`, `checks` and
-`warn-patterns` — wait for the validator and the HTML routine, neither of which is written.
+`checks` is read by `02_validate/validate.py`, which registers a check under every key of it and
+prints the code each row carries, and by `02_validate/run_fixtures.py`, which counts the rows no
+fixture exercises. The remaining four — `refusal-reasons`, `breaking-terms`, `html-elements` and
+`warn-patterns` — wait for the phases of the validator that are not written and for the HTML
+routine.
 `02_segmentation.md` holds no table, so the loader never opens it at all. A pattern is the one kind
 of cell the loader looks inside: a column named `pattern`, or ending `_pattern`, is linted and
 compiled as the contract loads, and `00_catalogue.md` states that convention.
@@ -37,8 +40,11 @@ compiled as the contract loads, and `00_catalogue.md` states that convention.
 **Known debt.** A rule stated here that no pattern can carry is enforced by nothing until the tool
 that owns it exists. Story 1.7 closed half of that: `05_checks.md` now gives almost every one of
 these rules a key and a code, so the thing they are waiting for is a tool and no longer a decision.
-**A key is not a check.** Nothing below is enforced today, and the list stays here until the tool
-that owns each rule is written and its fixtures pass. There are five groups.
+**A key is not a check.** `validate.py` is written as a frame and it enforces two phases of the
+nine: reading the file — the encoding, the five header items and the patterns of their values — and
+pairing, which is where the rules of AD-5 and FR-35 about the snapshot are. Everything else below
+is registered under its key with nothing behind it, and the list stays here until the phase that
+owns each rule is written and its fixtures pass. There are five groups.
 
 - `04_snapshot-format.md` — the fence-pairing and open-item rules of `line-classes`, stated in
   `rule` cells, in English. **These get no key, and that is a decision of 2026-09-20**: they are the
@@ -48,16 +54,22 @@ that owns each rule is written and its fixtures pass. There are five groups.
   holds it to them case by case, and a run that broke each of them in turn on a copy of the tree
   left no rule of the two without a test that names it.
 - `01_schema.md`, rules about a whole tickets file, which a pattern that reads one line cannot
-  carry. Each now has a key, and **`tickets.py` reads four of them** since 2026-09-22 — a reader's
-  finding, not yet a coded failure, because no fixture exists and the validator that maps a
-  finding to a code is not written: which blocks each of the three shapes has and in what order —
-  `grammar_shape`; that the rows of one field are consecutive — `fields`; that ticket numbers run
-  from 1 with no gap — `ticket_number`; and that the header holds exactly the five items, in that
-  order — `header`. The reader raises a finding for each, and `lib/tests/test_tickets.py` holds it
-  to them case by case. What is still enforced by nothing: that the first number of a range lies
+  carry. Each now has a key, and **`tickets.py` reads four of them** since 2026-09-22: which blocks
+  each of the three shapes has and in what order — `grammar_shape`; that the rows of one field are
+  consecutive — `fields`; that ticket numbers run from 1 with no gap — `ticket_number`; and that
+  the header holds exactly the five items, in that order — `header`. The reader raises a finding
+  for each, and `lib/tests/test_tickets.py` holds it to them case by case. **One of the four is a
+  coded failure today**: `header` is a check of the reading stage, and `validate.py` prints its code
+  and has a fixture for it. The other three are findings the reader makes and nothing yet reports —
+  they belong to the grammar phase, which is registered and empty. What is still enforced by
+  nothing: that the first number of a range lies
   below the second, which has two keys because it has two subjects — in an `Unmapped` range and in
   a `source` row's line cell, which has no pattern at all, `range_reversed`, and in `body_range`,
-  which is a header value and so `header_value`'s; and that an `Unmapped` range stands for a run
+  which is a header value and so `header_value`'s — and that last one is **keyed, reported and
+  still not enforced**: `check_header_value` is written and reports what the reader finds, which is
+  the value pattern of each item, and the pattern admits a reversed range. The same holds for a
+  `body_range` past the last body line and for a value that disagrees with the mode; all three are
+  in the deferred ledger under Story 3.3's decision 7. And that an `Unmapped` range stands for a run
   of consecutive, non-blank, uncited lines — `unmapped_missing`, `unmapped_cited` and
   `unmapped_blank` between them. Both need the snapshot beside the tickets file, so both are the
   validator's. Owner: `validate.py`.

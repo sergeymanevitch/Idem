@@ -164,9 +164,17 @@ FILLED = "filled"
 
 # --- what a file holds -----------------------------------------------------------------------------
 
-#: What `parse` gives back: the canonical reading of the file, or None when there is none, and every
-#: finding in file order.
-Parsed = collections.namedtuple("Parsed", "model findings")
+#: What `parse` gives back: the canonical reading of the file, or None when there is none; every
+#: finding in file order; the header block, whenever it read at all; and the shape of what follows
+#: it.
+#:
+#: The last two are there for a caller that has to do something about a file with no model. The
+#: header is the five `HeaderItem`s in order whenever the **block** read, a value that failed its
+#: pattern included, and None when the block itself is not the items in order - so a caller can say
+#: what a file claims to be a translation of without parsing a line of it again. `shape` is the
+#: class of the line that opens what follows the header, or None where the header failed or nothing
+#: follows it. No caller unpacks this positionally (Sergey, 2026-09-22).
+Parsed = collections.namedtuple("Parsed", "model findings header shape")
 #: One tickets file. `shape` is the class of the line that opens what follows the header;
 #: `refusal` and `unmapped` are None where the shape has none. `mode` and `body_range` are
 #: **readings of the header** and no second copy of it - the value of the mode item, and the range
@@ -396,6 +404,22 @@ def _modes():
     return _cached(_modes, build)
 
 
+def numbered_mode():
+    """The mode a file is in when its lines carry numbers, read out of the contract.
+
+    No cell holds a mode value, so it is read where `_modes` reads every other: out of the rule
+    cell of the class that writes an entry **with** a body line number, which is legal under that
+    mode alone. A caller comparing the header's own value with this one therefore writes neither
+    mode down, and a mode reworded in the contract moves both halves at once.
+    """
+    return _modes().get(UNMAPPED_LINE)
+
+
+def unnumbered_mode():
+    """The other mode: the one the class that writes an entry with **no** number is legal under."""
+    return _modes().get(UNMAPPED_TEXT)
+
+
 # --- reading -------------------------------------------------------------------------------------
 
 
@@ -413,7 +437,7 @@ def parse(data):
     findings = []
     text = _decode(data, findings)
     if text is None:
-        return Parsed(None, findings)
+        return Parsed(None, findings, None, None)
     lines = _split(text)
     rough = _classify(lines, None)
     header, header_findings = _read_header(rough, lines)
@@ -433,19 +457,20 @@ def parse(data):
                                                  "header does not allow"))
     findings.extend(header_findings)
     findings.extend(value_findings)
+    block = header if header else None
     if header_findings or value_findings:
-        return Parsed(None, _ordered(findings))
-    model, block_findings = _read_blocks(found, header, mode, len(lines))
+        return Parsed(None, _ordered(findings), block, None)
+    model, block_findings, shape = _read_blocks(found, header, mode, len(lines))
     findings.extend(block_findings)
     if findings:
-        return Parsed(None, _ordered(findings))
+        return Parsed(None, _ordered(findings), block, shape)
     written = serialise(model)
     if written != data:
         findings.append(NoncanonicalFinding(_departure(data, written, len(lines)),
                                             "this file reads, and writing the reading back does "
                                             "not give these bytes; it departs from canonical form "
                                             "here, and nothing is repaired"))
-    return Parsed(model, findings)
+    return Parsed(model, findings, block, shape)
 
 
 def _ordered(findings):
@@ -704,7 +729,12 @@ def _number(text):
 
 
 def _read_blocks(found, header, mode, last):
-    """The blocks after the header, as a model, or the findings that say there is none.
+    """The blocks after the header, as a model, the findings that say there is none, and the shape.
+
+    The shape is the class of the first claimed non-blank line after the header, and it is given
+    back whether or not a model was read: a caller that has to decide what a file claims to be -
+    the validator, deciding whether there is a snapshot to pair with - needs it even when the file
+    is refused. It is None only where nothing follows the header at all.
 
     Blank lines carry no structure, so they are not here; a line no class claimed has already been
     reported and takes no part in the shape either, which keeps one stray sentence one finding. A
@@ -717,7 +747,7 @@ def _read_blocks(found, header, mode, last):
     if not items:
         return None, [ShapeFinding(last, "this file is a header and nothing else; a header is "
                                          "followed by tickets, by the no-change line, or by a "
-                                         "refusal")]
+                                         "refusal")], None
     shape = items[0].cls
     findings = []
     read = []
@@ -727,25 +757,26 @@ def _read_blocks(found, header, mode, last):
         refusal = Refusal(items[0].match.group(1), items[0].at)
         if len(items) > 1:
             return None, [ShapeFinding(items[1].at, "a refusal is the header and one line, and "
-                                                    "nothing stands after it")]
+                                                    "nothing stands after it")], shape
     elif shape in (TICKET_HEADING, TICKETS_NONE):
         index = 1
         if shape == TICKET_HEADING:
             index, read, ticket_findings, broke = _read_tickets(items)
             findings.extend(ticket_findings)
             if broke:
-                return None, findings
+                return None, findings, shape
         unmapped, unmapped_findings = _read_unmapped(items, index, last)
         findings.extend(unmapped_findings)
         if unmapped is None:
-            return None, findings
+            return None, findings, shape
     else:
         return None, [ShapeFinding(items[0].at, "a header is followed by tickets, by the no-change "
                                                 "line, or by a refusal, and this line opens none of "
-                                                "the three")]
+                                                "the three")], shape
     if findings:
-        return None, findings
-    return Model(header, mode, shape, read, refusal, unmapped, _body_range(header)), findings
+        return None, findings, shape
+    return (Model(header, mode, shape, read, refusal, unmapped, _body_range(header)), findings,
+            shape)
 
 
 def _read_tickets(items):

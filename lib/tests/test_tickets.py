@@ -1619,6 +1619,152 @@ class TestTheModesAreReadAndNotWritten(unittest.TestCase):
         found = set(tickets._modes().values())
         self.assertEqual(set([mode_of(block) for block in examples()]), found)
 
+    def test_the_two_public_readers_give_the_modes_the_rule_cells_bind(self):
+        """Decision 3 of Story 3.3: a caller comparing a header value with a mode writes neither
+        mode down. The reader of the numbered mode is the class that writes a line **number**, the
+        other the class that writes text alone - both through the same `_modes()` reading."""
+        self.assertEqual(tickets._modes()[UNMAPPED_LINE], tickets.numbered_mode())
+        self.assertEqual(tickets._modes()[UNMAPPED_TEXT], tickets.unnumbered_mode())
+        self.assertEqual(NUMBERED, tickets.numbered_mode())
+        self.assertEqual(UNNUMBERED, tickets.unnumbered_mode())
+        self.assertNotEqual(tickets.numbered_mode(), tickets.unnumbered_mode())
+
+    def test_both_readers_pass_the_pattern_of_the_mode_item(self):
+        pattern = re.compile(table(ITEMS).rows[MODE_ITEM][VALUE_PATTERN_COLUMN])
+        for mode in (tickets.numbered_mode(), tickets.unnumbered_mode()):
+            self.assertIsNotNone(pattern.match(mode), mode)
+
+    def test_a_reworded_rule_cell_moves_the_reader_with_it(self):
+        """Teeth: the reader is the reading and not a second copy of it."""
+        loaded = tickets._tables()[LINES]
+        original = loaded.rows[UNMAPPED_LINE][RULE_COLUMN]
+        loaded.rows[UNMAPPED_LINE][RULE_COLUMN] = "One entry of the unmapped list."
+        tickets._CACHE.clear()
+        try:
+            self.assertIsNone(tickets.numbered_mode())
+        finally:
+            loaded.rows[UNMAPPED_LINE][RULE_COLUMN] = original
+            tickets._CACHE.clear()
+        self.assertEqual(NUMBERED, tickets.numbered_mode())
+
+
+# --- what a caller reads off a file with no model ------------------------------------------------------
+
+
+class TestTheHeaderAndTheShapeSurviveAFinding(unittest.TestCase):
+    """Decision 3 of Story 3.3. `Parsed` carries the header block and the shape beside the model,
+    so that a caller can say what a file claims to be a translation of even when the file is
+    refused. The header is the five items in order whenever the **block** read - a value that
+    failed its pattern included - and None when the block itself is not that; the shape is the
+    class of the line that opens what follows the header.
+    """
+
+    def parsed(self, lines):
+        return tickets.parse(as_bytes(lines))
+
+    def test_the_field_order_is_the_one_callers_read_by_name(self):
+        self.assertEqual(("model", "findings", "header", "shape"), tickets.Parsed._fields)
+
+    def test_a_canonical_file_carries_its_header_and_its_shape(self):
+        parsed = self.parsed(example(0))
+        self.assertEqual([], parsed.findings)
+        self.assertEqual(items(), [item.name for item in parsed.header])
+        self.assertEqual([item.name for item in parsed.model.header],
+                         [item.name for item in parsed.header])
+        self.assertEqual(TICKET_HEADING, parsed.shape)
+
+    def test_each_of_the_three_shapes_is_read_off_its_own_example(self):
+        found = [self.parsed(block).shape for block in examples()]
+        self.assertEqual([TICKET_HEADING, REFUSAL, TICKETS_NONE, TICKET_HEADING], found)
+        for block, shape in zip(examples(), found):
+            self.assertEqual(self.parsed(block).model.shape, shape)
+
+    def test_a_grammar_finding_leaves_the_header_and_the_shape_readable(self):
+        """A stray sentence between two blocks: no model, and still a file that says which snapshot
+        it is about and that it carries tickets."""
+        block = inserted(example(0), line_of(example(0), constant(UNMAPPED_HEADING)),
+                         "A sentence no class claims.")
+        parsed = self.parsed(block)
+        self.assertIsNone(parsed.model)
+        self.assertEqual([tickets.UnclaimedFinding.__name__], kinds(parsed.findings))
+        self.assertEqual(items(), [item.name for item in parsed.header])
+        self.assertEqual(TICKET_HEADING, parsed.shape)
+
+    def test_a_value_finding_leaves_the_header_readable_and_no_shape(self):
+        """The header block read, so its items are there with the value as written; nothing after
+        the header was read at all, so there is no shape."""
+        at = line_of(example(0), MODE_ITEM)
+        block = changed(example(0), at, MODE_ITEM + constant(HEADER_COLON) + " sometimes")
+        parsed = self.parsed(block)
+        self.assertIsNone(parsed.model)
+        self.assertEqual([tickets.HeaderValueFinding.__name__], kinds(parsed.findings))
+        self.assertEqual(items(), [item.name for item in parsed.header])
+        found = [item for item in parsed.header if item.name == MODE_ITEM]
+        self.assertEqual(["sometimes"], [item.value for item in found])
+        self.assertIsNone(parsed.shape)
+
+    def test_a_header_finding_leaves_neither(self):
+        at = line_of(example(0), items()[1])
+        block = changed(example(0), at,
+                        "digest" + constant(HEADER_COLON) + " " + "0" * 64)
+        parsed = self.parsed(block)
+        self.assertIsNone(parsed.model)
+        self.assertEqual([tickets.HeaderFinding.__name__], kinds(parsed.findings))
+        self.assertIsNone(parsed.header)
+        self.assertIsNone(parsed.shape)
+
+    def test_bytes_that_are_not_utf8_leave_neither(self):
+        parsed = tickets.parse(b"snapshot: \xff\n")
+        self.assertEqual([tickets.EncodingFinding.__name__], kinds(parsed.findings))
+        self.assertIsNone(parsed.header)
+        self.assertIsNone(parsed.shape)
+
+    def test_a_header_and_nothing_else_has_no_shape(self):
+        block = example(0)[:len(items())]
+        parsed = self.parsed(block)
+        self.assertEqual(items(), [item.name for item in parsed.header])
+        self.assertIsNone(parsed.shape)
+
+    def test_a_refusal_with_a_line_after_it_keeps_its_shape(self):
+        block = example(1) + [""] + [constant(UNMAPPED_HEADING)]
+        parsed = self.parsed(block)
+        self.assertIsNone(parsed.model)
+        self.assertEqual(REFUSAL, parsed.shape)
+
+    def test_a_ticket_block_that_breaks_keeps_the_shape_it_opened_with(self):
+        """`_read_blocks` gives the shape back on every path it can leave by, and this is the path
+        where the ticket walk stops early: the block is refused and the file still says what it
+        was trying to be."""
+        block = dropped(example(0), line_of(example(0), row_line(columns())))
+        parsed = self.parsed(block)
+        self.assertIsNone(parsed.model)
+        self.assertEqual(TICKET_HEADING, parsed.shape)
+
+    def test_an_unmapped_block_that_breaks_keeps_the_shape_too(self):
+        block = dropped(example(0), line_of(example(0), constant(UNMAPPED_HEADING)))
+        parsed = self.parsed(block)
+        self.assertIsNone(parsed.model)
+        self.assertEqual(TICKET_HEADING, parsed.shape)
+
+    def test_a_line_that_opens_none_of_the_three_is_still_a_shape(self):
+        """The class that claimed the line is what `shape` is, whether or not it opens a block a
+        tickets file may have: a caller reading it can say what stood there."""
+        at = line_of(example(0), constant(TICKET_HEADING_PREFIX))
+        block = changed(example(0), at, constant(UNMAPPED_HEADING))
+        parsed = self.parsed(block)
+        self.assertIsNone(parsed.model)
+        self.assertEqual(UNMAPPED_HEADING, parsed.shape)
+
+    def test_a_gap_in_the_ticket_numbers_keeps_the_shape(self):
+        """The path where the walk finished and the findings are about the numbers rather than the
+        blocks: there is no model, and the shape is the one the file opened with."""
+        at = line_of(example(0), constant(TICKET_HEADING_PREFIX) + " 2")
+        block = changed(example(0), at, constant(TICKET_HEADING_PREFIX) + " 3")
+        parsed = self.parsed(block)
+        self.assertIsNone(parsed.model)
+        self.assertEqual([tickets.NumberFinding.__name__], kinds(parsed.findings))
+        self.assertEqual(TICKET_HEADING, parsed.shape)
+
 
 # --- and the module names none of it -----------------------------------------------------------------
 

@@ -201,8 +201,8 @@ def failure_line(codes, url, failure):
     Both fields are flattened by the same function the contract loader uses, so neither a URL nor a
     message holding a tab can fake a fourth field.
     """
-    return (codes[failure.key] + contract.TAB + contract._flatten(url) + contract.TAB +
-            contract._flatten(failure.message))
+    return (codes[failure.key] + contract.TAB + contract.flatten(url) + contract.TAB +
+            contract.flatten(failure.message))
 
 
 # --- where the snapshot goes ------------------------------------------------------------------------
@@ -678,45 +678,16 @@ def _arguments(argv):
     return url, directory
 
 
-def _internal_line():
-    """One line for an uncaught exception: the code, where it was raised, and what it said.
-
-    A traceback never reaches stdout (AD-6). An internal error is a defect in a tool, so what the
-    line points at is the tool's own source and never the URL - which is the one thing a failed URL
-    line points at, and the reason the two cannot be confused.
-
-    The frame reported is the deepest one **inside this repository**, and not the deepest one there
-    is. A standard-library file is where many an exception is finally raised, and naming it would
-    print the path of the machine's Python installation - a place the reader cannot open, cannot
-    change, and did not write - while saying nothing about where the defect is. With no frame of
-    this repository at all, the line points here.
-    """
-    kind, value, trace = sys.exc_info()
-    root = contract.idem_root()
-    where = contract._relative(os.path.abspath(__file__), root)
-    line = 1
-    inside = os.path.join(os.path.abspath(root), "")
-    while trace is not None:
-        name = os.path.abspath(trace.tb_frame.f_code.co_filename)
-        if name.startswith(inside):
-            where = contract._relative(name, root)
-            line = trace.tb_lineno
-        trace = trace.tb_next
-    name = getattr(kind, "__name__", str(kind))
-    return (contract.INTERNAL + contract.TAB + contract._flatten(where) + ":" + str(line) +
-            contract.TAB + contract._flatten(name + ": " + str(value)))
-
-
 def main(argv=None, version_info=None):
     if version_info is None:
         version_info = sys.version_info
     if tuple(version_info)[:2] < contract.FLOOR:
-        contract._emit(contract.version_message(version_info))
+        contract.emit(contract.version_message(version_info))
         return 2
     try:
         url, directory = _arguments(list(argv) if argv is not None else [])
     except _Usage:
-        contract._emit(USAGE)
+        contract.emit(USAGE)
         return 2
     try:
         tables = contract.load()
@@ -724,20 +695,20 @@ def main(argv=None, version_info=None):
         codes = _codes(tables)
     except contract.ContractError as broken:
         for line in broken.lines():
-            contract._emit(line)
+            contract.emit(line)
         return 2
     except Exception:
-        contract._emit(_internal_line())
+        contract.emit(contract.internal_line(__file__))
         return 2
     try:
         path = fetch_one(url, directory, limits, _now(), None)
     except FetchFailure as failed:
-        contract._emit(failure_line(codes, url, failed))
+        contract.emit(failure_line(codes, url, failed))
         return 1
     except Exception:
-        contract._emit(_internal_line())
+        contract.emit(contract.internal_line(__file__))
         return 2
-    contract._emit(contract._relative(path, contract.idem_root()))
+    contract.emit(contract.relative(path, contract.idem_root()))
     return 0
 
 

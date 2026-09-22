@@ -47,6 +47,13 @@ source: every other code is read from the checks table, but these two report tha
 codes itself could not be read, so they cannot come from a table. The exception is recorded in
 AD-7 (Sergey, 2026-09-20).
 
+Four functions of that line are every tool's and not this module's alone: flatten(), which escapes
+a tab and a newline so that no field can be faked; relative(), which names a file from the Idem
+root; emit(), which writes one line whatever stdout can encode; and internal_line(tool_file), the
+one line an uncaught exception becomes, pointing at the deepest frame inside this repository and at
+the calling tool when there is none. Every step script prints through them, so that three tools
+cannot report one thing three ways (Sergey, 2026-09-22).
+
 PATTERNS
 
 A pattern written in a contract table has to mean the same thing on every Python Idem supports, so
@@ -182,7 +189,7 @@ def idem_root():
     return os.path.dirname(os.path.dirname(here))
 
 
-def _relative(path, root):
+def relative(path, root):
     """The path as a failure line reports it: relative to the Idem root, forward slashes.
 
     A path that is not under the root is reported **absolutely**. `os.path.relpath` would answer
@@ -200,7 +207,7 @@ def _relative(path, root):
 # --- the failure line (AD-6) ---------------------------------------------------------------------
 
 
-def _flatten(message):
+def flatten(message):
     """A message is one line. A tab or a newline inside it is escaped, because they are the field
     and the record separator of the failure line."""
     return (message.replace(TAB, BACKSLASH + "t")
@@ -212,8 +219,8 @@ def _flatten(message):
 def coded_line(problem):
     """One failure line. Both fields are flattened, so neither a file name nor a message holding a
     tab can fake a fourth field."""
-    return (CODE + TAB + _flatten(problem.file) + ":" + str(problem.line) + TAB +
-            _flatten(problem.message))
+    return (CODE + TAB + flatten(problem.file) + ":" + str(problem.line) + TAB +
+            flatten(problem.message))
 
 
 def _plural(count, word):
@@ -417,7 +424,7 @@ def read_table(path, table_id):
     when the table under the marker is unusable. The first four are one problem each and stop
     there; malformed rows are counted separately, so two rows of the wrong width are two Problems.
     """
-    label = _relative(path, idem_root())
+    label = relative(path, idem_root())
     lines, problem = _read(path, label)
     if problem is not None:
         raise ContractError([Problem(label, 1, problem.message)])
@@ -485,7 +492,7 @@ class _Folder(object):
         if name in self._files:
             return self._files[name]
         path = os.path.join(self.directory, name)
-        label = _relative(path, self.root)
+        label = relative(path, self.root)
         if name not in self.entries() or not os.path.isfile(path):
             result = (None, None, None,
                       Problem(label, None, "is not in the folder under exactly that name"))
@@ -506,7 +513,7 @@ class _Folder(object):
         return result
 
     def label(self, name):
-        return _relative(os.path.join(self.directory, name), self.root)
+        return relative(os.path.join(self.directory, name), self.root)
 
     def names(self):
         """Every file of the folder that could hold a contract table, in name order."""
@@ -944,7 +951,7 @@ def check_pattern(pattern, file, line):
 # --- running as a script -------------------------------------------------------------------------
 
 
-def _emit(line):
+def emit(line):
     """Write one line to stdout, whatever stdout can encode.
 
     A cell of a contract table may hold any character, and a message quotes cells. On a stdout that
@@ -987,46 +994,59 @@ def summary(tables):
     return lines
 
 
-def _internal_line():
+def internal_line(tool_file):
     """One line for an uncaught exception: the code, where it was raised, and what it said.
 
-    A traceback never reaches stdout (AD-6). The location is this tool's own source, because an
-    internal error is a defect here, not a finding about a file.
+    A traceback never reaches stdout (AD-6). `tool_file` is the source file of the tool that caught
+    it - its own `__file__` - and is what the line points at when the traceback names nothing else
+    this repository owns.
+
+    The frame reported is the deepest one **inside this repository**, and not the deepest one there
+    is. A standard-library file is where many an exception is finally raised, and naming it would
+    print the path of the machine's Python installation - a place the reader cannot open, cannot
+    change, and did not write - while saying nothing about where the defect is.
+
+    One function for every tool, so that three tools cannot report an internal error three ways.
+    The loader's own earlier reading - the deepest frame anywhere, falling back to the catalogue -
+    is withdrawn (Sergey, 2026-09-22): it named a file of the interpreter's installation as often
+    as one of Idem's, and the catalogue is a table and not a place a defect lives.
     """
     kind, value, trace = sys.exc_info()
-    where = CATALOGUE
+    root = idem_root()
+    where = relative(os.path.abspath(tool_file), root)
     line = 1
-    if trace is not None:
-        last = trace
-        while last.tb_next is not None:
-            last = last.tb_next
-        where = _relative(last.tb_frame.f_code.co_filename, idem_root())
-        line = last.tb_lineno
+    inside = os.path.join(os.path.abspath(root), "")
+    while trace is not None:
+        name = os.path.abspath(trace.tb_frame.f_code.co_filename)
+        if name.startswith(inside):
+            where = relative(name, root)
+            line = trace.tb_lineno
+        trace = trace.tb_next
     name = getattr(kind, "__name__", str(kind))
-    return (INTERNAL + TAB + _flatten(where) + ":" + str(line) + TAB +
-            _flatten(name + ": " + str(value)))
+    return (INTERNAL + TAB + flatten(where) + ":" + str(line) + TAB +
+            flatten(name + ": " + str(value)))
 
 
 def main(argv=None, version_info=None):
     if version_info is None:
         version_info = sys.version_info
     if tuple(version_info)[:2] < FLOOR:
-        _emit(version_message(version_info))
+        emit(version_message(version_info))
         return 2
     if argv:
-        _emit(USAGE)
+        emit(USAGE)
         return 2
     try:
         tables = load()
     except ContractError as broken:
         for line in broken.lines():
-            _emit(line)
+            emit(line)
         return 2
     except Exception:
-        _emit(_internal_line())
+        emit(internal_line(__file__))
         return 2
     for line in summary(tables):
-        _emit(line)
+        emit(line)
     return 0
 
 

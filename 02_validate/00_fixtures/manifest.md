@@ -7,12 +7,15 @@ reason* is as bad as one that passes, so this file says not only that a fixture 
 expected set; a mutation that fails for another reason, or by a crash, is a suite failure (FR-40,
 AD-7).
 
-**This is a skeleton.** Every row below is written; not one of the files it names exists yet.
-`validate.py`, `run_fixtures.py` and the fixture corpus are Epic 3. What the rows are for today is
-the both-ways reconciliation in `test_manifest.py`: every row of `checks` in `reference/05_checks.md`
-is named here, and every code named here is a row of `checks`. The two exempt rows are
-`CONTRACT_TABLE` and `INTERNAL`, which report a defect in the tool and cannot be provoked by any
-tickets file; `lib/tests/` exercises those.
+**The corpus is written one row at a time.** Every row below was written before any of the files it
+names, which is the order the whole folder is built in. Ten of those files exist today: the clean
+tickets file, the three of the reading stage, and the six of the pairing phase. The rest come with
+the checks that read them, and `run_fixtures.py` prints on every run how many rows still name a
+file that is not there. Beside that, the rows carry the both-ways reconciliation in
+`test_manifest.py`: every row of `checks` in `reference/05_checks.md` is named here, and every code
+named here is a row of `checks`. The two exempt rows are `CONTRACT_TABLE` and `INTERNAL`, which
+report a defect in the tool and cannot be provoked by any tickets file; `lib/tests/` exercises
+those.
 
 ## How to read a row
 
@@ -44,14 +47,23 @@ shape mutation edits raw text, because it has to fail at parsing.
 
 ## Rows that need a word
 
-Most rows say all there is to say. Six do not:
+Most rows say all there is to say. Seven do not:
 
+- **`snapshot_name-01`**'s header reads `../changelog-01.txt`, a name that walks out of the
+  snapshot directory and that the file system would resolve if anything joined it. Nothing does:
+  `snapshot_name` ends its phase, so the name is refused at the character and no file of it is
+  opened, which is why the row expects that one code and not an absent snapshot beside it. The
+  `snapshot` cell here names the file the header means, because a cell of this table is a bare
+  name.
 - **`snapshot_missing-01`** names a snapshot that is deliberately **not** in `00_snapshots/`. That
   absence is the fixture. It is the one row whose `snapshot` cell is not a file on disk.
-- **`pair_sha256-01`** is the FR-40 "swapped snapshot" mutation. Its snapshot is a *second snapshot
-  of the same URL* — a refetch, which AD-5 makes a new file — so that `pair_source_url` passes and
-  the digest alone disagrees. Swapping in a snapshot of another URL would raise two codes and prove
-  less.
+- **`pair_sha256-01`** is the FR-40 "swapped snapshot" mutation. Its snapshot stands for a *second
+  snapshot of the same URL* — a refetch, which AD-5 makes a new file — so that `pair_source_url`
+  passes and the digest alone disagrees. Swapping in a snapshot of another URL would raise two
+  codes and prove less. It was **built by hand** from `changelog-01.txt` and never fetched: one
+  body line changed, a later `retrieved` written in, the digest recomputed over the changed body,
+  all of it through `snapshot.write`. So were `edited-01.txt` and `unreadable-01.txt`;
+  `00_snapshots/`'s own `CONTEXT.md` says which of the four is evidence and which three are not.
 - **`snapshot_sha256-01`** has a snapshot whose body no longer matches its own header digest. Its
   tickets header carries the **recomputed** digest, not the snapshot's stale one, so that the
   pairing check passes and the snapshot's own check is the only thing that fires.
