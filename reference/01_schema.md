@@ -11,13 +11,17 @@ the input is a changelog that announces no change. The shape is not the mode: th
 two modes, one for a numbered snapshot and one for pasted text with no line numbers, and the header
 says which (FR-25, AD-10).
 
-This file is the one definition of all three. The translator writes by it, `tickets.py` will parse
-by it, the validator will enforce it, and a judge reads it to know what the output was supposed to
+This file is the one definition of all three. The translator writes by it, `tickets.py` parses by
+it, the validator will enforce it, and a judge reads it to know what the output was supposed to
 be. Five tables below hold everything enumerable about it — the fields, the constants, the header
 items, the refusal reasons and the classes of line a file may hold. All five are in the catalogue,
 so a tool loads them; none of them is copied into any tool (AD-1).
 
-The grammar here is **described, not implemented**. Nothing parses a tickets file today.
+The grammar here is **described and read**. `lib/idemlib/tickets.py` is the one reader and the one
+writer of a tickets file: it takes every field name, count, literal and pattern from the five tables
+below, gives back a data model and a list of findings, and writes a model back as the bytes of a
+canonical file. What a **cell holds** is checked by nothing yet — that is the validator's, and the
+validator is not written.
 
 ## The eight fields
 
@@ -210,6 +214,28 @@ item's name cannot, so no header line reads as either.
 | unmapped_none | ^none$ | The whole of the Unmapped list when no body line is left to list: unmapped_none, alone on its line |
 | blank | ^$ | An empty line. Exactly one stands between a heading and what follows it, and between one block and the next; none stands anywhere else. A line of spaces or of tabs is not this: canonical form writes no such line |
 
+### What a tool may hold of this table
+
+**Sergey, 2026-09-22.** `lib/idemlib/tickets.py` holds the **thirteen class names** above, and no
+other value of this file. AD-1's list of exceptions names it beside `snapshot.py` and `fetch.py`,
+and the reason is the one that granted `snapshot.py` its seven: a condition written in terms of a
+class — on a `ticket_heading` open a block, on a `table_row` take four cells, on a `blank` line do
+nothing — is about more than one line, and cannot be read out of a cell. A test reads that module's
+source back and fails if a literal in it equals a value of `schema-constants`, a field of `fields`,
+a reason of `refusal-reasons` or a pattern of either pattern column; another asserts that the
+thirteen names it holds are exactly the rows above, so a class renamed here fails there instead of
+being classified into silence. The table ids, constant keys and item keys it asks by are addresses
+and need no grant (Sergey, 2026-09-21); two of them, `fields` and `unmapped_text`, read the same as
+keys of `checks`, and the key sweep of `lib/tests/test_checks.py` allows that one module those two
+addresses and no other module either.
+
+The **two modes** are neither granted nor held. No cell holds either of them: they stand inside the
+`value_pattern` of `line_numbers` and inside the `rule` cells of `unmapped_line`, `unmapped_range`
+and `unmapped_text`. So the module reads out of each of those three cells the mode that cell names —
+the item's name, the header colon, the header gap, and then as much of what follows as that
+`value_pattern` accepts — and keeps what it reads only if it passes. Reword one of those three
+cells and a test fails rather than a file being read under the wrong mode.
+
 ### Names that are used twice
 
 A key names a row of one table. These keys read the same in two places, and no pair of them is about
@@ -265,10 +291,16 @@ them in order, that a refusal reason is a row of `refusal-reasons`, that a heade
 row of `header-items`, that a filled value of a `copied` field is a substring of its own quote, and
 that `unnumbered` appears only under `line_numbers: none`.
 
-Both kinds are stated here in English and enforced by nothing today. Every one of them now has a key
-and a code in `05_checks.md`, so what each is waiting for is the same thing: `tickets.py` and the
-validator, which are not written. Every one of them is listed as debt in `reference/CONTEXT.md`,
-where the key it was given is named beside it.
+Every one of them has a key and a code in `05_checks.md`, and `tickets.py` now **reads** the ones a
+reader can decide on the file alone: which blocks a shape has and in what order, that the rows of
+one field are consecutive and give the eight names in the table's order, that ticket numbers run
+from 1 without a gap, and that the header holds exactly the five items in that order — those are
+findings of the reader, and a file that breaks one of them has no model. The rest are still enforced
+by nothing: that the first number of a range lies below the second, that an `Unmapped` range stands
+for a run of consecutive lines, the two row states, the refusal reason, the substring rule, and
+`unnumbered` under one mode only. Each of those is a **check**, it reads the model rather than the
+file, and it waits for the validator, which is not written. Every one of them is listed as debt in
+`reference/CONTEXT.md`, where the key it was given is named beside it.
 
 ## The `source` row
 
@@ -501,10 +533,17 @@ Both neighbours this file points at are written: `03_breaking-terms.md`, the clo
 that fill `breaking` and the value each one maps to, and `05_checks.md`, where every rule above has
 the key and the code that will make it enforceable.
 
-## Nothing reads these tables yet
+## What reads these tables
 
-Today `contract.py` loads all five with the rest of the contract, and lints and compiles every cell
-of the two pattern columns. No other tool reads them, because `tickets.py` and the validator are not
-written. When they are, they take every field name, constant, literal and pattern from here and keep
-no copy: a name, a number or a pattern that appears in a tool's source as well as in this file is a
-defect and not a convenience (AD-1).
+`contract.py` loads all five with the rest of the contract, and lints and compiles every cell of the
+two pattern columns. `lib/idemlib/tickets.py` reads four of them for its own work — `fields` for the
+eight names, their order and how many rows each may give; `schema-constants` for every count and
+every literal a writer writes; `header-items` for the five items, their order and the patterns of
+their values; `ticket-lines` for the order the classes are tried in, their patterns and the mode
+their rule cells name. It keeps no copy of any of it: a name, a number or a pattern that appears in
+a tool's source as well as in this file is a defect and not a convenience (AD-1), and the one
+exception is the thirteen class names, granted above.
+
+`refusal-reasons` is read by no tool yet. The reader carries a refusal's reason as written and never
+compares it with that list — a reason that is not one of the four is a check of the validator, which
+is not written.

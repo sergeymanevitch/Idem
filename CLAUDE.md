@@ -6,9 +6,9 @@ written for the person using or judging the folder; this file is the route for a
 work in it. It routes and holds no rule.
 
 **State: `reference/` is written whole and can be read, `identity.md` is written and `rules.md` is
-written as a first draft, `lib/idemlib/` holds the contract loader and the snapshot module, and the
-first step script is built — `00_fetch/fetch.py`, for one URL — and `00_fetch/00_snapshots/` holds
-the three example snapshots it wrote, one vendor each.**
+written as a first draft, `lib/idemlib/` holds the contract loader and the two format modules — the
+snapshot and the tickets file — and the first step script is built — `00_fetch/fetch.py`, for one
+URL — and `00_fetch/00_snapshots/` holds the three example snapshots it wrote, one vendor each.**
 `reference/00_catalogue.md` states the strict-table grammar and names every contract table;
 `reference/01_schema.md` holds the five tables of the ticket schema — the eight fields, the
 constants and the canonical form, the header items, the refusal reasons, the classes of line — with
@@ -34,14 +34,22 @@ no HTML; `00_fetch/CONTEXT.md` says what it does and what it holds. `00_fetch/00
 three snapshots of public changelogs — PagerDuty, Docker Engine API, Plaid — tidy, messy and
 near-empty; `00_fetch/00_snapshots/CONTEXT.md` names each. No tickets file exists for any of them
 yet.
+`lib/idemlib/tickets.py` is the third module and the second format: `parse` reads bytes into a
+data model of a tickets file and a list of findings, `serialise` writes a model back in canonical
+form, and the two agree byte for byte on every canonical file. It reads the eight fields, the
+constants, the header items and the classes of line from `01_schema.md` and holds no value of any
+of them. `parse` raises nothing on any input bytes — what it cannot read it reports as a finding
+carrying a line and a message — and `serialise` raises only where a model cannot be written back:
+a line ending inside a value, a shape that is none of the three, a block missing where the shape
+needs one. It opens no file and prints nothing, and what a cell *holds* is the validator's, which
+is not written.
 `02_validate/00_fixtures/manifest.md` is a skeleton naming every fixture and the codes it must
 raise, held against `05_checks.md` by `02_validate/test_manifest.py`; not one of the fixture files
 exists. `identity.md` says what Idem is, takes, returns and refuses; `rules.md` is the first-draft
 procedure — six numbered steps, each naming the file and the section it depends on, the self-check
 of FR-27 before the emit step, and the prohibitions under them — and it says where it is still a
-draft and that Epic 5 finishes it. No other tool reads anything yet: `tickets.py` and
-the validator are not written. Nothing else below is built —
-each folder's `CONTEXT.md` says what it will hold.
+draft and that Epic 5 finishes it. No other tool reads anything yet: the validator is not written.
+Nothing else below is built — each folder's `CONTEXT.md` says what it will hold.
 
 ## To translate a snapshot
 

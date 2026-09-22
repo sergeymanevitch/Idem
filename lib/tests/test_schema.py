@@ -5,9 +5,11 @@
 These read the shipped contract and never a temp tree: what is under test is what the folder says,
 and a copy written for the test would prove nothing about it.
 
-Nothing here parses a tickets file. There is no parser yet - `tickets.py` is not written - so the
-line tests run one pattern against one sample line, which is exactly what a row of `ticket-lines`
-promises on its own. The tests over the file's four examples go one step further and no further:
+Nothing here parses a tickets file, although a parser now exists: `tickets.py` is held to this file
+by `test_tickets.py`, and these tests hold the file to itself, so that the two never lean on each
+other. The line tests run one pattern against one sample line, which is exactly what a row of
+`ticket-lines` promises on its own. The tests over the file's four examples go one step further and
+no further:
 they classify a line, and they read the four cells of a row with `contract.split_cells`, which is
 the table grammar the loader already owns. There is no data model, no block structure beyond
 counting from one ticket heading to the next, and nothing here could read a file this file does not

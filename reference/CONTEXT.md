@@ -20,12 +20,16 @@ what it never reads — because that grammar is the one thing `contract.py` know
 A table becomes usable by a tool on the day its row appears in the catalogue, and not before: the
 loader reads the catalogue both ways and refuses a marked table nobody listed.
 
-Usable is not used, but it is no longer unused. The five files that hold tables load today; five
+Usable is not used, but it is no longer unused. The five files that hold tables load today; nine
 of their tables are read by a tool — `snapshot-header`, `snapshot-constants` and `line-classes`, by
-`lib/idemlib/snapshot.py`, which writes and reads a snapshot and classifies its body lines, and
+`lib/idemlib/snapshot.py`, which writes and reads a snapshot and classifies its body lines;
 `fetch-limits` and `fetch-failures`, by `00_fetch/fetch.py`, which turns one URL into one snapshot
-inside that envelope and codes every failed URL from that table — and the other ten wait for
-`tickets.py`, the validator and the HTML routine, none of which is written.
+inside that envelope and codes every failed URL from that table; and `fields`, `schema-constants`,
+`header-items` and `ticket-lines`, by `lib/idemlib/tickets.py`, which reads a tickets file into a
+data model, writes one back in canonical form and reports every departure it finds. `catalogue` is
+read by the loader itself, on every load, because it is the table that says where the others are.
+The remaining five — `refusal-reasons`, `breaking-terms`, `html-elements`, `checks` and
+`warn-patterns` — wait for the validator and the HTML routine, neither of which is written.
 `02_segmentation.md` holds no table, so the loader never opens it at all. A pattern is the one kind
 of cell the loader looks inside: a column named `pattern`, or ending `_pattern`, is linted and
 compiled as the contract loads, and `00_catalogue.md` states that convention.
@@ -44,22 +48,29 @@ that owns each rule is written and its fixtures pass. There are five groups.
   holds it to them case by case, and a run that broke each of them in turn on a copy of the tree
   left no rule of the two without a test that names it.
 - `01_schema.md`, rules about a whole tickets file, which a pattern that reads one line cannot
-  carry. Each now has a key: which blocks each of the three shapes has and in what order —
+  carry. Each now has a key, and **`tickets.py` reads four of them** since 2026-09-22 — a reader's
+  finding, not yet a coded failure, because no fixture exists and the validator that maps a
+  finding to a code is not written: which blocks each of the three shapes has and in what order —
   `grammar_shape`; that the rows of one field are consecutive — `fields`; that ticket numbers run
-  from 1 with no gap — `ticket_number`; that the header holds exactly the five items, in that order
-  — `header`; that the first number of a range lies below the second, which has two keys because it
-  has two subjects — in an `Unmapped` range and in a `source` row's line cell, which has no pattern
-  at all, `range_reversed`, and in `body_range`, which is a header value and so `header_value`'s;
-  and that an `Unmapped` range stands for a run of consecutive, non-blank,
-  uncited lines — `unmapped_missing`, `unmapped_cited` and `unmapped_blank` between them. Owner:
-  `tickets.py` and `validate.py`.
-- `01_schema.md`, rules about what a cell holds, which the line patterns do not carry. Each now has
-  a key: the two row states — `state_sentinel`, `state_filled` and `state_empty`; that a `field`
-  cell holds one of the eight field names and that a ticket's rows give them in order — `fields`;
-  that a refusal reason is a row of `refusal-reasons` — `refusal_reason`; that a header item's name
-  is a row of `header-items` — `header`; that a filled value of a `copied` field is a substring of
-  its own quote — `value_quote`; and that `unnumbered` appears only under `line_numbers: none` —
-  `line_form`. Owner: `tickets.py` and `validate.py`.
+  from 1 with no gap — `ticket_number`; and that the header holds exactly the five items, in that
+  order — `header`. The reader raises a finding for each, and `lib/tests/test_tickets.py` holds it
+  to them case by case. What is still enforced by nothing: that the first number of a range lies
+  below the second, which has two keys because it has two subjects — in an `Unmapped` range and in
+  a `source` row's line cell, which has no pattern at all, `range_reversed`, and in `body_range`,
+  which is a header value and so `header_value`'s; and that an `Unmapped` range stands for a run
+  of consecutive, non-blank, uncited lines — `unmapped_missing`, `unmapped_cited` and
+  `unmapped_blank` between them. Both need the snapshot beside the tickets file, so both are the
+  validator's. Owner: `validate.py`.
+- `01_schema.md`, rules about what a cell holds, which the line patterns do not carry. Each now
+  has a key, and **two of them are read the same way**: that a `field` cell holds one of the eight
+  field names and that a ticket's rows give them in order — `fields` — and that a header item's
+  name is a row of `header-items` — `header`, which is the whole-file rule above read from the
+  other side. Both are read by `tickets.py`. The rest are enforced by nothing and read the model
+  rather than the file: the two row states — `state_sentinel`, `state_filled` and `state_empty`,
+  for which the reader derives each row's state and judges none; that a refusal reason is a row of
+  `refusal-reasons` — `refusal_reason`, the one table of that file no tool reads; that a filled
+  value of a `copied` field is a substring of its own quote — `value_quote`; and that `unnumbered`
+  appears only under `line_numbers: none` — `line_form`. Owner: `validate.py`.
 - `03_breaking-terms.md`, the rules for reading a quote against `breaking-terms`. The table carries
   the phrases and their values; the routines that read them are prose, and five rules are enforced
   by nothing. Four are the choices of the lookup that fills the field: that only `A` to `Z` is

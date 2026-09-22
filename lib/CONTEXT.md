@@ -9,8 +9,8 @@ imports `idemlib`. Python 3.9 or later, standard library only, no install step.
 | --- | --- |
 | `idemlib/contract.py` | built — loads every table `reference/00_catalogue.md` names, lints every pattern cell in them, and reads one strict table outside that folder when a caller hands it a path |
 | `idemlib/snapshot.py` | built — the snapshot format: `normalise` and `digest` for the body FR-4 defines, `write` and `read` for the file, `classify` for the coordinate system and the line classes. Reads `snapshot-header`, `snapshot-constants` and `line-classes` through `contract.load()`, holds no value of any of them, writes nothing to disk and opens no file |
-| `idemlib/tickets.py` | not built — parse and serialise a tickets file, and its canonical form |
-| `tests/` | the `unittest` suite: `idemlib` itself — `test_contract.py` and `test_snapshot.py` — one module per written file of `reference/`, and one for `identity.md` and `rules.md` together — each holding its file to what its prose says, by reading its tables back where it has tables and by cutting its worked examples where it has none. The last holds the two procedure files to their structure and their citations, and to holding no key or value of `breaking-terms`, `refusal-reasons`, `schema-constants`, `snapshot-constants` or `fetch-limits`, and no pattern of `line-classes`, `ticket-lines` or `header-items` |
+| `idemlib/tickets.py` | built — the tickets file: `parse` gives a data model and every finding about the bytes, `serialise` writes a model back in canonical form, and `serialise(parse(x).model) == x` on every canonical file. Reads `fields`, `schema-constants`, `header-items` and `ticket-lines` through `contract.load()`, holds no value of any of them, raises nothing on any input bytes, writes nothing to disk and opens no file |
+| `tests/` | the `unittest` suite: `idemlib` itself — `test_contract.py`, `test_snapshot.py` and `test_tickets.py` — one module per written file of `reference/`, and one for `identity.md` and `rules.md` together — each holding its file to what its prose says, by reading its tables back where it has tables and by cutting its worked examples where it has none. The last holds the two procedure files to their structure and their citations, and to holding no key or value of `breaking-terms`, `refusal-reasons`, `schema-constants`, `snapshot-constants` or `fetch-limits`, and no pattern of `line-classes`, `ticket-lines` or `header-items` |
 
 - **Read by:** every step script and the harness. Nothing here reads a step's output folder.
 - **Writes:** nothing. `contract.py` finds the Idem root from its own location, never the working
@@ -58,7 +58,7 @@ each and stop. A table with a header, a delimiter row and no body rows is a tabl
 
 ## What a tool here is allowed to hold
 
-`reference/` owns everything enumerable, and no tool holds a copy (AD-1). There are two exceptions
+`reference/` owns everything enumerable, and no tool holds a copy (AD-1). There are three exceptions
 in this folder, each of them a thing a table could not state, and each held to its limits by a test
 that reads the module's own source back.
 
@@ -111,6 +111,24 @@ every literal of the source that is one character or holds no space must be one 
 so a value smuggled in under a new name fails the day it is written. A fifth asserts that the seven
 class names are exactly the rows of the table, so a class renamed by decision fails there rather
 than being classified into silence.
+
+`tickets.py` is the third, and what it holds is **names and characters** on the same rule. The ids
+of the four tables it asks for; the keys of the constants and of the two header items it asks by;
+the names of the four columns it reads by name — `value`, `value_pattern`, `rows`, `rule`; the
+**thirteen class names** of `ticket-lines`, granted in `01_schema.md` under Sergey's name on
+2026-09-22 for the reason that granted `snapshot.py` its seven; the characters no table states — the
+feed, the return, the space, the tab, the hyphen and `utf-8`; the word for a row that is filled; and
+the names of its own record types. Everything else is read: the eight fields and their order, how
+many rows each may give, the sentinel, every count, every literal a writer writes, the five items,
+the patterns of the values and the pattern of every class.
+
+Two of its names need saying out loud. The **two modes** are not held at all: no cell holds either
+of them, so the module reads out of the three `Unmapped` rule cells the mode each names and checks
+what it reads against the `value_pattern` of the mode item — a test pins that reading. And `fields`,
+the table id, and `unmapped_text`, a class, read the same as two **keys of `checks`**; the key sweep
+of `lib/tests/test_checks.py` therefore carries a per-file allowance, granting that one file a
+literal that is a catalogued table id or a row key of `ticket-lines` and no other file either, so the
+registry wall the validator will stand on stays whole.
 
 A step script outside this folder has an allowance of its own, granted where the table it names is
 defined and never here: `04_snapshot-format.md` grants `00_fetch/fetch.py` the eight header field

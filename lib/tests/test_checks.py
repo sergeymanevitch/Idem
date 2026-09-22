@@ -27,7 +27,7 @@ import os
 import re
 import unittest
 
-from idemlib import contract
+from idemlib import contract, tickets
 from tests.test_contract import CYRILLIC, _run_shipped
 
 FILE = "reference/05_checks.md"
@@ -37,6 +37,9 @@ PATH = os.path.join(contract.idem_root(), "reference", "05_checks.md")
 CHECKS = "checks"
 FETCH_FAILURES = "fetch-failures"
 WARN_PATTERNS = "warn-patterns"
+#: A table of another file, named here for the per-file allowance below: its row keys are classes of
+#: line, and one of them reads the same as a key of `checks`.
+TICKET_LINES = "ticket-lines"
 
 #: The columns of `checks` and of `fetch-failures`, by position: key, code, what it checks, FR.
 KEY, CODE, WHAT, FR = 0, 1, 2, 3
@@ -531,6 +534,52 @@ class TestNoCodeLeaksIntoSource(unittest.TestCase):
             self.assertFalse(_written(code, code + "_SOMETHING"), code)
             self.assertFalse(_written(code, "s" + code + "x"), code)
 
+    def allowed_keys(self, path):
+        """The keys of `checks` this file may hold as a literal, by the name the file has.
+
+        A per-file allowance, as the code sweep above has one, and for one file: `tickets.py` asks
+        the contract for the table `fields` and classifies a line as `unmapped_text`, and both of
+        those names are keys of `checks` as well. Neither is a copy of anything: a table id and a
+        row key are **addresses** a tool asks by, and what stands at them is still read at run time
+        (Sergey, 2026-09-21). So that file may hold a literal that is a catalogued table id or a row
+        key of `ticket-lines`, and no other file may hold either - which keeps the registry wall
+        whole for the validator, where a key is what a check is registered under.
+        """
+        if os.path.abspath(path) == os.path.abspath(tickets.__file__):
+            allowed = set(SHIPPED)
+            allowed.update(SHIPPED[TICKET_LINES].rows)
+            return allowed
+        return set()
+
+    def test_the_allowance_covers_addresses_and_nothing_else(self):
+        """The allowance is two families and no third: a key of `checks` that is neither a
+        catalogued table id nor a class of `ticket-lines` is refused in that file as in any other.
+        """
+        allowed = self.allowed_keys(tickets.__file__)
+        keys = set([row[KEY] for row in cells(CHECKS)])
+        addresses = set([key for key in keys
+                         if key in SHIPPED or key in SHIPPED[TICKET_LINES].rows])
+        self.assertTrue(addresses, "the allowance covers no key, so it is doing nothing")
+        self.assertEqual(addresses, allowed & keys)
+        self.assertEqual(set(), self.allowed_keys(contract.__file__))
+        self.assertEqual(set(), self.allowed_keys(os.path.join(os.path.dirname(tickets.__file__),
+                                                               os.pardir, os.pardir, "00_fetch",
+                                                               os.path.basename(tickets.__file__))))
+
+    def test_the_file_the_allowance_is_for_uses_it(self):
+        """From the other side: the allowance is not theoretical. The module holds at least one
+        literal that is a key of `checks`, and every one it holds is an address of one of the two
+        kinds."""
+        keys = set([row[KEY] for row in cells(CHECKS)])
+        handle = io.open(tickets.__file__, "r", encoding="utf-8")
+        try:
+            source = handle.read()
+        finally:
+            handle.close()
+        held = set([literal for literal in string_literals(source) if literal in keys])
+        self.assertTrue(held, "no key is held, so the allowance can be removed")
+        self.assertEqual(set(), held - self.allowed_keys(tickets.__file__))
+
     def test_no_shipped_tool_writes_a_check_key_either(self):
         """The other half of AD-1, for the keys of `checks`. A code is what a reader sees, but a
         key is what a tool registers a check under, and a tool holding one as a literal is the same
@@ -561,7 +610,10 @@ class TestNoCodeLeaksIntoSource(unittest.TestCase):
                 source = handle.read()
             finally:
                 handle.close()
+            allowed = self.allowed_keys(path)
             for literal in string_literals(source):
+                if literal in allowed:
+                    continue
                 self.assertNotIn(literal, keys, path + " " + repr(literal))
         self.assertTrue(swept)
 
