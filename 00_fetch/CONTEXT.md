@@ -24,7 +24,7 @@ recorded in `content_type`, empty when it said nothing, and what they are is the
 
 ## Outputs
 - `00_snapshots/<host-path-slug>-<retrieved UTC>.txt` — one per URL, created exclusively, never
-  overwritten. A refetch is a new file beside the old one; **two fetches of one URL inside one
+  overwritten. Three are there, the shipped examples; `00_snapshots/CONTEXT.md` names them. A refetch is a new file beside the old one; **two fetches of one URL inside one
   second ask for one name, and the second of them is a failed URL** rather than a name made unique
   behind a reader's back.
 - Nothing at all for a failed URL: one coded line on stdout, `CODE<TAB>url<TAB>message`, and exit 1.
@@ -45,6 +45,12 @@ that supplies a value for each field cannot ask without naming them.
 `python3 -m unittest discover -s 00_fetch -t 00_fetch`, from the Idem root. No network: every
 request goes to a stub server on 127.0.0.1 and every snapshot into a temporary directory. One of
 the three commands the repository's tests are made of; `../CLAUDE.md` lists all three.
+
+## A note on the interpreter
+A `python3` installed from python.org on macOS ships without root certificates, and every fetch
+under it fails `CERTIFICATE` — the message names the remedy. The system `/usr/bin/python3` reads
+the macOS trust store and the three shipped snapshots were fetched under it. Fetch never relaxes
+verification either way.
 
 ## Human check
 Open the snapshot beside the page it came from. Never edit one: a snapshot is evidence, and

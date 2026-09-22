@@ -1,0 +1,175 @@
+source_url: https://raw.githubusercontent.com/PagerDuty/api-schema/f2c09c0df6b3c4bd9d5df8a9940014785a8fb87f/docs/CHANGELOG.md
+final_url: https://raw.githubusercontent.com/PagerDuty/api-schema/f2c09c0df6b3c4bd9d5df8a9940014785a8fb87f/docs/CHANGELOG.md
+http_status: 200
+content_type: text/plain; charset=utf-8
+retrieved: 20260922T032148Z
+routine: as-served
+routine_version: 1
+sha256: 9f1b853d1198ba0c250d19552cb88b4834abf3ed4587155c271695fd8167ba65
+--- body ---
+      1: # Changelog
+      2: 
+      3: PagerDuty aims to have no breaking changes to our API, we do fix bugs and add new functionality continously. This document serves as a reference for any bug fixes or additions to our API.
+      4: 
+      5: Currently we do not deprecate or remove any API functionality.
+      6: 
+      7: ----
+      8: 
+      9: ### 2020-09-02
+     10: - Added Audit Record description in API CONCEPTS document.
+     11: - Clarified in the descriptions of audit record endpoints that records are returned in lists.
+     12: 
+     13: ### 2020-08-28
+     14: - Added Early-Access endpoint for audit trail records
+     15:    - `GET /services/{id}/audit/records`
+     16: 
+     17: ### 2020-08-27
+     18: - Added Early-Access endpoint for audit trail records
+     19:    - `GET /escalation_policies/{id}/audit/records`
+     20: 
+     21: ### 2020-08-27
+     22: - Documented [Events V2 integration](https://developer.pagerduty.com/docs/events-api-v2/overview/) type on `/services/{id}/integrations` endpoints.
+     23:     - Note: This existed previously and was missing from this documentation.
+     24: 
+     25: ### 2020-08-24
+     26: - Clarified `contact_method` on various User Contact Method management endpoints.
+     27: - Clarified Notification Subscription endpoints current under the Early Access.
+     28: 
+     29: ### 2020-08-18
+     30: - Added Early-Access endpoints for audit trail records
+     31:    - `GET /schedules/{id}/audit/records`
+     32: 
+     33: ### 2020-08-10
+     34: - Added documentation on `config` and `headers` options for webhooks v2.
+     35: - Added Request Examples with custom headers.
+     36: 
+     37: ### 2020-08-07
+     38: - Updated models to include standard fields such as `id`, `type`, `summary`, `html_url`, and `self`.
+     39: - Fixed inconsistencies with the `Reference` model.
+     40: 
+     41: ### 2020-08-06
+     42: - Added Early-Access endpoints for audit trail records
+     43:    - `GET /audit/records`
+     44:    - `GET /teams/{id}/audit/records`
+     45:    - `GET /users/{id}/audit/records`
+     46: 
+     47: ### 2020-08-04
+     48: - Added 6 new Early-Access endpoints around incident subscription management.
+     49:     - `GET /users/{id}/notification_subscriptions`
+     50:     - `POST /users/{id}/notification_subscriptions`
+     51:     - `POST /users/{id}/notification_subscriptions/unsubscribe`
+     52:     - `GET /incidents/{id}/status_updates/subscribers`
+     53:     - `POST /incidents/{id}/status_updates/subscribers`
+     54:     - `POST /incidents/{id}/status_updates/unsubscribe`
+     55: 
+     56: ### 2020-07-24
+     57: - Updated the request sample for `POST /extensions` and `PUT /extensions/{id}`.
+     58: - Clarified Content-Type header for all endpoints.
+     59: 
+     60: ### 2020-07-10
+     61: - Updated filters for all 5 `/analytics/metrics` and `/analytics/raw` endpoints. The `business_service_ids` filter is added as a possible optional filter choice. This filter accepts an array, to allow filtering by multiple business service IDs.
+     62: 
+     63: ### 2020-07-08
+     64: - Add limit to the number of incidents or alerts that can be updated in a single API call to multi-update (i.e. `PUT /incidents`) above which the client receives status 413.
+     65: 
+     66: ### 2020-07-08
+     67: - Updated filters for all 5 `/analytics/metrics` and `/analytics/raw` endpoints. The `priority` filter is replaced by `priority_ids` and `priority_names` filters. Both of these new filters accept an array, to allow filtering by multiple priority IDs or names.
+     68: 
+     69: ### 2020-07-01
+     70: - Added documentation for configuring JIRA integration via API
+     71: 
+     72: ### 2020-06-29
+     73: - Updated required headers, and filters for `POST analytics/raw/incidents`, `POST analytics/metrics/incidents/all`, `POST analytics/metrics/incidents/services` and `POST analytics/metrics/incidents/teams`.
+     74: - Added `GET`, `DELETE`, and `PUT /users/{user_id}/status_update_notification_rules/{status_update_notitication_rule_id}`
+     75: - Added `GET`, `POST /users/{user_id}/status_update_notification_rules`
+     76: 
+     77: ### 2020-06-22
+     78: - Document `POST extensions/{id}/enable` for extensions that are temporarily disabled.
+     79: 
+     80: ### 2020-06-18
+     81: - Added `POST analytics/metrics/incidents/all`, `POST analytics/metrics/incidents/services` and `POST analytics/metrics/incidents/teams` endpoints for Early Access.
+     82: 
+     83: ### 2020-06-17
+     84: - Moved `POST analytics/incidents` and `GET analytics/incidents/{id}` to `POST analytics/raw/incidents` and `GET analytics/raw/incidents/{id}`
+     85: 
+     86: ### 2020-06-15
+     87: - Added `POST analytics/incidents` and `GET analytics/incidents/{id}` endpoints for Early Access.
+     88: 
+     89: ### 2020-06-05
+     90: - Modified `optional_total` query param to `total` on the business service list endpoint.
+     91: - `optional_total` field will continue to be supported.
+     92: 
+     93: ### 2020-06-01
+     94: - Added `suspend` event rule action to the API.
+     95: 
+     96: ### 2020-05-29
+     97: - Added `GET /response_plays`, `POST /response_plays`, `GET /response_plays/{id}`, `PUT /response_plays/{id}`, and `DELETE /response_plays/{id}` endpoints.
+     98: - Updated Response Plays description in API CONCEPTS document.
+     99: 
+    100: ### 2020-05-27
+    101:  - Documented `total` query parameter on paginated endpoints.
+    102: 
+    103: ### 2020-05-19
+    104:  - Added a `PUT log_entries/{id}/channel` endpoint to enable updates to log entry channel details.
+    105: 
+    106: ### 2020-05-12
+    107:  - Fix Schema of `/teams/{id}/members` endpoint to match reality of behaviour.
+    108: 
+    109: ### 2020-04-30
+    110:  - Add `teams` field to `Schedule` model, which is supported for updates and included in responses.
+    111:  - Clarified Reference Model, `id` field is required.
+    112: 
+    113: ### 2020-04-27
+    114:  - Document `include[]=temporarily_disabled` for extensions.
+    115: 
+    116: ### 2020-04-24
+    117:  - Add `type` fields to `Log Entry` models.
+    118:  - Fixed issue with Postman build. New version available, and new ones will continue to be published with each new update here.
+    119: 
+    120: ### 2020-04-21
+    121:  - Fixed model `type` fields in schema definitions.
+    122:  - Fix issues with Request Examples
+    123: 
+    124: ### 2020-04-15
+    125:  - Updated all reference schemas to better match reality of API.
+    126:  - Added examples to all Request and Response body's that were missing them.
+    127: 
+    128: ### 2020-04-15
+    129:  - Added Events V1 and Events V2 APIs.
+    130: 
+    131: ### 2020-04-13
+    132:  - Modified response and request examples to match OpenAPI 3.0.1 schema
+    133: 
+    134: ### 2020-04-09
+    135:  - Added a `GET /service_dependencies/technical_services/{id}` endpoint.
+    136:  - *BREAKING* `POST /service_dependencies/associate` was changed from 204 to 200 for successful changes.
+    137:  - *BREAKING* `POST /service_dependencies/disassociate` was changed from 204 to 200 for successful changes.
+    138:  - *Documentation Change* Fixed a mistake in the documentation. The `relationships` property in the request for `POST /service_dependencies/associate` and `POST /service_dependencies/disassociate` is an array and not an object.
+    139:  - *Documentation Change* The `service_dependencies` endpoints can now be found at the top level instead of under the `Business Services` section.
+    140: 
+    141: ### 2020-04-06
+    142:  - Added new Rulesets endpoints
+    143: 
+    144: ### 2020-04-01
+    145:  - Added `since` and `until` parameters to `GET /incidents/{id}/log_entries`.
+    146: 
+    147: ### 2020-03-24
+    148:  - Added `teams` to all `/business_services` endpoints.
+    149: 
+    150: ### 2020-03-23
+    151:  - Clarified language on `GET /tags` query parameter to better explain how matching happens.
+    152: 
+    153: ### 2020-03-02
+    154:  - Add new Business Services endpoints
+    155: 
+    156: ### 2020-01-27
+    157:  - Clarified `POST /escalation_policies` description.
+    158: 
+    159: ### 2020-02-26
+    160:  - `GET /oncalls OnCalls[].end` will now correctly respond `null` only when the user does not go off call.
+    161: 
+    162: ### 2020-01-10
+    163:  - Added `on_call_handoff_notifications` to `EscalationPolicy` model.
+    164:    - The field allow users to set whether they would like on-call handoff notifications for escalation policies that have no attached services.
+    165:    - The field has been added to all `/escalation_policies` endpoints' request and response schema.
+    166:    - The field has two options `always` and `if_has_services`, and defaults to `if_has_services` on `PUT` and `POST`

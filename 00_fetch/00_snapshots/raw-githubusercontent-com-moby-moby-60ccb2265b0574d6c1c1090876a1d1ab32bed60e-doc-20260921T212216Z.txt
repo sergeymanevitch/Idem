@@ -1,0 +1,259 @@
+source_url: https://raw.githubusercontent.com/moby/moby/60ccb2265b0574d6c1c1090876a1d1ab32bed60e/docs/api/version-history.md
+final_url: https://raw.githubusercontent.com/moby/moby/60ccb2265b0574d6c1c1090876a1d1ab32bed60e/docs/api/version-history.md
+http_status: 200
+content_type: text/plain; charset=utf-8
+retrieved: 20260921T212216Z
+routine: as-served
+routine_version: 1
+sha256: d5cfeba8e2effb279f33fac41e317078f4460f921d9ef7379927d2ab5dd792b6
+--- body ---
+      1: ---
+      2: title: "Engine API version history"
+      3: description: "Documentation of changes that have been made to Engine API."
+      4: keywords: "API, Docker, rcli, REST, documentation"
+      5: ---
+      6: 
+      7: <!-- This file is maintained within the docker/docker Github
+      8:      repository at https://github.com/docker/docker/. Make all
+      9:      pull requests against that repo. If you see this file in
+     10:      another repository, consider it read-only there, as it will
+     11:      periodically be overwritten by the definitive file. Pull
+     12:      requests which include edits to this file in other repositories
+     13:      will be rejected.
+     14: -->
+     15: 
+     16: ## v1.26 API changes
+     17: 
+     18: [Docker Engine API v1.26](https://docs.docker.com/engine/api/v1.26/) documentation
+     19: 
+     20: * `POST /plugins/(plugin name)/upgrade` upgrade a plugin.
+     21: 
+     22: ## v1.25 API changes
+     23: 
+     24: [Docker Engine API v1.25](https://docs.docker.com/engine/api/v1.25/) documentation
+     25: 
+     26: * The API version is now required in all API calls. Instead of just requesting, for example, the URL `/containers/json`, you must now request `/v1.25/containers/json`.
+     27: * `GET /version` now returns `MinAPIVersion`.
+     28: * `POST /build` accepts `networkmode` parameter to specify network used during build.
+     29: * `GET /images/(name)/json` now returns `OsVersion` if populated
+     30: * `GET /info` now returns `Isolation`.
+     31: * `POST /containers/create` now takes `AutoRemove` in HostConfig, to enable auto-removal of the container on daemon side when the container's process exits.
+     32: * `GET /containers/json` and `GET /containers/(id or name)/json` now return `"removing"` as a value for the `State.Status` field if the container is being removed. Previously, "exited" was returned as status.
+     33: * `GET /containers/json` now accepts `removing` as a valid value for the `status` filter.
+     34: * `GET /containers/json` now supports filtering containers by `health` status.
+     35: * `DELETE /volumes/(name)` now accepts a `force` query parameter to force removal of volumes that were already removed out of band by the volume driver plugin.
+     36: * `POST /containers/create/` and `POST /containers/(name)/update` now validates restart policies.
+     37: * `POST /containers/create` now validates IPAMConfig in NetworkingConfig, and returns error for invalid IPv4 and IPv6 addresses (`--ip` and `--ip6` in `docker create/run`).
+     38: * `POST /containers/create` now takes a `Mounts` field in `HostConfig` which replaces `Binds`, `Volumes`, and `Tmpfs`. *note*: `Binds`, `Volumes`, and `Tmpfs` are still available and can be combined with `Mounts`.
+     39: * `POST /build` now performs a preliminary validation of the `Dockerfile` before starting the build, and returns an error if the syntax is incorrect. Note that this change is _unversioned_ and applied to all API versions.
+     40: * `POST /build` accepts `cachefrom` parameter to specify images used for build cache.
+     41: * `GET /networks/` endpoint now correctly returns a list of *all* networks,
+     42:   instead of the default network if a trailing slash is provided, but no `name`
+     43:   or `id`.
+     44: * `DELETE /containers/(name)` endpoint now returns an error of `removal of container name is already in progress` with status code of 400, when container name is in a state of removal in progress.
+     45: * `GET /containers/json` now supports a `is-task` filter to filter
+     46:   containers that are tasks (part of a service in swarm mode).
+     47: * `POST /containers/create` now takes `StopTimeout` field.
+     48: * `POST /services/create` and `POST /services/(id or name)/update` now accept `Monitor` and `MaxFailureRatio` parameters, which control the response to failures during service updates.
+     49: * `POST /services/(id or name)/update` now accepts a `ForceUpdate` parameter inside the `TaskTemplate`, which causes the service to be updated even if there are no changes which would ordinarily trigger an update.
+     50: * `POST /services/create` and `POST /services/(id or name)/update` now return a `Warnings` array.
+     51: * `GET /networks/(name)` now returns field `Created` in response to show network created time.
+     52: * `POST /containers/(id or name)/exec` now accepts an `Env` field, which holds a list of environment variables to be set in the context of the command execution.
+     53: * `GET /volumes`, `GET /volumes/(name)`, and `POST /volumes/create` now return the `Options` field which holds the driver specific options to use for when creating the volume.
+     54: * `GET /exec/(id)/json` now returns `Pid`, which is the system pid for the exec'd process.
+     55: * `POST /containers/prune` prunes stopped containers.
+     56: * `POST /images/prune` prunes unused images.
+     57: * `POST /volumes/prune` prunes unused volumes.
+     58: * `POST /networks/prune` prunes unused networks.
+     59: * Every API response now includes a `Docker-Experimental` header specifying if experimental features are enabled (value can be `true` or `false`).
+     60: * Every API response now includes a `API-Version` header specifying the default API version of the server.
+     61: * The `hostConfig` option now accepts the fields `CpuRealtimePeriod` and `CpuRtRuntime` to allocate cpu runtime to rt tasks when `CONFIG_RT_GROUP_SCHED` is enabled in the kernel.
+     62: * The `SecurityOptions` field within the `GET /info` response now includes `userns` if user namespaces are enabled in the daemon.
+     63: * `GET /nodes` and `GET /node/(id or name)` now return `Addr` as part of a node's `Status`, which is the address that that node connects to the manager from.
+     64: * The `HostConfig` field now includes `NanoCPUs` that represents CPU quota in units of 10<sup>-9</sup> CPUs.
+     65: * `GET /info` now returns more structured information about security options.
+     66: * The `HostConfig` field now includes `CpuCount` that represents the number of CPUs available for execution by the container. Windows daemon only.
+     67: * `POST /services/create` and `POST /services/(id or name)/update` now accept the `TTY` parameter, which allocate a pseudo-TTY in container.
+     68: * `POST /services/create` and `POST /services/(id or name)/update` now accept the `DNSConfig` parameter, which specifies DNS related configurations in resolver configuration file (resolv.conf) through `Nameservers`, `Search`, and `Options`.
+     69: * `GET /networks/(id or name)` now includes IP and name of all peers nodes for swarm mode overlay networks.
+     70: * `GET /plugins` list plugins.
+     71: * `POST /plugins/pull?name=<plugin name>` pulls a plugin.
+     72: * `GET /plugins/(plugin name)` inspect a plugin.
+     73: * `POST /plugins/(plugin name)/set` configure a plugin.
+     74: * `POST /plugins/(plugin name)/enable` enable a plugin.
+     75: * `POST /plugins/(plugin name)/disable` disable a plugin.
+     76: * `POST /plugins/(plugin name)/push` push a plugin.
+     77: * `POST /plugins/create?name=(plugin name)` create a plugin.
+     78: * `DELETE /plugins/(plugin name)` delete a plugin.
+     79: * `POST /node/(id or name)/update` now accepts both `id` or `name` to identify the node to update.
+     80: * `GET /images/json` now support a `reference` filter.
+     81: * `GET /secrets` returns information on the secrets.
+     82: * `POST /secrets/create` creates a secret.
+     83: * `DELETE /secrets/{id}` removes the secret `id`.
+     84: * `GET /secrets/{id}` returns information on the secret `id`.
+     85: * `POST /secrets/{id}/update` updates the secret `id`.
+     86: * `POST /services/(id or name)/update` now accepts service name or prefix of service id as a parameter.
+     87: 
+     88: ## v1.24 API changes
+     89: 
+     90: [Docker Engine API v1.24](v1.24.md) documentation
+     91: 
+     92: * `POST /containers/create` now takes `StorageOpt` field.
+     93: * `GET /info` now returns `SecurityOptions` field, showing if `apparmor`, `seccomp`, or `selinux` is supported.
+     94: * `GET /info` no longer returns the `ExecutionDriver` property. This property was no longer used after integration
+     95:   with ContainerD in Docker 1.11.
+     96: * `GET /networks` now supports filtering by `label` and `driver`.
+     97: * `GET /containers/json` now supports filtering containers by `network` name or id.
+     98: * `POST /containers/create` now takes `IOMaximumBandwidth` and `IOMaximumIOps` fields. Windows daemon only.
+     99: * `POST /containers/create` now returns an HTTP 400 "bad parameter" message
+    100:   if no command is specified (instead of an HTTP 500 "server error")
+    101: * `GET /images/search` now takes a `filters` query parameter.
+    102: * `GET /events` now supports a `reload` event that is emitted when the daemon configuration is reloaded.
+    103: * `GET /events` now supports filtering by daemon name or ID.
+    104: * `GET /events` now supports a `detach` event that is emitted on detaching from container process.
+    105: * `GET /events` now supports an `exec_detach ` event that is emitted on detaching from exec process.
+    106: * `GET /images/json` now supports filters `since` and `before`.
+    107: * `POST /containers/(id or name)/start` no longer accepts a `HostConfig`.
+    108: * `POST /images/(name)/tag` no longer has a `force` query parameter.
+    109: * `GET /images/search` now supports maximum returned search results `limit`.
+    110: * `POST /containers/{name:.*}/copy` is now removed and errors out starting from this API version.
+    111: * API errors are now returned as JSON instead of plain text.
+    112: * `POST /containers/create` and `POST /containers/(id)/start` allow you to configure kernel parameters (sysctls) for use in the container.
+    113: * `POST /containers/<container ID>/exec` and `POST /exec/<exec ID>/start`
+    114:   no longer expects a "Container" field to be present. This property was not used
+    115:   and is no longer sent by the docker client.
+    116: * `POST /containers/create/` now validates the hostname (should be a valid RFC 1123 hostname).
+    117: * `POST /containers/create/` `HostConfig.PidMode` field now accepts `container:<name|id>`,
+    118:   to have the container join the PID namespace of an existing container.
+    119: 
+    120: ## v1.23 API changes
+    121: 
+    122: [Docker Engine API v1.23](v1.23.md) documentation
+    123: 
+    124: * `GET /containers/json` returns the state of the container, one of `created`, `restarting`, `running`, `paused`, `exited` or `dead`.
+    125: * `GET /containers/json` returns the mount points for the container.
+    126: * `GET /networks/(name)` now returns an `Internal` field showing whether the network is internal or not.
+    127: * `GET /networks/(name)` now returns an `EnableIPv6` field showing whether the network has ipv6 enabled or not.
+    128: * `POST /containers/(name)/update` now supports updating container's restart policy.
+    129: * `POST /networks/create` now supports enabling ipv6 on the network by setting the `EnableIPv6` field (doing this with a label will no longer work).
+    130: * `GET /info` now returns `CgroupDriver` field showing what cgroup driver the daemon is using; `cgroupfs` or `systemd`.
+    131: * `GET /info` now returns `KernelMemory` field, showing if "kernel memory limit" is supported.
+    132: * `POST /containers/create` now takes `PidsLimit` field, if the kernel is >= 4.3 and the pids cgroup is supported.
+    133: * `GET /containers/(id or name)/stats` now returns `pids_stats`, if the kernel is >= 4.3 and the pids cgroup is supported.
+    134: * `POST /containers/create` now allows you to override usernamespaces remapping and use privileged options for the container.
+    135: * `POST /containers/create` now allows specifying `nocopy` for named volumes, which disables automatic copying from the container path to the volume.
+    136: * `POST /auth` now returns an `IdentityToken` when supported by a registry.
+    137: * `POST /containers/create` with both `Hostname` and `Domainname` fields specified will result in the container's hostname being set to `Hostname`, rather than `Hostname.Domainname`.
+    138: * `GET /volumes` now supports more filters, new added filters are `name` and `driver`.
+    139: * `GET /containers/(id or name)/logs` now accepts a `details` query parameter to stream the extra attributes that were provided to the containers `LogOpts`, such as environment variables and labels, with the logs.
+    140: * `POST /images/load` now returns progress information as a JSON stream, and has a `quiet` query parameter to suppress progress details.
+    141: 
+    142: ## v1.22 API changes
+    143: 
+    144: [Docker Engine API v1.22](v1.22.md) documentation
+    145: 
+    146: * `POST /container/(name)/update` updates the resources of a container.
+    147: * `GET /containers/json` supports filter `isolation` on Windows.
+    148: * `GET /containers/json` now returns the list of networks of containers.
+    149: * `GET /info` Now returns `Architecture` and `OSType` fields, providing information
+    150:   about the host architecture and operating system type that the daemon runs on.
+    151: * `GET /networks/(name)` now returns a `Name` field for each container attached to the network.
+    152: * `GET /version` now returns the `BuildTime` field in RFC3339Nano format to make it
+    153:   consistent with other date/time values returned by the API.
+    154: * `AuthConfig` now supports a `registrytoken` for token based authentication
+    155: * `POST /containers/create` now has a 4M minimum value limit for `HostConfig.KernelMemory`
+    156: * Pushes initiated with `POST /images/(name)/push` and pulls initiated with `POST /images/create`
+    157:   will be cancelled if the HTTP connection making the API request is closed before
+    158:   the push or pull completes.
+    159: * `POST /containers/create` now allows you to set a read/write rate limit for a
+    160:   device (in bytes per second or IO per second).
+    161: * `GET /networks` now supports filtering by `name`, `id` and `type`.
+    162: * `POST /containers/create` now allows you to set the static IPv4 and/or IPv6 address for the container.
+    163: * `POST /networks/(id)/connect` now allows you to set the static IPv4 and/or IPv6 address for the container.
+    164: * `GET /info` now includes the number of containers running, stopped, and paused.
+    165: * `POST /networks/create` now supports restricting external access to the network by setting the `Internal` field.
+    166: * `POST /networks/(id)/disconnect` now includes a `Force` option to forcefully disconnect a container from network
+    167: * `GET /containers/(id)/json` now returns the `NetworkID` of containers.
+    168: * `POST /networks/create` Now supports an options field in the IPAM config that provides options
+    169:   for custom IPAM plugins.
+    170: * `GET /networks/{network-id}` Now returns IPAM config options for custom IPAM plugins if any
+    171:   are available.
+    172: * `GET /networks/<network-id>` now returns subnets info for user-defined networks.
+    173: * `GET /info` can now return a `SystemStatus` field useful for returning additional information about applications
+    174:   that are built on top of engine.
+    175: 
+    176: ## v1.21 API changes
+    177: 
+    178: [Docker Engine API v1.21](v1.21.md) documentation
+    179: 
+    180: * `GET /volumes` lists volumes from all volume drivers.
+    181: * `POST /volumes/create` to create a volume.
+    182: * `GET /volumes/(name)` get low-level information about a volume.
+    183: * `DELETE /volumes/(name)` remove a volume with the specified name.
+    184: * `VolumeDriver` was moved from `config` to `HostConfig` to make the configuration portable.
+    185: * `GET /images/(name)/json` now returns information about an image's `RepoTags` and `RepoDigests`.
+    186: * The `config` option now accepts the field `StopSignal`, which specifies the signal to use to kill a container.
+    187: * `GET /containers/(id)/stats` will return networking information respectively for each interface.
+    188: * The `HostConfig` option now includes the `DnsOptions` field to configure the container's DNS options.
+    189: * `POST /build` now optionally takes a serialized map of build-time variables.
+    190: * `GET /events` now includes a `timenano` field, in addition to the existing `time` field.
+    191: * `GET /events` now supports filtering by image and container labels.
+    192: * `GET /info` now lists engine version information and return the information of `CPUShares` and `Cpuset`.
+    193: * `GET /containers/json` will return `ImageID` of the image used by container.
+    194: * `POST /exec/(name)/start` will now return an HTTP 409 when the container is either stopped or paused.
+    195: * `POST /containers/create` now takes `KernelMemory` in HostConfig to specify kernel memory limit.
+    196: * `GET /containers/(name)/json` now accepts a `size` parameter. Setting this parameter to '1' returns container size information in the `SizeRw` and `SizeRootFs` fields.
+    197: * `GET /containers/(name)/json` now returns a `NetworkSettings.Networks` field,
+    198:   detailing network settings per network. This field deprecates the
+    199:   `NetworkSettings.Gateway`, `NetworkSettings.IPAddress`,
+    200:   `NetworkSettings.IPPrefixLen`, and `NetworkSettings.MacAddress` fields, which
+    201:   are still returned for backward-compatibility, but will be removed in a future version.
+    202: * `GET /exec/(id)/json` now returns a `NetworkSettings.Networks` field,
+    203:   detailing networksettings per network. This field deprecates the
+    204:   `NetworkSettings.Gateway`, `NetworkSettings.IPAddress`,
+    205:   `NetworkSettings.IPPrefixLen`, and `NetworkSettings.MacAddress` fields, which
+    206:   are still returned for backward-compatibility, but will be removed in a future version.
+    207: * The `HostConfig` option now includes the `OomScoreAdj` field for adjusting the
+    208:   badness heuristic. This heuristic selects which processes the OOM killer kills
+    209:   under out-of-memory conditions.
+    210: 
+    211: ## v1.20 API changes
+    212: 
+    213: [Docker Engine API v1.20](v1.20.md) documentation
+    214: 
+    215: * `GET /containers/(id)/archive` get an archive of filesystem content from a container.
+    216: * `PUT /containers/(id)/archive` upload an archive of content to be extracted to
+    217: an existing directory inside a container's filesystem.
+    218: * `POST /containers/(id)/copy` is deprecated in favor of the above `archive`
+    219: endpoint which can be used to download files and directories from a container.
+    220: * The `hostConfig` option now accepts the field `GroupAdd`, which specifies a
+    221: list of additional groups that the container process will run as.
+    222: 
+    223: ## v1.19 API changes
+    224: 
+    225: [Docker Engine API v1.19](v1.19.md) documentation
+    226: 
+    227: * When the daemon detects a version mismatch with the client, usually when
+    228: the client is newer than the daemon, an HTTP 400 is now returned instead
+    229: of a 404.
+    230: * `GET /containers/(id)/stats` now accepts `stream` bool to get only one set of stats and disconnect.
+    231: * `GET /containers/(id)/logs` now accepts a `since` timestamp parameter.
+    232: * `GET /info` The fields `Debug`, `IPv4Forwarding`, `MemoryLimit`, and
+    233: `SwapLimit` are now returned as boolean instead of as an int. In addition, the
+    234: end point now returns the new boolean fields `CpuCfsPeriod`, `CpuCfsQuota`, and
+    235: `OomKillDisable`.
+    236: * The `hostConfig` option now accepts the fields `CpuPeriod` and `CpuQuota`
+    237: * `POST /build` accepts `cpuperiod` and `cpuquota` options
+    238: 
+    239: ## v1.18 API changes
+    240: 
+    241: [Docker Engine API v1.18](v1.18.md) documentation
+    242: 
+    243: * `GET /version` now returns `Os`, `Arch` and `KernelVersion`.
+    244: * `POST /containers/create` and `POST /containers/(id)/start`allow you to  set ulimit settings for use in the container.
+    245: * `GET /info` now returns `SystemTime`, `HttpProxy`,`HttpsProxy` and `NoProxy`.
+    246: * `GET /images/json` added a `RepoDigests` field to include image digest information.
+    247: * `POST /build` can now set resource constraints for all containers created for the build.
+    248: * `CgroupParent` can be passed in the host config to setup container cgroups under a specific cgroup.
+    249: * `POST /build` closing the HTTP request cancels the build
+    250: * `POST /containers/(id)/exec` includes `Warnings` field to response.
