@@ -19,10 +19,11 @@ for the reason the next-but-one section gives. `warn-patterns` holds the one pat
 for. All three are in the catalogue, so a tool loads them; none of them is copied into any tool
 (AD-1), with the one exception named under **The two codes that cannot come from a table**.
 
-**Keyed is not the same as enforced.** `validate.py` and `run_fixtures.py` are written, and most of
+**Keyed is not the same as enforced.** `validate.py` and `run_fixtures.py` are written, and much of
 what is below is still a row and no more. Every row is registered under its key as a callable: the
-checks of the reading stage and of the pairing phase are written, the two rows the frame itself
-raises are raised by the frame, and every other row is registered with nothing behind it. A row
+checks of the reading stage, of the pairing phase, of canonical form and grammar and of the row
+states are written, the two rows the frame itself raises are raised by the frame, and every other
+row is registered with nothing behind it. A row
 here says what the validator will check and under what code, never that anything checks it today —
 and `run_fixtures.py` prints, on every run, how many rows nothing exercises yet, so the distance
 between this list and what is enforced is a number a reader gets for free rather than a claim
@@ -102,6 +103,13 @@ nothing is opened by it; `snapshot_missing` — an absent snapshot has no body; 
 a file that is not a snapshot has no body either. Each of those is one code and one line, and the
 phase stops there. That is why a fixture built on one of them expects exactly one code and not the
 rest of its phase as well.
+
+**Two carve-outs keep one code on one row** (Sergey, 2026-09-22). `state_sentinel` reads rows of
+fields 1 to 7 and no source row, because `source_row` owns every defect of that row's own cells —
+including its value or its line cell reading the sentinel, which field 8 is allowed and fields 1 to
+7 are not. And `line_form` passes over a row whose value is the sentinel, so that such a row is
+`state_sentinel`'s alone: without the carve-out a sentinel carrying a line would raise two codes
+for one cell, and a fixture of one mutation would fail for a neighbour's reason.
 
 `snapshot_name` was added to that list by Sergey on 2026-09-22, and it is the one of the five that
 is about **safety** and not only about material. A header reading `../../../README.md` holds a

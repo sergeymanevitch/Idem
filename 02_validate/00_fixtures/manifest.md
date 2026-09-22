@@ -8,14 +8,14 @@ expected set; a mutation that fails for another reason, or by a crash, is a suit
 AD-7).
 
 **The corpus is written one row at a time.** Every row below was written before any of the files it
-names, which is the order the whole folder is built in. Ten of those files exist today: the clean
-tickets file, the three of the reading stage, and the six of the pairing phase. The rest come with
-the checks that read them, and `run_fixtures.py` prints on every run how many rows still name a
-file that is not there. Beside that, the rows carry the both-ways reconciliation in
-`test_manifest.py`: every row of `checks` in `reference/05_checks.md` is named here, and every code
-named here is a row of `checks`. The two exempt rows are `CONTRACT_TABLE` and `INTERNAL`, which
-report a defect in the tool and cannot be provoked by any tickets file; `lib/tests/` exercises
-those.
+names, which is the order the whole folder is built in. Thirty of those files exist today: the clean
+tickets file, the three of the reading stage, the six of the pairing phase, the twelve of canonical
+form and grammar, and the eight of the row states. The rest come with the checks that read them, and
+`run_fixtures.py` prints on every run how many rows still name a file that is not there. Beside that,
+the rows carry the both-ways reconciliation in `test_manifest.py`: every row of `checks` in
+`reference/05_checks.md` is named here, and every code named here is a row of `checks`. The two
+exempt rows are `CONTRACT_TABLE` and `INTERNAL`, which report a defect in the tool and cannot be
+provoked by any tickets file; `lib/tests/` exercises those.
 
 ## How to read a row
 
@@ -43,12 +43,20 @@ enforces.
 
 One mutation per file (AD-3, AD-5). A value mutation goes through the parser — parse, change,
 serialise — so that the file stays canonical and fails for the reason it was built to fail for; a
-shape mutation edits raw text, because it has to fail at parsing.
+shape mutation is one the parser cannot be made to write, so it is made on the bytes. Not every
+shape mutation fails at parsing: `noncanonical-01` parses and is reported by the comparison with
+canonical form, and no serialiser would have written it.
 
 ## Rows that need a word
 
-Most rows say all there is to say. Seven do not:
+Most rows say all there is to say. Eight do not:
 
+- **`grammar_shape-01`** is a **missing** block: the `## Unmapped` heading and the blank line above
+  it are taken out, so the entries stand where the heading should. Blocks that merely run together
+  are not this code and could not be (Sergey, 2026-09-22): the reader forgives an empty line
+  anywhere, so an absent separator is read and reported as a departure from canonical form, and
+  `NONCANONICAL` is the code that owns it. The `grammar_shape` cell of `05_checks.md` is unchanged;
+  what moved is which fixture stands under it.
 - **`snapshot_name-01`**'s header reads `../changelog-01.txt`, a name that walks out of the
   snapshot directory and that the file system would resolve if anything joined it. Nothing does:
   `snapshot_name` ends its phase, so the name is refused at the character and no file of it is
@@ -62,8 +70,9 @@ Most rows say all there is to say. Seven do not:
   passes and the digest alone disagrees. Swapping in a snapshot of another URL would raise two
   codes and prove less. It was **built by hand** from `changelog-01.txt` and never fetched: one
   body line changed, a later `retrieved` written in, the digest recomputed over the changed body,
-  all of it through `snapshot.write`. So were `edited-01.txt` and `unreadable-01.txt`;
-  `00_snapshots/`'s own `CONTEXT.md` says which of the four is evidence and which three are not.
+  all of it through `snapshot.write`. So were `edited-01.txt`, `unreadable-01.txt` and
+  `long-01.txt`; the table in `00_fixtures/CONTEXT.md` says which of the five snapshots is evidence
+  and which four are not.
 - **`snapshot_sha256-01`** has a snapshot whose body no longer matches its own header digest. Its
   tickets header carries the **recomputed** digest, not the snapshot's stale one, so that the
   pairing check passes and the snapshot's own check is the only thing that fires.

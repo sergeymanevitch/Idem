@@ -30,9 +30,11 @@ data model, writes one back in canonical form and reports every departure it fin
 read by the loader itself, on every load, because it is the table that says where the others are.
 `checks` is read by `02_validate/validate.py`, which registers a check under every key of it and
 prints the code each row carries, and by `02_validate/run_fixtures.py`, which counts the rows no
-fixture exercises. The remaining four — `refusal-reasons`, `breaking-terms`, `html-elements` and
-`warn-patterns` — wait for the phases of the validator that are not written and for the HTML
-routine.
+fixture exercises. That validator reads three tables of `01_schema.md` for its own work as well —
+`fields` for which rows are fields 1 to 7 and which is field 8, `schema-constants` for the four
+values a check compares against, and `refusal-reasons` for the list a reason must be in. The
+remaining three — `breaking-terms`, `html-elements` and `warn-patterns` — wait for the phases of the
+validator that are not written and for the HTML routine.
 `02_segmentation.md` holds no table, so the loader never opens it at all. A pattern is the one kind
 of cell the loader looks inside: a column named `pattern`, or ending `_pattern`, is linted and
 compiled as the contract loads, and `00_catalogue.md` states that convention.
@@ -40,11 +42,12 @@ compiled as the contract loads, and `00_catalogue.md` states that convention.
 **Known debt.** A rule stated here that no pattern can carry is enforced by nothing until the tool
 that owns it exists. Story 1.7 closed half of that: `05_checks.md` now gives almost every one of
 these rules a key and a code, so the thing they are waiting for is a tool and no longer a decision.
-**A key is not a check.** `validate.py` is written as a frame and it enforces two phases of the
-nine: reading the file — the encoding, the five header items and the patterns of their values — and
-pairing, which is where the rules of AD-5 and FR-35 about the snapshot are. Everything else below
-is registered under its key with nothing behind it, and the list stays here until the phase that
-owns each rule is written and its fixtures pass. There are five groups.
+**A key is not a check.** `validate.py` is written as a frame and it enforces four phases of the
+nine: reading the file — the encoding, the five header items and the patterns of their values;
+pairing, which is where the rules of AD-5 and FR-35 about the snapshot are; canonical form and
+grammar; and the row states. Everything else below is registered under its key with nothing behind
+it, and the list stays here until the phase that owns each rule is written and its fixtures pass.
+There are five groups.
 
 - `04_snapshot-format.md` — the fence-pairing and open-item rules of `line-classes`, stated in
   `rule` cells, in English. **These get no key, and that is a decision of 2026-09-20**: they are the
@@ -56,33 +59,34 @@ owns each rule is written and its fixtures pass. There are five groups.
 - `01_schema.md`, rules about a whole tickets file, which a pattern that reads one line cannot
   carry. Each now has a key, and **`tickets.py` reads four of them** since 2026-09-22: which blocks
   each of the three shapes has and in what order — `grammar_shape`; that the rows of one field are
-  consecutive — `fields`; that ticket numbers run from 1 with no gap — `ticket_number`; and that
-  the header holds exactly the five items, in that order — `header`. The reader raises a finding
-  for each, and `lib/tests/test_tickets.py` holds it to them case by case. **One of the four is a
-  coded failure today**: `header` is a check of the reading stage, and `validate.py` prints its code
-  and has a fixture for it. The other three are findings the reader makes and nothing yet reports —
-  they belong to the grammar phase, which is registered and empty. What is still enforced by
-  nothing: that the first number of a range lies
-  below the second, which has two keys because it has two subjects — in an `Unmapped` range and in
-  a `source` row's line cell, which has no pattern at all, `range_reversed`, and in `body_range`,
-  which is a header value and so `header_value`'s — and that last one is **keyed, reported and
-  still not enforced**: `check_header_value` is written and reports what the reader finds, which is
-  the value pattern of each item, and the pattern admits a reversed range. The same holds for a
-  `body_range` past the last body line and for a value that disagrees with the mode; all three are
-  in the deferred ledger under Story 3.3's decision 7. And that an `Unmapped` range stands for a run
-  of consecutive, non-blank, uncited lines — `unmapped_missing`, `unmapped_cited` and
-  `unmapped_blank` between them. Both need the snapshot beside the tickets file, so both are the
-  validator's. Owner: `validate.py`.
+  consecutive — `fields`; that ticket numbers run from 1 with no gap — `ticket_number`; and that the
+  header holds exactly the five items, in that order — `header`. The reader raises a finding for
+  each, and `lib/tests/test_tickets.py` holds it to them case by case. **All four are coded failures
+  today** (2026-09-22): `header` is a check of the reading stage, and the other three are the first
+  three grammar checks, each reporting one class of the reader's findings and nothing else, each
+  with a fixture of its own. What is still enforced by nothing: that the first number of a range
+  lies below the second **in `body_range`**, which is a header value and so `header_value`'s — that
+  one is **keyed, reported and still not enforced**: `check_header_value` is written and reports
+  what the reader finds, which is the value pattern of each item, and the pattern admits a reversed
+  range. The same holds for a `body_range` past the last body line and for a value that disagrees
+  with the mode; all three are in the deferred ledger under Story 3.3's decision 7. The same rule in
+  an `Unmapped` range and in a `source` row's line cell, which has no pattern at all, is
+  `range_reversed`, and that one **is** enforced. And an `Unmapped` range standing for a run of
+  consecutive, non-blank, uncited lines — `unmapped_missing`, `unmapped_cited` and `unmapped_blank`
+  between them — needs the snapshot beside the tickets file and waits for the coverage phase. Owner:
+  `validate.py`.
 - `01_schema.md`, rules about what a cell holds, which the line patterns do not carry. Each now
   has a key, and **two of them are read the same way**: that a `field` cell holds one of the eight
   field names and that a ticket's rows give them in order — `fields` — and that a header item's
   name is a row of `header-items` — `header`, which is the whole-file rule above read from the
-  other side. Both are read by `tickets.py`. The rest are enforced by nothing and read the model
-  rather than the file: the two row states — `state_sentinel`, `state_filled` and `state_empty`,
-  for which the reader derives each row's state and judges none; that a refusal reason is a row of
-  `refusal-reasons` — `refusal_reason`, the one table of that file no tool reads; that a filled
-  value of a `copied` field is a substring of its own quote — `value_quote`; and that `unnumbered`
-  appears only under `line_numbers: none` — `line_form`. Owner: `validate.py`.
+  other side. Both are read by `tickets.py`. Most of the rest read the model rather than the file,
+  and **`validate.py` now enforces them** (2026-09-22): the two row states — `state_sentinel`,
+  `state_filled` and `state_empty`, for which the reader derives each row's state and judges none;
+  that a refusal reason is a row of `refusal-reasons` — `refusal_reason`, which is what made that
+  table read by a tool at all; and that `unnumbered` appears only under `line_numbers: none` —
+  `line_form`. One is still enforced by nothing: that a filled value of a `copied` field is a
+  substring of its own quote — `value_quote`, which belongs to the phase below the row states.
+  Owner: `validate.py`.
 - `03_breaking-terms.md`, the rules for reading a quote against `breaking-terms`. The table carries
   the phrases and their values; the routines that read them are prose, and five rules are enforced
   by nothing. Four are the choices of the lookup that fills the field: that only `A` to `Z` is

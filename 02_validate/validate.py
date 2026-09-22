@@ -3,11 +3,12 @@
 
     python3 02_validate/validate.py [--snapshots DIR] <tickets>
 
-This is the frame every check drops into, and today most of the frame is empty. Every row of the
-checks table is registered here under its key; the ten that are written report something, and the
-rest are registered as a callable that reads nothing and finds nothing. That is deliberate and it
-is the order the whole folder is built in: the list of what can be wrong was written before any
-tool could find one of them, so that no check is ever invented to describe code already written.
+This is the frame every check drops into, and part of the frame is still empty. Every row of the
+checks table is registered here under its key; the twenty-five that are written report something,
+and the rest are registered as a callable that reads nothing and finds nothing. That is deliberate
+and it is the order the whole folder is built in: the list of what can be wrong was written before
+any tool could find one of them, so that no check is ever invented to describe code already
+written.
 
 WHAT IT DOES TODAY
 
@@ -15,13 +16,13 @@ The contract is loaded and the registry is built and reconciled with the table b
 is opened once and read once, by the one reader of the format. Then nine phases run in the fixed
 order (AD-6): the tool's own failures, reading the file, pairing it with its snapshot, canonical
 form and grammar, row states, quotes and values, ranges and ancestors, coverage, and the warnings.
-Reading and pairing are written. The five between them are not, and the story that fills each one
-writes its checks into this file and nowhere else.
+Reading, pairing, canonical form and grammar, and the row states are written. The three after them
+are not, and the story that fills each one writes its checks into this file and nowhere else.
 
 HOW A PHASE RUNS
 
 Checks of one phase run in the row order of the table, and a check with nothing to read does not
-run - it is not a pass and it is not a failure, there was no material for it. Four checks end their
+run - it is not a pass and it is not a failure, there was no material for it. Five checks end their
 phase outright, because everything after them in it would have nothing to read. Every failure of
 the **first** phase that fails is printed, in file order, and the phases after it are suppressed.
 The warnings are the exception: they run on every run that got past the contract and the open,
@@ -45,12 +46,16 @@ becomes one line naming this file and the line in it, and never a traceback.
 
 WHAT IS WRITTEN HERE AS A LITERAL
 
-Addresses and forms, never a key and never a code. The id of the one table it reads and the
-positions of the columns it reads by; the names of the four header items it asks a tickets file for
+Addresses and forms, never a key and never a code. The ids of the tables it reads and the positions
+or names of the columns it reads by; the names of the four header items it asks a tickets file for
 - the snapshot, the digest, the URL and the mode - two of which are also the names of the snapshot
-header fields they are compared against; the folder a snapshot is looked for in when none is named;
+header fields they are compared against; the three schema constants it asks for beyond the ones the
+format module already names; the folder a snapshot is looked for in when none is named;
 the flag; the word that opens a warning line; the prefix a check's function name carries; and the
-opening words of the cell that tells a warning row from a failure row. **No key of the checks table
+opening words of the cell that tells a warning row from a failure row. The one table id it would
+otherwise have to write for itself - the fields of a ticket - is asked for through the format
+module, because that id is also a key of the checks table and this tool writes none of those.
+**No key of the checks table
 is written here at all**, a docstring included: a check is the function named for its key, and the
 suffix of that name is the address the registry asks the table by (AD-7, amended by Sergey on
 2026-09-22). The sweeps of `lib/tests/test_checks.py` cover this file as they cover every other.
@@ -61,6 +66,7 @@ library only, and it writes nothing: not a snapshot, not a report, not a cached 
 """
 import collections
 import os
+import string
 import sys
 
 #: Nothing this tool does writes into the repository, and a cached module is still a write. The
@@ -103,6 +109,23 @@ URL_ITEM = "source_url"
 MODE_ITEM = "line_numbers"
 #: The character a snapshot name may not hold: the header names a bare file, never a path (AD-5).
 SLASH = "/"
+
+# --- the schema this tool compares a row against ------------------------------------------------------
+
+#: The list of the four reasons a refusal may give, by table id. It is an address and no key of the
+#: checks table, so it is written here; the fields of a ticket are asked for through the format
+#: module instead, because that table's id **is** a key of the checks table.
+REASONS_TABLE = "refusal-reasons"
+#: Three constants of the schema, each a key and never a value: what a filled line cell reads in the
+#: mode with no line numbers, the largest input this contract is written for, and how many spaces
+#: stand between the two parts of a source row's value. The sentinel is asked for by the name the
+#: format module already holds.
+UNNUMBERED_CELL = "unnumbered_cell"
+MAX_BODY_LINES = "max_body_lines"
+SOURCE_GAP = "source_gap_spaces"
+#: The digit a number may not open with. A number here is a non-empty run of ASCII digits that does
+#: not open with a zero, written out character by character because this tool writes no pattern.
+ZERO = "0"
 
 # --- the phases, which are this module's words and no table's -----------------------------------------
 
@@ -148,7 +171,9 @@ class Run(object):
 
     `parsed` is what the one reader of the tickets format made of the bytes; `snapshot` is the
     snapshot itself, read once by the pairing phase and left here for the phases that come after it.
-    A check is handed this and nothing else, so no check opens a file or parses a line of its own.
+    `tables` is the contract, loaded once by `main`. A check is handed this and nothing else, so no
+    check opens a file, parses a line or loads the contract of its own: two readings of one file
+    could disagree, and two loadings of the contract would be two contracts.
 
     `reached` is the last phase that ran **before the warnings**, and it is here for the warnings.
     Two of the three read a line of the unmapped list against a ticket's range, so the contract
@@ -159,11 +184,12 @@ class Run(object):
     the story that writes them has the one thing the frame would otherwise have no way of saying.
     """
 
-    def __init__(self, path, data, parsed, directory):
+    def __init__(self, path, data, parsed, directory, tables):
         self.path = path
         self.data = data
         self.parsed = parsed
         self.directory = directory
+        self.tables = tables
         self.snapshot = None
         self.reached = None
 
@@ -298,6 +324,114 @@ def _named_directory(run):
     what `contract.relative` already does for the file a failure points at.
     """
     return contract.relative(run.directory, contract.idem_root())
+
+
+def _constant(run, name):
+    """One constant of the ticket schema, read from the table on every run.
+
+    Nothing enumerable is written in this file: the sentinel, the cell a filled line takes in the
+    mode with no line numbers, the size limit and the gap inside a source value are all cells, and
+    a decision that changes one of them moves every check that compares against it.
+    """
+    table = run.tables[tickets.CONSTANTS_TABLE]
+    return table.rows[name][tickets.VALUE]
+
+
+def _field_order(run):
+    """The fields a ticket gives, in the order the table writes them.
+
+    Asked for through the format module's own address, because the id of that table reads the same
+    as a key of the checks table and this tool writes none of those.
+    """
+    return list(run.tables[tickets.FIELDS_TABLE].rows)
+
+
+def _rows(run):
+    """(the rows of fields 1 to 7, the source rows), in file order.
+
+    Field 8 is the **last** row of the fields table and fields 1 to 7 are the rest, which is how
+    `01_schema.md` numbers them; nothing here is identified by a typed field name. A row whose field
+    cell names no field at all is in neither list - the grammar phase reports it, and that phase
+    runs before this one.
+
+    Both lists are empty where there is no model and where the shape carries no ticket, which is
+    what makes every check of the row-states phase read nothing on a refusal.
+    """
+    model = run.parsed.model
+    if model is None or not model.tickets:
+        return [], []
+    order = _field_order(run)
+    ordinary = []
+    source = []
+    for ticket in model.tickets:
+        for row in ticket.rows:
+            if row.field in order[:-1]:
+                ordinary.append(row)
+            elif order and row.field == order[-1]:
+                source.append(row)
+    return ordinary, source
+
+
+def _is_number(text):
+    """Whether this cell is a number: a non-empty run of ASCII digits that does not open with zero.
+
+    Written out rather than matched, because this tool writes no pattern: the form is four words of
+    the contract, and a loop is what four words look like in code.
+    """
+    if text == tickets.EMPTY or text[:1] == ZERO:
+        return False
+    for character in text:
+        if character not in string.digits:
+            return False
+    return True
+
+
+def _number(text):
+    """One run of ASCII digits as a number, by arithmetic over its own characters.
+
+    Never `int(text)`: an interpreter from 3.11 on refuses to convert a run of more than a few
+    thousand digits, and no cell of a tickets file is bounded in length, so the same file would be
+    judged one way on one interpreter and another way on the next. The caller has already said the
+    text is a number.
+    """
+    value = 0
+    for character in text:
+        value = value * 10 + string.digits.index(character)
+    return value
+
+
+def _as_digits(value):
+    """A number as its digits, by arithmetic and never `str(value)`.
+
+    The interpreter's limit works both ways: from 3.11 on it refuses to write a number of more than
+    a few thousand digits back as text as well as to read one. A message that could not be written
+    would make a check raise where it should report, so the digits are built here.
+    """
+    if value == 0:
+        return ZERO
+    text = tickets.EMPTY
+    while value > 0:
+        text = string.digits[value % 10] + text
+        value = value // 10
+    return text
+
+
+def _above(first, second):
+    """Whether the run of digits `first` is a number above the run `second`.
+
+    Compared as written and never converted: neither run opens with a zero, so the longer run is
+    the larger number and two runs of one length compare as text. An interpreter from 3.11 on
+    refuses to convert a run of thousands of digits, and a cell of a tickets file may hold one.
+    """
+    if len(first) != len(second):
+        return len(first) > len(second)
+    return first > second
+
+
+def _mode_value(run):
+    """The mode this header selects, as the header wrote it, or None where there is no header."""
+    item = _item(run, MODE_ITEM)
+    return None if item is None else item.value
 
 
 # --- reading the file, in every mode ------------------------------------------------------------------
@@ -503,6 +637,408 @@ def check_pair_source_url(run):
 check_pair_source_url.phase = PAIRING
 
 
+# --- canonical form and grammar: the file is written the one way it may be written (FR-33) -------------
+#
+# Six of the eight are a class of finding the one reader of the format already made, reported here
+# under the key that owns it and under no other: the reader decides what a tickets file **is**, and
+# this phase is where each of its findings gets its code. A test holds that map both ways, so a
+# tenth class of finding, or a second check claiming one, fails rather than being reported twice or
+# not at all. The last two read the file for themselves - the refusal reason against the list, and
+# the size limit against the header.
+
+
+def check_noncanonical(run):
+    """The file reads, and writing the reading back does not give the same bytes (AD-3)."""
+    return _findings(run, tickets.NoncanonicalFinding)
+
+
+check_noncanonical.phase = GRAMMAR
+
+
+def check_grammar_line(run):
+    """A non-blank line that no class of the grammar claims, wherever in the file it sits."""
+    return _findings(run, tickets.UnclaimedFinding)
+
+
+check_grammar_line.phase = GRAMMAR
+
+
+def check_grammar_shape(run):
+    """The blocks of the shape the header selects are missing or out of order (AD-10).
+
+    Blocks run together are **not** this row (Sergey, 2026-09-22). The tolerance set of the reader
+    forgives an empty line anywhere, so a missing separator is read and reported as a departure from
+    canonical form - the row above this one - and what this row is for is a block that is not there
+    at all, or one that stands where another should.
+    """
+    return _findings(run, tickets.ShapeFinding)
+
+
+check_grammar_shape.phase = GRAMMAR
+
+
+def check_ticket_number(run):
+    """Ticket numbers do not run from 1 upward with no gap."""
+    return _findings(run, tickets.NumberFinding)
+
+
+check_ticket_number.phase = GRAMMAR
+
+
+def check_fields(run):
+    """A ticket's rows do not give the eight field names, in the table's order, with one source row."""
+    return _findings(run, tickets.FieldsFinding)
+
+
+check_fields.phase = GRAMMAR
+
+
+def check_refusal_reason(run):
+    """The reason on a refusal line is not one of the four the contract lists (FR-22).
+
+    It reads the model, so a file with none has nothing to read; and a file that is not a refusal
+    carries no reason, which is the same thing. The list is asked for by the id of the table that
+    holds it, and no reason is written here.
+    """
+    model = run.parsed.model
+    if model is None or model.shape != tickets.REFUSAL or model.refusal is None:
+        return []
+    if model.refusal.reason in run.tables[REASONS_TABLE].rows:
+        return []
+    return [Failure(model.refusal.at, "a refusal gives one of the reasons the contract lists and "
+                                      "no other wording, and '" + model.refusal.reason + "' is "
+                                      "none of them")]
+
+
+check_refusal_reason.phase = GRAMMAR
+
+
+def check_unmapped_form(run):
+    """An entry of the unmapped list is written in a form the mode in the header does not allow.
+
+    An entry whose number is longer than the interpreter will read as one is reported here too:
+    the reader raises the same class of finding for it, because an entry carrying a number nothing
+    can read names no body line, and that is a defect of the entry's **form**.
+    """
+    return _findings(run, tickets.FormFinding)
+
+
+check_unmapped_form.phase = GRAMMAR
+
+
+def check_size_limit(run):
+    """The body range spans more body lines than the contract is written for (FR-26).
+
+    It reads the **header** and not the model, so that a file which is both too long and mis-shaped
+    reports both defects of this one phase rather than the second alone. The value has already
+    passed the pattern of its item in the reading stage, which is what makes splitting it at the
+    hyphen safe and leaves the sentinel as the one value that is not a range.
+
+    Both ends are read by arithmetic over their digits and never converted by the interpreter, so
+    that a range of thousands of digits is counted the same on every interpreter: one that refused
+    to convert it would otherwise report this row on 3.9 and nothing on 3.14, and a verdict that
+    depends on which Python ran it is no verdict.
+
+    A limit cell that is not a number ends the run, as a rule cell naming no mode does: comparing a
+    span against nothing is quietly false, every file would pass this row, and no line would say so.
+    """
+    item = _item(run, tickets.RANGE_ITEM)
+    if item is None or item.value == _constant(run, tickets.SENTINEL):
+        return []
+    parts = item.value.split(tickets.HYPHEN)
+    if len(parts) > 2 or not _is_number(parts[0]) or not _is_number(parts[-1]):
+        return []
+    limit = _constant(run, MAX_BODY_LINES)
+    if not _is_number(limit):
+        raise ValueError("the contract no longer says how many body lines this format is written "
+                         "for: the cell the limit is read from is not a number, so no range can "
+                         "be held against it and every file would pass")
+    span = _number(parts[-1]) - _number(parts[0]) + 1
+    if span <= _number(limit):
+        return []
+    return [Failure(item.at, "this file says it translated body lines '" + item.value + "', which "
+                             "is " + _as_digits(span) + " lines, and the contract is written for "
+                             "at most " + limit)]
+
+
+check_size_limit.phase = GRAMMAR
+
+
+# --- the row states: each row is one of the two states, and its cells are the shape they must be -------
+#
+# Every check below reads `run.parsed.model` and nothing else, and every one of them returns an
+# empty list where there is no model, or where the block it reads is not there: a refusal carries no
+# ticket and no unmapped list, and a file the grammar refused has no model at all. That is a check
+# with nothing to read and not a pass (`05_checks.md`, "Inside one phase"); the phase skips AD-10
+# names for the refusal and the zero-ticket shapes are a story of their own and are not built here.
+#
+# Two carve-outs keep one code on one row (Sergey, 2026-09-22). `state_sentinel` reads rows of
+# fields 1 to 7 only, because `source_row` owns every defect of the source row's own cells; and
+# `line_form` passes over a row whose value is the sentinel, so that such a row is
+# `state_sentinel`'s alone. Each is said again in the docstring of the check it belongs to.
+
+
+def check_state_sentinel(run):
+    """A row of fields 1 to 7 reads the sentinel and carries a line or a quote (FR-32).
+
+    The sentinel is the whole of the value cell when it is used, and the other two cells are empty:
+    a row that says the source does not state something cannot also say where it says it.
+
+    Rows of fields 1 to 7 only. The source row may read the sentinel in either part of its value
+    and in its line cell, and every defect of that row's cells is `source_row`'s.
+
+    Nothing to read where there is no model or no ticket: it returns an empty list.
+    """
+    sentinel = _constant(run, tickets.SENTINEL)
+    found = []
+    for row in _rows(run)[0]:
+        if row.value != sentinel:
+            continue
+        if row.line == tickets.EMPTY and row.quote == tickets.EMPTY:
+            continue
+        found.append(Failure(row.at, "this row reads the sentinel, and a row that says the source "
+                                     "does not state this carries no line and no quote"))
+    return found
+
+
+check_state_sentinel.phase = STATES
+
+
+def check_state_filled(run):
+    """A filled row of fields 1 to 7 has no line or no quote, an empty quote cell included (FR-32).
+
+    There is no list of fillers here and there is none anywhere else. A filler carrying neither a
+    line nor a quote is exactly this row - whatever word it uses - and a filler carrying both cannot
+    be told from a value, which is what the substring rule of a later phase is for.
+
+    Nothing to read where there is no model or no ticket: it returns an empty list.
+    """
+    sentinel = _constant(run, tickets.SENTINEL)
+    found = []
+    for row in _rows(run)[0]:
+        if row.value == tickets.EMPTY or row.value == sentinel:
+            continue
+        if row.line != tickets.EMPTY and row.quote != tickets.EMPTY:
+            continue
+        found.append(Failure(row.at, "this row gives a value, and a filled row carries the line it "
+                                     "was read from and the quote that carries it; a row is filled "
+                                     "or it reads the sentinel, and there is no third state"))
+    return found
+
+
+check_state_filled.phase = STATES
+
+
+def check_state_empty(run):
+    """The value cell of a row of fields 1 to 7 is empty, which is neither of the two states.
+
+    Whatever the other cells hold: an empty value is not a filled row and it is not the sentinel,
+    and a reader of such a row learns nothing at all.
+
+    Nothing to read where there is no model or no ticket: it returns an empty list.
+    """
+    found = []
+    for row in _rows(run)[0]:
+        if row.value != tickets.EMPTY:
+            continue
+        found.append(Failure(row.at, "the value cell of this row is empty, and a row of a ticket is "
+                                     "filled or reads the sentinel; an empty cell says neither"))
+    return found
+
+
+check_state_empty.phase = STATES
+
+
+def _source_parts(run, value):
+    """The two parts of a source row's value, or None where the cell does not read as two.
+
+    The reading is the one `01_schema.md` states, left to right: the first part is the sentinel when
+    the cell opens with the sentinel and the gap, and otherwise runs to the first gap; what stands
+    after that gap is the second part, which is the sentinel or holds no gap of its own. Neither
+    part is empty. That reading is unambiguous even when both parts are the sentinel, because
+    neither a URL nor a snapshot's name holds a space of its own.
+    """
+    sentinel = _constant(run, tickets.SENTINEL)
+    gap = tickets.SPACE * int(_constant(run, SOURCE_GAP))
+    if value.startswith(sentinel + gap):
+        first = sentinel
+        rest = value[len(sentinel) + len(gap):]
+    else:
+        place = value.find(gap)
+        if place < 0:
+            return None
+        first = value[:place]
+        rest = value[place + len(gap):]
+    if first == tickets.EMPTY or rest == tickets.EMPTY:
+        return None
+    if rest != sentinel and gap in rest:
+        return None
+    return first, rest
+
+
+def _source_defects(run, row):
+    """Everything wrong with the cells of one source row, as sentences, in cell order.
+
+    Empty means the row is the shape field 8 takes. One list per row and one failure per row: three
+    cells under one code, so that a reader is not sent back to the same row three times.
+    """
+    found = []
+    if _source_parts(run, row.value) is None:
+        found.append("its value is the source URL and the snapshot's bare file name, one gap "
+                     "between them, and either part may read the sentinel on its own")
+    if not _source_line_ok(run, row.line):
+        found.append("its line cell is the range of the whole change - a bare number for one line "
+                     "and never a range of one - or the sentinel, in the mode with no line numbers "
+                     "alone")
+    if row.quote != tickets.EMPTY:
+        found.append("its quote cell is empty, because a range is a quote of nothing")
+    return found
+
+
+def _source_line_ok(run, cell):
+    """Whether a source row's line cell is the shape field 8 takes (FR-17, AD-8).
+
+    A number, or two numbers around one hyphen that are not the same number - a run of one line is
+    written as the bare number - or the sentinel, which only the mode with no line numbers may use,
+    because in that mode there is no range to give. A range written the wrong way round passes here
+    and is `range_reversed`'s: it is a range, and what is wrong with it is which way it runs.
+    """
+    if cell == _constant(run, tickets.SENTINEL):
+        return _mode_value(run) == _mode(tickets.unnumbered_mode)
+    if _is_number(cell):
+        return True
+    parts = cell.split(tickets.HYPHEN)
+    if len(parts) != 2:
+        return False
+    if not _is_number(parts[0]) or not _is_number(parts[1]):
+        return False
+    return parts[0] != parts[1]
+
+
+def check_source_row(run):
+    """The source row is not the shape field 8 takes (FR-17, AD-8).
+
+    One failure per source row and never three: the message names every defect found in its three
+    cells. Every defect of those cells is this row and none of them is `line_form`'s, which is why
+    that check reads fields 1 to 7 alone.
+
+    Nothing to read where there is no model or no ticket: it returns an empty list.
+    """
+    found = []
+    for row in _rows(run)[1]:
+        defects = _source_defects(run, row)
+        if not defects:
+            continue
+        found.append(Failure(row.at, "this is the source row and " + "; and ".join(defects)))
+    return found
+
+
+check_source_row.phase = STATES
+
+
+def check_source_value(run):
+    """The source row does not name the URL and the snapshot file the header names (FR-35).
+
+    A row whose cells the check above refused is not read here: a value that is not two parts has
+    no parts to compare, and two codes for one cell would fail a one-mutation fixture for a
+    neighbour's reason. What is compared is what the header claims this file is a translation of,
+    against what the row says it read - the same two values, copied, one in the header and one in
+    every ticket.
+
+    Nothing to read where there is no model or no ticket: it returns an empty list.
+    """
+    url = _item(run, URL_ITEM)
+    name = _item(run, SNAPSHOT_ITEM)
+    if url is None or name is None:
+        return []
+    found = []
+    for row in _rows(run)[1]:
+        if _source_defects(run, row):
+            continue
+        parts = _source_parts(run, row.value)
+        if parts is None or (parts[0] == url.value and parts[1] == name.value):
+            continue
+        found.append(Failure(row.at, "this row says it was read from '" + parts[0] + "' and '" +
+                                     parts[1] + "', and the header of this file says '" +
+                                     url.value + "' and '" + name.value + "'"))
+    return found
+
+
+check_source_value.phase = STATES
+
+
+def check_line_form(run):
+    """A line cell of fields 1 to 7 is neither a number nor the cell the unnumbered mode takes.
+
+    An empty line cell is not this: a row with no line is either the sentinel's, which is the row
+    above's, or a filled row missing a cell, which is `state_filled`'s. A row whose value **is** the
+    sentinel is passed over here for the same reason - every defect of such a row is
+    `state_sentinel`'s alone, so that one row raises one code.
+
+    The cell reading the unnumbered word under a header that says its lines are numbered is this
+    failure: the word says no line was read, and the header says every line was.
+
+    Nothing to read where there is no model or no ticket: it returns an empty list.
+    """
+    sentinel = _constant(run, tickets.SENTINEL)
+    unnumbered = _constant(run, UNNUMBERED_CELL)
+    found = []
+    for row in _rows(run)[0]:
+        if row.value == sentinel or row.line == tickets.EMPTY:
+            continue
+        if _is_number(row.line):
+            continue
+        if row.line == unnumbered and _mode_value(run) == _mode(tickets.unnumbered_mode):
+            continue
+        found.append(Failure(row.at, "the line cell of this row reads '" + row.line + "', and a "
+                                     "filled row of these fields carries the number of the body "
+                                     "line its quote is on"))
+    return found
+
+
+check_line_form.phase = STATES
+
+
+def check_range_reversed(run):
+    """A range gives a first number that is not below its second (FR-29).
+
+    Two places carry a range that this phase can read: an entry of the unmapped list standing for a
+    run of body lines, and the line cell of a source row. A range of one line cannot be written as
+    a range in either - the entry's own pattern refuses it, and a source row written that way is
+    `source_row`'s - so what is left here is the one way round that is wrong. A reversed body range
+    is a header value and is that row's.
+
+    Nothing to read where there is no model, no ticket or no unmapped block: it returns an empty
+    list. **A file with no ticket carries no unmapped entry this check reads either**, although it
+    has an unmapped block and may have a range in it: a zero-ticket file is all coverage, the
+    contract skips the row states for that shape (AD-10), and reading its list here would make this
+    the one check of the phase that speaks where its six neighbours are silent.
+    """
+    found = []
+    model = run.parsed.model
+    if model is not None and model.tickets and model.unmapped is not None:
+        for entry in model.unmapped.entries:
+            if entry.last is None or entry.number is None or entry.last >= entry.number:
+                continue
+            found.append(Failure(entry.at, "this entry stands for the body lines from " +
+                                           str(entry.number) + " to " + str(entry.last) + ", and "
+                                           "a range runs from its first line to its last"))
+    for row in _rows(run)[1]:
+        parts = row.line.split(tickets.HYPHEN)
+        if len(parts) != 2:
+            continue
+        if not _is_number(parts[0]) or not _is_number(parts[1]):
+            continue
+        if not _above(parts[0], parts[1]):
+            continue
+        found.append(Failure(row.at, "this source row gives the range '" + row.line + "', and a "
+                                     "range runs from its first line to its last"))
+    return found
+
+
+check_range_reversed.phase = STATES
+
+
 # --- the warnings, which are never suppressed and never a failure -------------------------------------
 
 
@@ -540,10 +1076,14 @@ def _has_material(phase, run):
     the reading of the file and the grammar, and nothing after them - no row states, no quotes, no
     ranges, no coverage; a zero-ticket file skips the same except coverage, which is the whole
     point of that shape; and the unnumbered mode skips the line and range checks, with the search
-    of a quote in the input taking the place of the search on a line. None of those is built, and
-    none of them can be seen today, because every check of the four phases they speak of is
-    registered with nothing behind it. The story that fills a phase builds the skip that belongs
-    to it, here, beside the one that is written.
+    of a quote in the input taking the place of the search on a line. None of those is built.
+
+    What stands in for the first two today is the rule inside each check of the row-states phase:
+    every one of them reads the model, and a shape that carries no ticket and no unmapped list
+    leaves each of them with nothing to read. The difference is visible to nobody - a check with
+    nothing to read is neither a pass nor a failure either way - and it is a rule about a phase, so
+    the story that owns AD-10 moves it here. The three phases below row states are registered with
+    nothing behind them and cannot be seen at all.
 
     A phase this returns False for does not run at all: its checks are not called, so the run
     records nothing for them and `run.reached` does not move past the phase before it - which is
@@ -704,7 +1244,7 @@ def main(argv=None, version_info=None):
         contract.emit(unreadable)
         return 2
     try:
-        run = Run(path, data, tickets.parse(data), directory)
+        run = Run(path, data, tickets.parse(data), directory, tables)
         lines, failed = run_phases(run, checks, tables[CHECKS_TABLE])
     except Exception:
         contract.emit(contract.internal_line(__file__))

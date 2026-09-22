@@ -65,11 +65,11 @@ ANCHORED_RE = re.compile(r"^`([^`]+)`$")
 #: Its columns, by position: the phase, the key that opens it, the key that closes it.
 FIRST, LAST = 1, 2
 
-#: What the story fixes about the shipped table: ten checks written, two rows the frame raises, and
-#: the rest registered with nothing behind them. They are counted, never listed.
-WRITTEN = 10
+#: What the story fixes about the shipped table: twenty-five checks written, two rows the frame
+#: raises, and the rest registered with nothing behind them. They are counted, never listed.
+WRITTEN = 25
 FRAME_ROWS = 2
-PENDING_ROWS = 36
+PENDING_ROWS = 21
 #: The checks that end their phase. The count is in the prose; the names are read from it.
 ENDING = 5
 #: The nine phases of AD-6.
@@ -78,6 +78,22 @@ PHASE_COUNT = 9
 #: A failure line and a warning line, by shape alone.
 FAILURE_RE = re.compile(r"^[A-Z][A-Z0-9_]*\t[^\t]+:[0-9]+\t[^\t]+$")
 CLEAN = "clean-01.tickets.md"
+
+#: The checks of the canonical-form-and-grammar phase, by the position of their row in the table:
+#: canonical form, a line no class claims, the blocks of the shape, the ticket numbers, the fields
+#: of a ticket, the reason of a refusal, the form of an unmapped entry, the size limit. A position
+#: and never a key - a key of that table is written in no tool and in no test of one.
+CANONICAL, STRAY, BLOCKS, NUMBERS, FIELD_ROWS, REASON, ENTRY_FORM, SIZE = range(8)
+#: The checks of the row-states phase, by the same rule: the three states, the shape of the source
+#: row, what that row names, the form of a line cell, and the range that runs backwards.
+SENTINEL_ROW, FILLED_ROW, EMPTY_ROW, SOURCE_SHAPE, SOURCE_NAMES, LINE_CELL, REVERSED = range(7)
+#: How many committed fixtures each of the two phases has. More than one key carries several.
+GRAMMAR_FIXTURES = 12
+STATES_FIXTURES = 8
+#: The nine classes of finding the one reader of the format makes, counted and never listed.
+FINDING_CLASSES = 9
+#: The stray sentence the grammar fixtures are built with.
+A_STRAY_LINE = "A sentence no class of the grammar claims."
 
 SHIPPED = {}
 ROWS = []
@@ -204,6 +220,65 @@ def keys_of(phase):
     return [key for key in checks if getattr(checks[key], validate.PHASE, None) == phase]
 
 
+def check_at(phase, place):
+    """One check, by the position of its row inside its phase. No key is typed for it."""
+    return registry()[keys_of(phase)[place]]
+
+
+def code_at(phase, place):
+    """The code that check reports under, read out of the table the same way."""
+    return code_of(keys_of(phase)[place])
+
+
+def field_at(place):
+    """One field name, by the position of its row in the fields table.
+
+    The table is asked for through the format module's own address, because its id reads the same
+    as a key of `checks` and nothing here writes one of those. Position and not name, so that
+    "fields 1 to 7" and "field 8" are arithmetic here as they are in the contract.
+    """
+    return list(SHIPPED[tickets.FIELDS_TABLE].rows)[place]
+
+
+def constant(name):
+    """One constant of the ticket schema, read from the table."""
+    return SHIPPED[CONSTANTS].rows[name][tickets.VALUE]
+
+
+def over_the_limit():
+    """A body range one line longer than the contract is written for, derived and never written."""
+    return "1-" + str(int(constant(validate.MAX_BODY_LINES)) + 1)
+
+
+def heading_of(number):
+    """The heading line of one ticket, built from the constant a serialiser writes it from."""
+    return constant(tickets.TICKET_HEADING_PREFIX) + " " + str(number)
+
+
+def line_at(lines, text):
+    """The index of the one line that reads exactly this."""
+    found = [index for index in range(len(lines)) if lines[index] == text]
+    if len(found) != 1:
+        raise AssertionError(repr(text) + " stands on " + str(len(found)) + " lines")
+    return found[0]
+
+
+def fixtures_for(key):
+    """The committed fixtures named for this check, by the convention the manifest states.
+
+    `<key>-<nn>.tickets.md`, so the stem is split at its last hyphen and the rest must be the key
+    exactly: a prefix would let `source_row` claim `source_value`'s files.
+    """
+    found = []
+    for row in ROWS:
+        name = row.cells[FIXTURE]
+        if name.split(".")[0].rsplit("-", 1)[0] != key:
+            continue
+        if os.path.isfile(os.path.join(TICKETS_FOLDER, name)):
+            found.append(name)
+    return found
+
+
 def examples():
     """The complete example files of `01_schema.md`, each as a list of lines.
 
@@ -315,6 +390,54 @@ class ValidatorCase(unittest.TestCase):
         self.assertEqual(expected_codes(name), self.codes(lines), lines)
         self.assertEqual(expected_exit(name), code, lines)
         return lines
+
+    # --- a run built here, for a check called on its own -------------------------------------------
+
+    def bytes_of(self, path):
+        handle = open(path, "rb")
+        try:
+            return handle.read()
+        finally:
+            handle.close()
+
+    def clean(self):
+        return self.bytes_of(os.path.join(TICKETS_FOLDER, CLEAN))
+
+    def a_run(self, data, directory=None):
+        """One run over these bytes, built as `main` builds one and with nothing opened.
+
+        A check is handed a run and nothing else, so a check can be called on its own without the
+        phases around it - which is what lets one bullet of the contract be one test.
+        """
+        return validate.Run("a.tickets.md", data, tickets.parse(data),
+                            SNAPSHOTS_FOLDER if directory is None else directory, SHIPPED)
+
+    def model_of(self, data):
+        parsed = tickets.parse(data)
+        self.assertEqual([], [repr(finding) for finding in parsed.findings])
+        return parsed.model
+
+    def with_row(self, field, place=0, **cells):
+        """The clean file with the cells of one row of one ticket changed, still canonical."""
+        model = self.model_of(self.clean())
+        built = list(model.tickets)
+        ticket = built[place]
+        rows = list(ticket.rows)
+        for index in range(len(rows)):
+            if rows[index].field == field:
+                rows[index] = rows[index]._replace(**cells)
+        built[place] = ticket._replace(rows=rows)
+        return tickets.serialise(model._replace(tickets=built))
+
+    def raised_by(self, phase, place, data):
+        """What one check finds in these bytes, as failures."""
+        return check_at(phase, place)(self.a_run(data))
+
+    def assert_silent(self, phase, data):
+        """Every check of a phase finds nothing in these bytes."""
+        run = self.a_run(data)
+        for key in keys_of(phase):
+            self.assertEqual([], registry()[key](run), key)
 
 
 # --- the registry, both ways (AD-7) ----------------------------------------------------------------
@@ -624,13 +747,6 @@ class TestTheCorpusRaisesWhatTheManifestSays(ValidatorCase):
         self.assertEqual([], [repr(finding) for finding in parsed.findings])
         self.assertEqual(data, tickets.serialise(parsed.model))
 
-    def bytes_of(self, path):
-        handle = open(path, "rb")
-        try:
-            return handle.read()
-        finally:
-            handle.close()
-
 
 # --- the modes, the shapes, and what has nothing to read ------------------------------------------------
 
@@ -765,12 +881,14 @@ class TestWhatHasNothingToRead(ValidatorCase):
 
     def test_a_file_that_fails_the_grammar_is_still_paired(self):
         """A stray sentence: no model, and a header that still says which snapshot this is about.
-        The grammar phase is pending today, so the run exits 0 - and the pairing ran, which the
-        next test shows by breaking it."""
+        The pairing runs and finds nothing, the grammar phase runs after it and reports the stray
+        line, and the run exits 1 under that one code. The next test shows the pairing really ran,
+        by breaking it."""
         path = self.write("e.tickets.md", self.strayed())
         code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
-        self.assertEqual([], lines)
-        self.assertEqual(0, code)
+        self.assertEqual(1, code, lines)
+        self.assertEqual(1, len(lines), lines)
+        self.assertEqual(expected_codes("grammar_line-01.tickets.md"), self.codes(lines))
 
     def test_the_pairing_of_that_file_really_ran(self):
         path = self.write("f.tickets.md", self.strayed(snapshots=False))
@@ -797,6 +915,588 @@ class TestWhatHasNothingToRead(ValidatorCase):
         self.assertEqual([tickets.UnclaimedFinding],
                          [type(finding) for finding in parsed.findings])
         return ("\n".join(lines)).encode("utf-8")
+
+
+# --- one class of finding, one check ------------------------------------------------------------------
+
+
+class TestTheFindingMap(ValidatorCase):
+    """Every class of finding the reader makes is reported by exactly one check, and every check
+    that reports one reports one class.
+
+    The reader decides what a tickets file **is**; the validator decides what each of its findings
+    is called. If the two ever drift - a tenth class nothing claims, or two checks claiming one
+    class - a defect would be reported twice, or under a code that means something else, or not at
+    all. The map is found by injecting a `Parsed` carrying one finding of each class and reading
+    which check reports it back: no key is typed and no class is named beside a key.
+    """
+
+    def classes(self):
+        found = []
+        for name in sorted(dir(tickets)):
+            value = getattr(tickets, name)
+            if not isinstance(value, type) or value is tickets.Finding:
+                continue
+            if issubclass(value, tickets.Finding):
+                found.append(value)
+        return found
+
+    def claims(self):
+        """{key: the classes that check reported} over a run carrying one finding of each class."""
+        kinds = self.classes()
+        findings = []
+        for index in range(len(kinds)):
+            findings.append(kinds[index](index + 1, "one finding of this class"))
+        run = validate.Run("a.tickets.md", b"", tickets.Parsed(None, findings, None, None),
+                           SNAPSHOTS_FOLDER, SHIPPED)
+        found = {}
+        checks = registry()
+        for key in checks:
+            raised = checks[key](run)
+            if raised:
+                found[key] = set([kinds[failure.line - 1] for failure in raised])
+        return found
+
+    def test_the_reader_makes_the_number_of_classes_this_story_counted(self):
+        self.assertEqual(FINDING_CLASSES, len(self.classes()))
+
+    def test_every_class_of_finding_is_claimed_by_exactly_one_check(self):
+        claimed = self.claims()
+        for kind in self.classes():
+            owners = [key for key in claimed if kind in claimed[key]]
+            self.assertEqual(1, len(owners), kind.__name__ + " " + repr(owners))
+
+    def test_every_check_that_reports_a_finding_reports_one_class_and_no_other(self):
+        claimed = self.claims()
+        self.assertEqual(FINDING_CLASSES, len(claimed), sorted(claimed))
+        for key in claimed:
+            self.assertEqual(1, len(claimed[key]), key + " " + repr(claimed[key]))
+
+    def test_no_other_check_says_anything_about_a_file_with_findings_and_no_model(self):
+        """The other side of it: a run carrying findings and no model leaves every check that reads
+        the model, the header or the snapshot with nothing to read, and none of them invents a
+        failure out of that."""
+        claimed = self.claims()
+        for phase in (validate.STATES, validate.WARNINGS):
+            for key in keys_of(phase):
+                self.assertNotIn(key, claimed, key)
+
+
+# --- canonical form and grammar ---------------------------------------------------------------------
+
+
+class TestTheGrammarPhase(ValidatorCase):
+    """The eight rows of the phase, against the committed corpus and one by one."""
+
+    def test_each_row_of_the_grammar_phase_raises_its_own_code_alone(self):
+        found = 0
+        for key in keys_of(validate.GRAMMAR):
+            names = fixtures_for(key)
+            self.assertTrue(names, key)
+            for name in names:
+                found += 1
+                lines = self.assert_manifest(name)
+                self.assertEqual(1, len(lines), lines)
+        self.assertEqual(GRAMMAR_FIXTURES, found)
+
+    def test_blocks_run_together_are_canonical_forms_and_not_the_shapes(self):
+        """Decision 2 of this story. The tolerance set forgives an empty line anywhere, so an
+        absent separator is read and reported as a departure from canonical form; the row about the
+        shape is for a block that is not there at all."""
+        lines = self.clean().decode("utf-8").split("\n")
+        heading = constant(tickets.UNMAPPED_HEADING_TEXT)
+        at = [index for index in range(len(lines)) if lines[index] == heading][0]
+        self.assertEqual("", lines[at - 1])
+        del lines[at - 1]
+        data = ("\n".join(lines)).encode("utf-8")
+        self.assertEqual([], self.raised_by(validate.GRAMMAR, BLOCKS, data))
+        self.assertEqual(1, len(self.raised_by(validate.GRAMMAR, CANONICAL, data)))
+
+    def test_a_refusal_whose_reason_is_one_of_the_four_says_nothing(self):
+        label = constant("refusal_label")
+        colon = constant("header_colon")
+        for reason in list(SHIPPED[validate.REASONS_TABLE].rows):
+            block = with_item(self.refusal(), validate.MODE_ITEM, tickets.numbered_mode())
+            block = [item_line(label, reason) if line.startswith(label + colon)
+                     else line for line in block]
+            path = self.write("r.tickets.md", as_bytes(block))
+            code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+            self.assertEqual([], lines, reason)
+            self.assertEqual(0, code, reason)
+
+    def test_a_reason_the_contract_does_not_list_is_one_failure_at_the_refusal_line(self):
+        data = self.bytes_of(os.path.join(TICKETS_FOLDER, "refusal_reason-01.tickets.md"))
+        raised = self.raised_by(validate.GRAMMAR, REASON, data)
+        self.assertEqual(1, len(raised))
+        self.assertEqual(tickets.parse(data).model.refusal.at, raised[0].line)
+
+    def test_a_file_that_is_no_refusal_carries_no_reason_to_read(self):
+        self.assertEqual([], self.raised_by(validate.GRAMMAR, REASON, self.clean()))
+
+    def refusal(self):
+        label = constant("refusal_label")
+        colon = constant("header_colon")
+        found = [block for block in examples()
+                 if [line for line in block if line.startswith(label + colon)]]
+        self.assertEqual(1, len(found))
+        return found[0]
+
+    def test_two_stray_lines_in_one_file_are_two_failures_of_one_check(self):
+        """One check, two failures: a phase reports everything it finds, and a check that gave back
+        the first of its findings and stopped would hide the second."""
+        lines = self.clean().decode("utf-8").split("\n")
+        lines.insert(len(lines) - 1, A_STRAY_LINE)
+        lines.insert(line_at(lines, heading_of(2)), A_STRAY_LINE)
+        data = ("\n".join(lines)).encode("utf-8")
+        self.assertEqual(2, len(self.raised_by(validate.GRAMMAR, STRAY, data)))
+        path = self.write("t.tickets.md", data)
+        code, printed = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual(1, code, printed)
+        self.assertEqual(2, len(printed), printed)
+
+    # --- the size limit, which reads the header and not the model ---------------------------------
+
+    def ranged(self, value):
+        block = self.clean().decode("utf-8").split("\n")
+        return ("\n".join(with_item(block, tickets.RANGE_ITEM, value))).encode("utf-8")
+
+    def test_the_size_limit_passes_at_the_limit_and_fails_one_line_over_it(self):
+        limit = int(constant(validate.MAX_BODY_LINES))
+        at = "1-" + str(limit)
+        over = "1-" + str(limit + 1)
+        self.assertEqual([], self.raised_by(validate.GRAMMAR, SIZE, self.ranged(at)))
+        raised = self.raised_by(validate.GRAMMAR, SIZE, self.ranged(over))
+        self.assertEqual(1, len(raised), raised)
+
+    def test_the_sentinel_is_a_range_with_nothing_to_count(self):
+        data = self.ranged(constant(tickets.SENTINEL))
+        self.assertEqual([], self.raised_by(validate.GRAMMAR, SIZE, data))
+
+    def test_a_bare_number_is_one_line_and_never_over_the_limit(self):
+        self.assertEqual([], self.raised_by(validate.GRAMMAR, SIZE, self.ranged("12")))
+
+    def test_the_failure_points_at_the_header_item_that_made_the_claim(self):
+        limit = int(constant(validate.MAX_BODY_LINES))
+        data = self.ranged(str(limit + 2) + "-" + str(limit * 3))
+        raised = self.raised_by(validate.GRAMMAR, SIZE, data)
+        self.assertEqual(1, len(raised))
+        item = [item for item in tickets.parse(data).header
+                if item.name == tickets.RANGE_ITEM][0]
+        self.assertEqual(item.at, raised[0].line)
+
+    def test_a_range_of_thousands_of_digits_is_counted_on_every_interpreter(self):
+        """Both ends are read by arithmetic over their own digits. An interpreter from 3.11 on
+        refuses to convert a run this long, so a check that converted would report this file on
+        3.9 and say nothing on 3.14 - and a verdict that depends on which Python ran it is no
+        verdict."""
+        first = "1" + "0" * 4499
+        last = "2" + "0" * 4499
+        raised = self.raised_by(validate.GRAMMAR, SIZE, self.ranged(first + "-" + last))
+        self.assertEqual(1, len(raised), raised)
+        self.assertIn(validate._as_digits(validate._number(last) - validate._number(first) + 1),
+                      raised[0].message)
+        if sys.version_info[:2] >= (3, 11):
+            self.assertRaises(ValueError, int, first)
+            self.assertRaises(ValueError, str, validate._number(first))
+
+    def test_a_limit_the_contract_no_longer_gives_as_a_number_ends_the_run(self):
+        """Comparing a span against nothing is quietly false: every file would pass this row and no
+        line would say so. It is a broken contract, as a rule cell naming no mode is."""
+        original = contract.load
+
+        def reworded(root=None):
+            tables = original(root)
+            tables[tickets.CONSTANTS_TABLE].rows[validate.MAX_BODY_LINES][tickets.VALUE] = "many"
+            return tables
+
+        contract.load = reworded
+        self.addCleanup(setattr, contract, "load", original)
+        code, lines = self.fixture(CLEAN)
+        self.assertEqual(2, code, lines)
+        self.assertEqual(1, len(lines), lines)
+        self.assertEqual(contract.INTERNAL, lines[0].split(contract.TAB)[0])
+        self.assertIn("ValueError", lines[0])
+        self.assertIn("the cell the limit is read from is not a number", lines[0])
+        self.assertNotIn("Traceback", lines[0])
+
+    def test_a_range_is_counted_from_its_first_line_and_not_from_one(self):
+        """`301-400` is a hundred lines and not four hundred: the limit is a count of body lines
+        translated, and a file that translated a window of a long body is inside it."""
+        limit = int(constant(validate.MAX_BODY_LINES))
+        data = self.ranged(str(limit + 1) + "-" + str(limit + limit))
+        self.assertEqual([], self.raised_by(validate.GRAMMAR, SIZE, data))
+
+    def test_it_reads_the_header_so_that_one_phase_reports_all_of_its_failures(self):
+        """A file both too long and carrying a stray sentence has no model, and the size limit is
+        read out of the header all the same: both codes, one phase, exit 1."""
+        block = self.bytes_of(os.path.join(TICKETS_FOLDER,
+                                           "size_limit-01.tickets.md")).decode("utf-8").split("\n")
+        block = with_item(block, tickets.RANGE_ITEM, over_the_limit())
+        block.insert(line_at(block, constant(tickets.UNMAPPED_HEADING_TEXT)), A_STRAY_LINE)
+        path = self.write("s.tickets.md", ("\n".join(block)).encode("utf-8"))
+        code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual(1, code, lines)
+        self.assertEqual(set([code_at(validate.GRAMMAR, STRAY), code_at(validate.GRAMMAR, SIZE)]),
+                         self.codes(lines), lines)
+
+
+# --- the row states ------------------------------------------------------------------------------------
+
+
+class TestTheRowStates(ValidatorCase):
+    """The seven rows of the phase, one bullet of the contract at a time.
+
+    Every one of them reads the model and nothing else, so each is called on a file built here
+    rather than committed: one committed fixture per row is the corpus's job, and the cases around
+    that one are these.
+    """
+
+    def test_each_row_of_the_states_phase_raises_its_own_code_alone(self):
+        found = 0
+        for key in keys_of(validate.STATES):
+            names = fixtures_for(key)
+            self.assertTrue(names, key)
+            for name in names:
+                found += 1
+                lines = self.assert_manifest(name)
+                self.assertEqual(1, len(lines), lines)
+        self.assertEqual(STATES_FIXTURES, found)
+
+    def test_the_clean_file_is_in_neither_state_nowhere(self):
+        self.assert_silent(validate.GRAMMAR, self.clean())
+        self.assert_silent(validate.STATES, self.clean())
+
+    def test_a_defect_in_the_last_ticket_is_read_and_reported_at_its_own_line(self):
+        """Every ticket, and not the first one. A check that read `model.tickets[:1]` would pass
+        every fixture of this corpus, because each of them mutates ticket 1."""
+        data = self.with_row(field_at(1), place=2, value="", line="", quote="")
+        raised = self.raised_by(validate.STATES, EMPTY_ROW, data)
+        self.assertEqual(1, len(raised))
+        third = self.model_of(data).tickets[2]
+        self.assertEqual([row.at for row in third.rows if row.field == field_at(1)],
+                         [raised[0].line])
+
+    def test_two_rows_of_one_kind_in_one_file_are_two_failures(self):
+        """One check, two failures. A check that gave back the first of what it found and stopped
+        would hide everything after it, and a phase reports all of its failures."""
+        model = self.model_of(self.clean())
+        built = []
+        for ticket in model.tickets[:2]:
+            rows = [row._replace(value="") if row.field == field_at(1) else row
+                    for row in ticket.rows]
+            built.append(ticket._replace(rows=rows))
+        data = tickets.serialise(model._replace(tickets=built + list(model.tickets[2:])))
+        raised = self.raised_by(validate.STATES, EMPTY_ROW, data)
+        self.assertEqual(2, len(raised), raised)
+        self.assertEqual(sorted(set([failure.line for failure in raised])),
+                         sorted([failure.line for failure in raised]))
+
+    # --- the two states ---------------------------------------------------------------------------
+
+    def test_a_sentinel_carrying_a_line_is_the_sentinels_failure_and_no_others(self):
+        """The matrix's own case: a `breaking` row reading the sentinel with a line and no quote."""
+        data = self.with_row(field_at(2), value=constant(tickets.SENTINEL), line="3", quote="")
+        self.assertEqual(1, len(self.raised_by(validate.STATES, SENTINEL_ROW, data)))
+        for place in (FILLED_ROW, EMPTY_ROW, SOURCE_SHAPE, SOURCE_NAMES, LINE_CELL, REVERSED):
+            self.assertEqual([], self.raised_by(validate.STATES, place, data), place)
+
+    def test_a_sentinel_carrying_a_quote_is_the_same_failure(self):
+        quote = self.model_of(self.clean()).tickets[0].rows[0].quote
+        data = self.with_row(field_at(2), value=constant(tickets.SENTINEL), line="", quote=quote)
+        self.assertEqual(1, len(self.raised_by(validate.STATES, SENTINEL_ROW, data)))
+
+    def test_a_sentinel_with_neither_is_the_state_the_contract_names(self):
+        self.assertEqual([], self.raised_by(validate.STATES, SENTINEL_ROW, self.clean()))
+
+    def test_the_sentinel_check_reads_no_source_row(self):
+        """The first carve-out. A source row whose whole value reads the sentinel while its line
+        cell holds a number is exactly the row the sentinel check would fire on, and it is the
+        source row's: every defect of that row's cells is that one code, and this one is two - the
+        value is not two parts, and a row reading the sentinel carries no line.
+
+        The line cell reading the sentinel under a numbered header is the same story from the other
+        side: the source row's code, and not the sentinel check's.
+        """
+        for cells in ({"value": constant(tickets.SENTINEL), "line": "2"},
+                      {"line": constant(tickets.SENTINEL)}):
+            data = self.with_row(field_at(-1), **cells)
+            self.assertEqual([], self.raised_by(validate.STATES, SENTINEL_ROW, data), cells)
+            self.assertEqual(1, len(self.raised_by(validate.STATES, SOURCE_SHAPE, data)), cells)
+
+    def test_a_value_with_no_line_and_a_value_with_no_quote_are_both_filled_failures(self):
+        quote = self.model_of(self.clean()).tickets[0].rows[0].quote
+        for cells in ({"line": "", "quote": ""}, {"line": "2", "quote": ""},
+                      {"line": "", "quote": quote}):
+            data = self.with_row(field_at(1), value="date strings", **cells)
+            self.assertEqual(1, len(self.raised_by(validate.STATES, FILLED_ROW, data)), cells)
+
+    def test_a_filler_with_no_line_and_no_quote_is_that_same_failure_whatever_word_it_uses(self):
+        """No filler list, here or anywhere (decision 3). A filler carrying neither a line nor a
+        quote is exactly a filled row missing its cells; one carrying both cannot be told from a
+        value and is the substring rule's, a phase further down."""
+        for filler in ("N/A", "none", "-"):
+            data = self.with_row(field_at(1), value=filler, line="", quote="")
+            self.assertEqual(1, len(self.raised_by(validate.STATES, FILLED_ROW, data)), filler)
+
+    def test_a_filler_carrying_a_line_and_a_quote_says_nothing_in_this_phase(self):
+        quote = self.model_of(self.clean()).tickets[0].rows[0].quote
+        data = self.with_row(field_at(1), value="N/A", line="2", quote=quote)
+        self.assert_silent(validate.STATES, data)
+
+    def test_an_empty_value_is_neither_state_whatever_the_other_cells_hold(self):
+        quote = self.model_of(self.clean()).tickets[0].rows[0].quote
+        for cells in ({"line": "", "quote": ""}, {"line": "2", "quote": quote}):
+            data = self.with_row(field_at(1), value="", **cells)
+            self.assertEqual(1, len(self.raised_by(validate.STATES, EMPTY_ROW, data)), cells)
+            self.assertEqual([], self.raised_by(validate.STATES, FILLED_ROW, data), cells)
+            self.assertEqual([], self.raised_by(validate.STATES, SENTINEL_ROW, data), cells)
+
+    # --- the source row ---------------------------------------------------------------------------
+
+    def test_a_value_that_is_not_two_parts_is_the_source_rows_failure(self):
+        for value in ("https://example.com/changelog", "a b c", "",
+                      constant(tickets.SENTINEL)):
+            data = self.with_row(field_at(-1), value=value)
+            raised = self.raised_by(validate.STATES, SOURCE_SHAPE, data)
+            self.assertEqual(1, len(raised), repr(value))
+
+    def test_the_shape_check_lets_either_part_read_the_sentinel_and_the_other_still_compares(self):
+        """FR-17. The permission is the **shape** check's: the two parts are read left to right,
+        which is unambiguous even when both of them are the sentinel, because neither a URL nor a
+        snapshot's name holds a space. It is not a permission to say nothing - what each part is
+        then held against is still the header's own value, so the sentinel passes where the header
+        reads the sentinel and fails where the header names a real snapshot."""
+        sentinel = constant(tickets.SENTINEL)
+        header = self.model_of(self.clean()).header
+        url = [item.value for item in header if item.name == validate.URL_ITEM][0]
+        name = [item.value for item in header if item.name == validate.SNAPSHOT_ITEM][0]
+        for value in (sentinel + " " + name, url + " " + sentinel, sentinel + " " + sentinel):
+            data = self.with_row(field_at(-1), value=value)
+            self.assertEqual([], self.raised_by(validate.STATES, SOURCE_SHAPE, data), value)
+            self.assertEqual(1, len(self.raised_by(validate.STATES, SOURCE_NAMES, data)), value)
+        data = self.with_row(field_at(-1), value=url + " " + name)
+        self.assertEqual([], self.raised_by(validate.STATES, SOURCE_NAMES, data))
+        path = self.write("v.tickets.md", as_bytes(self.unnumbered()))
+        self.assertEqual([], self.raised_by(validate.STATES, SOURCE_NAMES,
+                                            self.bytes_of(path)))
+
+    def test_a_line_cell_written_as_a_range_of_one_line_is_the_source_rows_failure(self):
+        data = self.with_row(field_at(-1), line="2-2")
+        self.assertEqual(1, len(self.raised_by(validate.STATES, SOURCE_SHAPE, data)))
+        self.assertEqual([], self.raised_by(validate.STATES, REVERSED, data))
+
+    def test_a_line_cell_reading_the_sentinel_under_the_numbered_header_is_that_failure(self):
+        data = self.with_row(field_at(-1), line=constant(tickets.SENTINEL))
+        self.assertEqual(1, len(self.raised_by(validate.STATES, SOURCE_SHAPE, data)))
+
+    def test_an_empty_line_cell_on_the_source_row_is_that_failure(self):
+        """Field 8 takes one row and that row carries the range of the whole change; an empty cell
+        gives none. It is the source row's code and not `line_form`'s, which reads fields 1 to 7."""
+        data = self.with_row(field_at(-1), line="")
+        self.assertEqual(1, len(self.raised_by(validate.STATES, SOURCE_SHAPE, data)))
+        self.assertEqual([], self.raised_by(validate.STATES, LINE_CELL, data))
+
+    def test_a_quote_on_the_source_row_is_that_failure(self):
+        quote = self.model_of(self.clean()).tickets[0].rows[0].quote
+        data = self.with_row(field_at(-1), quote=quote)
+        self.assertEqual(1, len(self.raised_by(validate.STATES, SOURCE_SHAPE, data)))
+
+    def test_three_defects_of_one_source_row_are_one_failure_naming_all_three(self):
+        """One failure per row and never three: the message lists the defects so that a reader is
+        not sent back to the same row three times."""
+        quote = self.model_of(self.clean()).tickets[0].rows[0].quote
+        data = self.with_row(field_at(-1), value="a b c", line="2-2", quote=quote)
+        raised = self.raised_by(validate.STATES, SOURCE_SHAPE, data)
+        self.assertEqual(1, len(raised))
+        one = self.raised_by(validate.STATES, SOURCE_SHAPE,
+                             self.with_row(field_at(-1), line="2-2"))
+        self.assertEqual(1, len(one))
+        self.assertEqual(2, raised[0].message.count("; and "), raised[0].message)
+        self.assertEqual(0, one[0].message.count("; and "), one[0].message)
+
+    def test_a_range_of_several_lines_says_nothing_here(self):
+        """A line cell `3-5` under a ticket whose change is one line is a question about the range
+        and not about the row's shape; the phase that reads a range against a snapshot owns it."""
+        self.assert_silent(validate.STATES, self.with_row(field_at(-1), line="3-5"))
+
+    def test_the_source_row_must_name_what_the_header_names(self):
+        header = self.model_of(self.clean()).header
+        url = [item.value for item in header if item.name == validate.URL_ITEM][0]
+        name = [item.value for item in header if item.name == validate.SNAPSHOT_ITEM][0]
+        for value in (url + "x " + name, url + " " + name + "x"):
+            data = self.with_row(field_at(-1), value=value)
+            self.assertEqual(1, len(self.raised_by(validate.STATES, SOURCE_NAMES, data)), value)
+            self.assertEqual([], self.raised_by(validate.STATES, SOURCE_SHAPE, data), value)
+
+    def test_a_row_the_shape_check_refused_is_not_read_for_what_it_names(self):
+        """A value that is not two parts has no parts to compare, and two codes for one cell would
+        fail a one-mutation fixture for a neighbour's reason.
+
+        The second case is the one that shows the rule is the **row** and not the value: the value
+        reads as two parts and names another URL, and the line cell is a range of one line. The
+        shape check refuses the row, and what it names is not read - one code and not two.
+        """
+        header = self.model_of(self.clean()).header
+        name = [item.value for item in header if item.name == validate.SNAPSHOT_ITEM][0]
+        for cells in ({"value": "a b c"},
+                      {"value": "https://example.com/elsewhere " + name, "line": "2-2"}):
+            data = self.with_row(field_at(-1), **cells)
+            self.assertEqual(1, len(self.raised_by(validate.STATES, SOURCE_SHAPE, data)), cells)
+            self.assertEqual([], self.raised_by(validate.STATES, SOURCE_NAMES, data), cells)
+
+    # --- the form of a line cell --------------------------------------------------------------------
+
+    def test_the_unnumbered_cell_under_a_numbered_header_is_a_line_form_failure(self):
+        data = self.with_row(field_at(0), line=constant(validate.UNNUMBERED_CELL))
+        self.assertEqual(1, len(self.raised_by(validate.STATES, LINE_CELL, data)))
+
+    def test_a_line_cell_that_is_no_number_at_all_is_that_failure(self):
+        for cell in ("0", "1a", "two", "-3", "2.0", "3-5"):
+            data = self.with_row(field_at(0), line=cell)
+            self.assertEqual(1, len(self.raised_by(validate.STATES, LINE_CELL, data)), cell)
+
+    def test_an_empty_line_cell_is_not_this_failure(self):
+        """A row with no line is either the sentinel's or a filled row missing a cell, and both of
+        those are a row above."""
+        data = self.with_row(field_at(1), value="date strings", line="", quote="")
+        self.assertEqual([], self.raised_by(validate.STATES, LINE_CELL, data))
+
+    def test_a_row_whose_value_is_the_sentinel_is_passed_over(self):
+        """The second carve-out: such a row is the sentinel check's alone, so that one row raises
+        one code. The line cell has to be one this check would refuse for the carve-out to be worth
+        anything - a number would pass it either way - so the cell used here is the unnumbered word
+        under a header that says its lines are numbered, which is a line-form failure on any other
+        row."""
+        for cell in (constant(validate.UNNUMBERED_CELL), "3", "x"):
+            data = self.with_row(field_at(2), value=constant(tickets.SENTINEL), line=cell,
+                                 quote="")
+            self.assertEqual([], self.raised_by(validate.STATES, LINE_CELL, data), cell)
+            self.assertEqual(1, len(self.raised_by(validate.STATES, SENTINEL_ROW, data)), cell)
+
+    def test_the_unnumbered_cell_under_the_unnumbered_header_is_no_failure(self):
+        path = self.write("u.tickets.md", as_bytes(self.unnumbered()))
+        self.assert_silent(validate.STATES, self.bytes_of(path))
+
+    # --- a range that runs backwards ------------------------------------------------------------
+
+    def test_an_unmapped_range_whose_last_line_is_below_its_first_is_a_failure(self):
+        """At the head of the list and at its end, because a check reading only the first entry
+        would pass the second file and the committed fixture is the first."""
+        model = self.model_of(self.clean())
+        kept = [entry for entry in model.unmapped.entries if entry.number not in (5, 6, 7)]
+        reversed_entry = tickets.Entry(7, 5, None, 0)
+        for entries in ([reversed_entry] + kept, kept + [reversed_entry]):
+            data = tickets.serialise(model._replace(
+                unmapped=model.unmapped._replace(entries=entries)))
+            raised = self.raised_by(validate.STATES, REVERSED, data)
+            self.assertEqual(1, len(raised), raised)
+
+    def test_a_source_line_cell_that_runs_backwards_is_the_same_failure(self):
+        data = self.with_row(field_at(-1), line="5-3")
+        self.assertEqual(1, len(self.raised_by(validate.STATES, REVERSED, data)))
+        self.assertEqual([], self.raised_by(validate.STATES, SOURCE_SHAPE, data))
+
+    def test_a_range_of_one_line_is_the_source_rows_failure_and_not_this_one(self):
+        data = self.with_row(field_at(-1), line="2-2")
+        self.assertEqual([], self.raised_by(validate.STATES, REVERSED, data))
+
+    def test_the_two_ends_of_a_range_are_compared_as_numbers_and_not_as_text(self):
+        """`9-10` runs forwards and `10-9` runs backwards, and read as text the two swap over. The
+        comparison is written out rather than converted, because an interpreter from 3.11 on
+        refuses to convert a run of thousands of digits, so the rule it keeps has to be stated:
+        the longer run of digits is the larger number, and neither opens with a zero."""
+        for forwards, backwards in (("9-10", "10-9"), ("99-100", "100-99"), ("2-11", "11-2")):
+            self.assertEqual([], self.raised_by(validate.STATES, REVERSED,
+                                                self.with_row(field_at(-1), line=forwards)),
+                             forwards)
+            self.assertEqual(1, len(self.raised_by(validate.STATES, REVERSED,
+                                                   self.with_row(field_at(-1), line=backwards))),
+                             backwards)
+
+    def test_a_body_range_that_runs_backwards_is_not_read_here(self):
+        """It is a header value, and every defect of a header value is that one row."""
+        block = self.clean().decode("utf-8").split("\n")
+        data = ("\n".join(with_item(block, tickets.RANGE_ITEM, "5-3"))).encode("utf-8")
+        self.assert_silent(validate.STATES, data)
+
+    # --- nothing to read ------------------------------------------------------------------------
+
+    def test_every_check_of_the_phase_reads_nothing_where_there_is_no_model(self):
+        run = validate.Run("a.tickets.md", b"", tickets.Parsed(None, [], None, None),
+                           SNAPSHOTS_FOLDER, SHIPPED)
+        for key in keys_of(validate.STATES):
+            self.assertEqual([], registry()[key](run), key)
+
+    def test_every_check_of_the_phase_reads_nothing_in_a_file_the_grammar_refused(self):
+        lines = self.clean().decode("utf-8").split("\n")
+        lines.insert(len(lines) - 1, A_STRAY_LINE)
+        data = ("\n".join(lines)).encode("utf-8")
+        self.assertIsNone(tickets.parse(data).model)
+        self.assert_silent(validate.STATES, data)
+
+    def test_every_check_of_the_phase_reads_nothing_in_a_zero_ticket_file(self):
+        """A zero-ticket file is all coverage: the contract skips the row states for that shape
+        (AD-10), and it is the one shape with an unmapped block and no ticket. So the range check
+        reads its list no more than its six neighbours read its rows - a copy carrying a range that
+        runs backwards is silent here too, and the phase that owns that list will say so."""
+        block = self.zero_ticket()
+        self.assert_silent(validate.GRAMMAR, as_bytes(block))
+        self.assert_silent(validate.STATES, as_bytes(block))
+        model = self.model_of(as_bytes(block))
+        entries = list(model.unmapped.entries)
+        entries[-1] = tickets.Entry(3, 1, None, 0)
+        data = tickets.serialise(model._replace(
+            unmapped=model.unmapped._replace(entries=entries)))
+        self.assert_silent(validate.STATES, data)
+
+    def zero_ticket(self):
+        """The published example of a file whose input announced no change."""
+        found = [block for block in examples()
+                 if constant(tickets.TICKETS_NONE_LINE) in block]
+        self.assertEqual(1, len(found))
+        return found[0]
+
+    def test_every_check_of_the_phase_reads_nothing_in_a_refusal(self):
+        """A refusal has no ticket and no unmapped list: every check of this phase returns an empty
+        list, and none of them raises."""
+        data = self.bytes_of(os.path.join(TICKETS_FOLDER, "refusal_reason-01.tickets.md"))
+        self.assertIsNotNone(tickets.parse(data).model)
+        self.assert_silent(validate.STATES, data)
+
+    def unnumbered(self):
+        found = [block for block in examples()
+                 if item_line(validate.MODE_ITEM, tickets.unnumbered_mode()) in block
+                 and block[len(list(SHIPPED[ITEMS].rows))] == ""]
+        self.assertTrue(found)
+        return found[-1]
+
+
+# --- what one phase hides from the next -----------------------------------------------------------------
+
+
+class TestSuppression(ValidatorCase):
+    """The first phase that fails is the only one that speaks (AD-6), and these two cases are where
+    that matters to a fixture."""
+
+    def test_a_grammar_defect_hides_a_bad_source_row(self):
+        block = self.with_row(field_at(-1), value="a b c").decode("utf-8").split("\n")
+        at = [index for index in range(len(block))
+              if block[index] == constant(tickets.UNMAPPED_HEADING_TEXT)][0]
+        block.insert(at, A_STRAY_LINE)
+        path = self.write("g.tickets.md", ("\n".join(block)).encode("utf-8"))
+        code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual(1, code, lines)
+        self.assertEqual(set([code_at(validate.GRAMMAR, STRAY)]), self.codes(lines), lines)
+
+    def test_no_pairing_fixture_ever_reports_what_its_source_rows_say(self):
+        """Every pairing mutation leaves its source rows naming the snapshot the clean file names,
+        which is a second departure this phase would catch. The phase above it fails first, so the
+        mutation still raises one code and fails for its own reason."""
+        states = set([code_of(key) for key in keys_of(validate.STATES)])
+        for key in keys_of(validate.PAIRING):
+            for name in fixtures_for(key):
+                _code, lines = self.fixture(name)
+                self.assertEqual(set(), self.codes(lines) & states, name)
 
 
 # --- the line a failure is --------------------------------------------------------------------------

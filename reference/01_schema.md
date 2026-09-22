@@ -20,8 +20,10 @@ so a tool loads them; none of them is copied into any tool (AD-1).
 The grammar here is **described and read**. `lib/idemlib/tickets.py` is the one reader and the one
 writer of a tickets file: it takes every field name, count, literal and pattern from the five tables
 below, gives back a data model and a list of findings, and writes a model back as the bytes of a
-canonical file. What a **cell holds** is checked by nothing yet — that is the validator's, and the
-validator is not written.
+canonical file. What a **cell holds** is the validator's, and the validator now reads some of it:
+the two row states, the shape of the `source` row and what it names, the form of a line cell, a
+range that runs backwards, the reason of a refusal and the size limit are enforced; the substring
+rule, every citation against the snapshot and the coverage of the body are not.
 
 ## The eight fields
 
@@ -295,11 +297,13 @@ Every one of them has a key and a code in `05_checks.md`, and `tickets.py` now *
 reader can decide on the file alone: which blocks a shape has and in what order, that the rows of
 one field are consecutive and give the eight names in the table's order, that ticket numbers run
 from 1 without a gap, and that the header holds exactly the five items in that order — those are
-findings of the reader, and a file that breaks one of them has no model. The rest are still enforced
-by nothing: that the first number of a range lies below the second, that an `Unmapped` range stands
-for a run of consecutive lines, the two row states, the refusal reason, the substring rule, and
-`unnumbered` under one mode only. Each of those is a **check**, it reads the model rather than the
-file, and it waits for the validator, which is not written. Every one of them is listed as debt in
+findings of the reader, and a file that breaks one of them has no model. Most of the rest are
+**checks**: they read the model rather than the file, and `02_validate/validate.py` now runs them —
+the two row states, the refusal reason, `unnumbered` under one mode only, and the first number of a
+range lying below the second in an `Unmapped` range and in a `source` row's line cell. Two are
+still enforced by nothing: that the first number of `body_range` lies below its second, and that an
+`Unmapped` range stands for a run of consecutive lines. The substring rule waits for the phase
+below the row states, which is not written. Every one of them is listed as debt in
 `reference/CONTEXT.md`, where the key it was given is named beside it.
 
 ## The `source` row
@@ -544,6 +548,13 @@ their rule cells name. It keeps no copy of any of it: a name, a number or a patt
 a tool's source as well as in this file is a defect and not a convenience (AD-1), and the one
 exception is the thirteen class names, granted above.
 
-`refusal-reasons` is read by no tool yet. The reader carries a refusal's reason as written and never
-compares it with that list — a reason that is not one of the four is a check of the validator, which
-is not written.
+`02_validate/validate.py` reads three of them for its own work — `fields` for which rows are fields
+1 to 7 and which is field 8, by position and never by name; `schema-constants` for the sentinel, the
+cell a filled line takes in the mode with no line numbers, the size limit and the gap inside a
+`source` value; and `refusal-reasons` for the list a refusal's reason must be in. It holds no value
+of any of them either, and it asks for `fields` through `tickets.py`'s own address, because that
+table's id reads the same as a key of `checks` and no tool writes one of those.
+
+`refusal-reasons` is read by the validator and by nothing else. The reader carries a refusal's
+reason as written and never compares it with that list — a reason that is not one of the four is a
+check, and the check is `refusal_reason`.

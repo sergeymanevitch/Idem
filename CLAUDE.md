@@ -10,9 +10,10 @@ written as a first draft, `lib/idemlib/` holds the contract loader and the two f
 snapshot and the tickets file — the first step script is built — `00_fetch/fetch.py`, for one
 URL — and `00_fetch/00_snapshots/` holds the three example snapshots it wrote, one vendor each.
 `02_validate/validate.py` is built as a frame: every check of `reference/05_checks.md` is
-registered under its key, the reading stage and the pairing phase are written, and every other row
-is registered with nothing behind it. `02_validate/run_fixtures.py` runs the fixture corpus, of
-which fourteen files exist — ten tickets files and four snapshots.**
+registered under its key, the reading stage, the pairing phase, canonical form and grammar, and the
+row states are written, and every other row is registered with nothing behind it.
+`02_validate/run_fixtures.py` runs the fixture corpus, of which thirty-five files exist — thirty
+tickets files and five snapshots.**
 `reference/00_catalogue.md` states the strict-table grammar and names every contract table;
 `reference/01_schema.md` holds the five tables of the ticket schema — the eight fields, the
 constants and the canonical form, the header items, the refusal reasons, the classes of line — with
@@ -49,15 +50,18 @@ needs one. It opens no file and prints nothing, and what a cell *holds* is the v
 `02_validate/validate.py` is the second step script and the first reader of the `checks` table: one
 tickets file to pass or to coded failures, nine phases in the fixed order of AD-6, every row of that
 table registered as a callable under its key and reconciled with it both ways. What is written is
-the reading stage — the encoding, the five header items and their values — the whole pairing phase
-and the warning about the unnumbered mode; the five phases between them are registered and empty,
-and the story that fills each one writes its checks into that file and nowhere else. No key of
-`checks` is a string literal in it: a check is the function named for its key.
-`02_validate/run_fixtures.py` runs the corpus and prints how far it has got.
-`02_validate/00_fixtures/manifest.md` names every fixture and the codes it must raise, held against
-`05_checks.md` by `02_validate/test_manifest.py`; ten of the tickets files it names exist — one
-clean file over the Plaid snapshot and one mutation of it per row of the two written phases —
-beside four snapshots, of which one is the fetched Plaid file and three were built by hand from it.
+the reading stage — the encoding, the five header items and their values — the whole pairing phase,
+canonical form and grammar, the row states, and the warning about the unnumbered mode; the three
+phases below them are registered and empty, and the story that fills each one writes its checks into
+that file and nowhere else. No key of `checks` is a string literal in it: a check is the function
+named for its key. Six of the grammar checks report one class of finding of `tickets.py` each and
+nothing else, and a test holds that map both ways, so a class of finding with no check and a check
+claiming two of them both fail. `02_validate/run_fixtures.py` runs the corpus and prints how far it
+has got. `02_validate/00_fixtures/manifest.md` names every fixture and the codes it must raise, held
+against `05_checks.md` by `02_validate/test_manifest.py`; thirty of the tickets files it names exist
+— one clean file over the Plaid snapshot, one refusal built from its header, and one mutation of it
+per row of the four written phases — beside five snapshots, of which one is the fetched Plaid file
+and four were built by hand from it.
 `identity.md` says what Idem is, takes, returns and refuses; `rules.md` is the first-draft
 procedure — six numbered steps, each naming the file and the section it depends on, the self-check
 of FR-27 before the emit step, and the prohibitions under them — and it says where it is still a
