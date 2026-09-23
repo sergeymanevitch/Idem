@@ -41,6 +41,11 @@ from idemlib import contract, snapshot, tickets  # noqa: E402  - and so does thi
 #: implementation of the routine, written from the file rather than from the tool, and the tool is
 #: held against it here - two readings of one page that agree are worth more than one.
 from tests import test_breaking_terms as prose  # noqa: E402
+#: The reading of the segmentation prose that `lib/tests/` holds, for the one thing this file needs
+#: of it: the parser of the five worked examples and the ancestors each one claims. The examples are
+#: the oracle of the ancestor test the validator implements, and they are cut here by the same
+#: parser that holds them against the prose, never by a second one.
+from tests import test_segmentation as segmentation  # noqa: E402
 
 #: The two files read as prose, and the table ids read out of the contract.
 CHECKS_FILE = os.path.join(ROOT, "reference", "05_checks.md")
@@ -70,11 +75,11 @@ ANCHORED_RE = re.compile(r"^`([^`]+)`$")
 #: Its columns, by position: the phase, the key that opens it, the key that closes it.
 FIRST, LAST = 1, 2
 
-#: What the story fixes about the shipped table: thirty checks written, two rows the frame
+#: What the story fixes about the shipped table: thirty-seven checks written, two rows the frame
 #: raises, and the rest registered with nothing behind them. They are counted, never listed.
-WRITTEN = 30
+WRITTEN = 37
 FRAME_ROWS = 2
-PENDING_ROWS = 16
+PENDING_ROWS = 9
 #: The checks that end their phase. The count is in the prose; the names are read from it.
 ENDING = 5
 #: The nine phases of AD-6.
@@ -97,10 +102,16 @@ SENTINEL_ROW, FILLED_ROW, EMPTY_ROW, SOURCE_SHAPE, SOURCE_NAMES, LINE_CELL, REVE
 #: The sixth row of that phase is registered with nothing behind it and carries no phase, so it is
 #: in none of these positions - which is what `test_one_row_of_the_phase_is_still_pending` says.
 LINE_PAST, QUOTE_ON_LINE, VALUE_IN_QUOTE, BREAKING_READ, BREAKING_BOTH = range(5)
-#: How many committed fixtures each of the three phases has. More than one key carries several.
+#: The checks of the ranges-and-ancestors phase, by the same rule: a line cited outside its range
+#: that is no ancestor of it, an ancestor cited under a field that allows none, two ranges that
+#: overlap, a heading inside a range, the line a range starts on, the line it ends on, and a range
+#: outside the body range of the header.
+CITE, ANCESTOR_UNDER_NO, OVERLAP, HEADING_INSIDE, START, END, BODY = range(7)
+#: How many committed fixtures each of the four phases has. More than one key carries several.
 GRAMMAR_FIXTURES = 12
 STATES_FIXTURES = 8
 QUOTES_FIXTURES = 12
+RANGES_FIXTURES = 8
 #: The nine classes of finding the one reader of the format makes, counted and never listed.
 FINDING_CLASSES = 9
 #: The stray sentence the grammar fixtures are built with.
@@ -118,6 +129,7 @@ ROWS = []
 
 def setUpModule():
     SHIPPED.update(contract.load(root=ROOT))
+    segmentation.SHIPPED.update(SHIPPED)
     ROWS.extend(contract.read_table(MANIFEST_PATH, MANIFEST).rows)
 
 
@@ -1624,14 +1636,20 @@ class TestQuotesAndValues(ValidatorCase):
                           (validate.COPIED, validate.LISTED), name)
         self.assertIn(tickets.VALUE, SHIPPED[validate.TERMS_TABLE].columns)
         held = set(literals(text_of(validate.__file__)))
+        granted = set([validate.COPIED, validate.LISTED, validate.NO])
         for table_id in (tickets.FIELDS_TABLE, validate.TERMS_TABLE):
             table = SHIPPED[table_id]
             cells = set(table.rows)
             for name in table.rows:
                 for column in table.columns:
                     cells.add(table.rows[name][column])
-            self.assertEqual(set([validate.COPIED, validate.LISTED]) & cells,
-                             held & cells, table_id)
+            self.assertEqual(granted & cells, held & cells, table_id)
+        #: The word of the sixth exception stands in both tables, and it is the only one that does:
+        #: the phrase list shares nothing else with what the tool holds.
+        terms = SHIPPED[validate.TERMS_TABLE]
+        values = set([terms.rows[phrase][tickets.VALUE] for phrase in terms.rows])
+        self.assertIn(validate.NO, values)
+        self.assertEqual(set([validate.NO]), held & (values | set(terms.rows)))
 
     def test_one_row_of_the_phase_is_still_pending_and_its_fixture_waits_with_it(self):
         """Nothing supplies an input text to search until the flag that takes one is built, so the
@@ -2192,6 +2210,641 @@ class TestQuotesAndValues(ValidatorCase):
         return found[-1]
 
 
+# --- ranges and ancestors -----------------------------------------------------------------------------
+
+
+#: The name a body made by hand for one case is written under, in the case's temporary directory.
+HAND_MADE = "hand-01.txt"
+#: The body line of the corpus snapshot that opens a list whose children are indented under it - a
+#: parent standing alone - and the heading above the three lines the clean file cites. Positions in
+#: a committed file, and neither is a value of anything.
+PARENT_BODY_LINE = 49
+SECOND_HEADING = 5
+
+
+def quote_of(lines, number):
+    """The text of one body line as a quote cell can carry it: no space or tab at either edge."""
+    return lines[number - 1].strip(" \t")
+
+
+class TestRangesAndAncestors(ValidatorCase):
+    """The seven rows of the phase, one bullet of the contract at a time.
+
+    Every check of the phase reads the model, the snapshot and the classified body lines the
+    pairing phase leaves on the run, so a case here is built on a run that has been paired -
+    `paired()` - except where the point of the case is a run that has not. A body the corpus does
+    not hold is written by hand, through the one writer of the format, into the case's temporary
+    directory, and paired from there.
+    """
+
+    # --- what a case is built from -------------------------------------------------------------
+
+    def plaid(self):
+        header = self.model_of(self.clean()).header
+        name = [item.value for item in header if item.name == validate.SNAPSHOT_ITEM][0]
+        return snapshot.read(self.bytes_of(os.path.join(SNAPSHOTS_FOLDER, name)))
+
+    def hand_made(self, lines):
+        """A snapshot of these body lines in the temporary directory, and the digest of its body.
+
+        The header is the corpus snapshot's own with the digest recomputed, so that the URL the
+        clean file carries still pairs with it."""
+        header = dict(self.plaid().header)
+        body = snapshot.join(lines)
+        header[validate.DIGEST_ITEM] = snapshot.digest(body)
+        self.write(HAND_MADE, snapshot.write(header, body))
+        return header[validate.DIGEST_ITEM]
+
+    def built(self, specs, lines=None, body_range=None):
+        """A canonical tickets file, one ticket per spec, over the corpus body or over `lines`.
+
+        A spec is (the source row's line cell, {field position: body line}); a field cited carries
+        the text of that line as its value and its quote, and every other row reads the sentinel.
+        Over a body written by hand the header names that body and its digest.
+        """
+        model = self.model_of(self.clean())
+        body = self.plaid().lines if lines is None else lines
+        items = []
+        for item in model.header:
+            if lines is not None and item.name == validate.SNAPSHOT_ITEM:
+                item = item._replace(value=HAND_MADE)
+            elif lines is not None and item.name == validate.DIGEST_ITEM:
+                item = item._replace(value=self.hand_made(lines))
+            elif body_range is not None and item.name == tickets.RANGE_ITEM:
+                item = item._replace(value=body_range)
+            items.append(item)
+        named = dict([(item.name, item.value) for item in items])
+        gap = " " * int(constant(validate.SOURCE_GAP))
+        template = model.tickets[0]
+        self.assertEqual(len(list(SHIPPED[tickets.FIELDS_TABLE].rows)), len(template.rows))
+        built = []
+        for number in range(1, len(specs) + 1):
+            cell, cites = specs[number - 1]
+            rows = []
+            for place in range(len(template.rows)):
+                row = template.rows[place]
+                if place == len(template.rows) - 1:
+                    rows.append(row._replace(value=named[validate.URL_ITEM] + gap +
+                                             named[validate.SNAPSHOT_ITEM], line=cell, quote=""))
+                elif place in cites:
+                    quote = quote_of(body, cites[place])
+                    rows.append(row._replace(value=quote, line=str(cites[place]), quote=quote))
+                else:
+                    rows.append(row._replace(value=constant(tickets.SENTINEL), line="", quote=""))
+            built.append(template._replace(number=number, rows=rows))
+        data = tickets.serialise(model._replace(header=items, tickets=built))
+        self.assertEqual([], [repr(finding) for finding in tickets.parse(data).findings])
+        return data
+
+    def run_over(self, data, lines=None):
+        """A paired run over these bytes: over the corpus snapshots, or over the hand-made body."""
+        run = self.paired(data, None if lines is None else self.directory)
+        self.assertIsNotNone(run.classified)
+        return run
+
+    def fired(self, run):
+        """{position of the check in the phase: its failures} for every check that says something."""
+        found = {}
+        keys = keys_of(validate.RANGES)
+        for place in range(len(keys)):
+            raised = registry()[keys[place]](run)
+            if raised:
+                found[place] = raised
+        return found
+
+    def source_at(self, data, place):
+        """The line the source row of one ticket stands on."""
+        return self.model_of(data).tickets[place].rows[-1].at
+
+    def row_at(self, data, place, field):
+        return [row.at for row in self.model_of(data).tickets[place].rows if row.field == field][0]
+
+    def assert_alone(self, run, place, count=1):
+        """Exactly this check of the phase speaks, `count` times, and no other one does."""
+        found = self.fired(run)
+        self.assertEqual([place], list(found), found)
+        self.assertEqual(count, len(found[place]), found)
+        return found[place]
+
+    # --- the corpus -----------------------------------------------------------------------------
+
+    def test_each_row_of_the_ranges_phase_raises_its_own_code_alone(self):
+        found = 0
+        for key in keys_of(validate.RANGES):
+            names = fixtures_for(key)
+            self.assertTrue(names, key)
+            for name in names:
+                found += 1
+                lines = self.assert_manifest(name)
+                self.assertEqual(1, len(lines), lines)
+        self.assertEqual(RANGES_FIXTURES, found)
+        self.assertEqual(len(phase_keys(validate.RANGES)), len(keys_of(validate.RANGES)))
+
+    def test_the_clean_file_says_nothing_in_this_phase(self):
+        """A heading ancestor cited by many tickets: every ticket of the clean file cites line 1
+        under the field that allows it."""
+        self.assertEqual({}, self.fired(self.run_over(self.clean())))
+
+    def test_the_base_the_three_fixtures_over_the_seventh_snapshot_mutate_is_clean(self):
+        """Three fixtures of this phase are one mutation of a base the corpus does not carry - the
+        clean file moved onto the snapshot whose body holds two continuation lines. It is rebuilt
+        here from one of them by putting its one mutated cell back, and run through `main`."""
+        name = fixtures_for(keys_of(validate.RANGES)[START])[0]
+        model = self.model_of(self.bytes_of(os.path.join(TICKETS_FOLDER, name)))
+        base = tickets.serialise(with_row_in(model, field_at(-1), 1, line="4-5"))
+        path = self.write("base.tickets.md", base)
+        code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual([], lines)
+        self.assertEqual(0, code)
+        self.assertNotEqual(base, self.bytes_of(os.path.join(TICKETS_FOLDER, name)))
+        #: The other two are one cell away from the same base.
+        for place, ticket, field, cell in ((CITE, 1, field_at(0), "3"), (END, 0, field_at(-1), "2")):
+            names = [found for found in fixtures_for(keys_of(validate.RANGES)[place])
+                     if manifest_row(found).cells[SNAPSHOT] == manifest_row(name).cells[SNAPSHOT]]
+            self.assertEqual(1, len(names), place)
+            mutated = tickets.serialise(with_row_in(self.model_of(base), field, ticket, line=cell))
+            self.assertEqual(self.bytes_of(os.path.join(TICKETS_FOLDER, names[0])), mutated)
+
+    def test_the_seventh_snapshot_is_the_corpus_body_with_two_lines_rewritten(self):
+        """Lines 3 and 5 of the corpus body, and nothing else, rewritten as one text indented under
+        the item above each: a continuation twice, so that one text stands inside one item and
+        outside another. Its URL is the corpus snapshot's, so a file over it pairs."""
+        name = manifest_row(fixtures_for(keys_of(validate.RANGES)[START])[0]).cells[SNAPSHOT]
+        items = snapshot.read(self.bytes_of(os.path.join(SNAPSHOTS_FOLDER, name)))
+        plaid = self.plaid()
+        self.assertEqual(len(plaid.lines), len(items.lines))
+        changed = [number for number in range(1, len(items.lines) + 1)
+                   if items.lines[number - 1] != plaid.lines[number - 1]]
+        self.assertEqual([3, 5], changed)
+        self.assertEqual(items.lines[2], items.lines[4])
+        classified = snapshot.classify(items.lines)
+        for number in changed:
+            self.assertEqual(snapshot.CONTINUATION, classified[number - 1].cls, number)
+        self.assertEqual(plaid.header[validate.URL_ITEM], items.header[validate.URL_ITEM])
+        self.assertEqual(snapshot.digest(items.body), items.header[validate.DIGEST_ITEM])
+
+    # --- nothing to read ------------------------------------------------------------------------
+
+    def test_every_check_of_the_phase_reads_nothing_without_a_snapshot(self):
+        """A run built with nothing opened carries no snapshot and no classified line. Every
+        fixture of the phase is handed to every check on such a run, and none of them speaks."""
+        for key in keys_of(validate.RANGES):
+            for name in fixtures_for(key):
+                run = self.a_run(self.bytes_of(os.path.join(TICKETS_FOLDER, name)))
+                self.assertIsNone(run.snapshot)
+                self.assertEqual({}, self.fired(run), name)
+
+    def test_every_check_of_the_phase_reads_nothing_without_classified_lines(self):
+        """The snapshot alone is not enough: the classes are what the phase reads, and a run that
+        carries the one and not the other has nothing for it."""
+        for key in keys_of(validate.RANGES):
+            for name in fixtures_for(key):
+                data = self.bytes_of(os.path.join(TICKETS_FOLDER, name))
+                run = self.paired(data)
+                self.assertTrue(self.fired(run), name)
+                run.classified = None
+                self.assertEqual({}, self.fired(run), name)
+
+    def test_every_check_of_the_phase_reads_nothing_with_classes_and_no_snapshot(self):
+        """The other half: classes with no snapshot beside them are not a body either, and a run
+        that carries them alone has nothing for the phase."""
+        for key in keys_of(validate.RANGES):
+            for name in fixtures_for(key):
+                run = self.paired(self.bytes_of(os.path.join(TICKETS_FOLDER, name)))
+                run.snapshot = None
+                self.assertIsNotNone(run.classified)
+                self.assertEqual({}, self.fired(run), name)
+
+    def test_the_snapshot_and_its_classes_are_put_on_the_run_by_the_pairing_phase(self):
+        run = self.paired(self.clean())
+        self.assertEqual(len(run.snapshot.lines), len(run.classified))
+        self.assertEqual(snapshot.classify(run.snapshot.lines), run.classified)
+        self.assertIsNone(self.a_run(self.clean()).classified)
+
+    def with_body(self, data):
+        """A run over these bytes with the corpus snapshot and its classes put on it by hand."""
+        run = self.a_run(data)
+        run.snapshot = self.plaid()
+        run.classified = snapshot.classify(run.snapshot.lines)
+        return run
+
+    def test_every_check_of_the_phase_reads_nothing_in_the_published_examples(self):
+        """A refusal, a zero-ticket file and a file with no line numbers: no ticket, or no number
+        and no range. The body is put on the run by hand, so that the silence is the file's and not
+        a missing body's, and none of them raises."""
+        blocks = [block for block in examples()
+                  if item_line(validate.MODE_ITEM, tickets.numbered_mode()) not in block
+                  or constant(tickets.TICKETS_NONE_LINE) in block]
+        self.assertEqual(3, len(blocks))
+        for block in blocks:
+            self.assertEqual({}, self.fired(self.with_body(as_bytes(block))), block[0])
+
+    def test_the_published_tickets_file_passes_over_the_body_the_segmentation_file_gives_it(self):
+        """The first example of the schema file cites a twelve-line snapshot it does not print, and
+        the segmentation file prints it. Over that body the published file's two ranges, its two
+        heading ancestors cited by both tickets and every row inside a range pass every check of
+        this phase - the example and the rule agree, and the tool says so."""
+        block = [block for block in examples()
+                 if item_line(validate.MODE_ITEM, tickets.numbered_mode()) in block
+                 and constant(tickets.TICKETS_NONE_LINE) not in block]
+        self.assertEqual(1, len(block))
+        body = segmentation.example(segmentation.RECONSTRUCTED)[0]
+        run = self.a_run(as_bytes(block[0]))
+        run.snapshot = snapshot.Snapshot({}, body, snapshot.join(body))
+        run.classified = snapshot.classify(body)
+        self.assertEqual(2, len(validate._ranges(run)))
+        self.assertEqual({}, self.fired(run))
+
+    def test_under_the_mode_with_no_line_numbers_there_is_no_number_and_no_range(self):
+        """No mode is asked: every filled line cell reads the unnumbered word and the source row's
+        line cell reads the sentinel, so there is neither a cited row nor a range. A ticket whose
+        rows would be outside every range if they had a number still says nothing."""
+        blocks = [block for block in examples()
+                  if item_line(validate.MODE_ITEM, tickets.unnumbered_mode()) in block
+                  and block[len(list(SHIPPED[ITEMS].rows))] == ""
+                  and heading_of(1) in block]
+        self.assertEqual(1, len(blocks))
+        model = self.model_of(as_bytes(blocks[0]))
+        self.assertEqual(constant(tickets.SENTINEL), model.tickets[0].rows[-1].line)
+        run = self.with_body(as_bytes(blocks[0]))
+        self.assertEqual([], validate._ranges(run))
+        self.assertEqual({}, self.fired(run))
+
+    def test_every_check_of_the_phase_reads_nothing_where_there_is_no_model(self):
+        run = validate.Run("a.tickets.md", b"", tickets.Parsed(None, [], None, None),
+                           SNAPSHOTS_FOLDER, SHIPPED)
+        run.snapshot = self.plaid()
+        run.classified = snapshot.classify(run.snapshot.lines)
+        self.assertEqual({}, self.fired(run))
+        lines = self.clean().decode("utf-8").split("\n")
+        lines.insert(len(lines) - 1, A_STRAY_LINE)
+        refused = ("\n".join(lines)).encode("utf-8")
+        self.assertIsNone(tickets.parse(refused).model)
+        self.assertEqual({}, self.fired(self.with_body(refused)))
+
+    # --- the ancestor test ------------------------------------------------------------------------
+
+    def test_the_ancestor_test_finds_exactly_what_the_worked_examples_claim(self):
+        """The five worked examples of the segmentation file are its oracle: every ancestor each of
+        them claims for a ticket is one the test finds, and no other body line is."""
+        self.assertEqual(5, len(segmentation.EXAMPLES))
+        for heading in segmentation.EXAMPLES:
+            body, claimed_tickets, claimed = segmentation.example(heading)
+            classified = snapshot.classify(body)
+            self.assertTrue(claimed_tickets, heading)
+            for number in claimed_tickets:
+                first = claimed_tickets[number][0] + 1
+                found = [line for line in range(1, len(body) + 1)
+                         if validate._is_ancestor(classified, first, line)]
+                self.assertEqual(sorted(index + 1 for index in claimed.get(number, [])), found,
+                                 heading + " ticket " + str(number))
+
+    def ancestors(self, lines, first):
+        classified = snapshot.classify(lines)
+        return [line for line in range(1, len(lines) + 1)
+                if validate._is_ancestor(classified, first, line)]
+
+    def test_a_heading_is_blocked_by_one_of_the_same_or_a_higher_level_and_by_no_other(self):
+        self.assertEqual([2], self.ancestors(["## A", "## B", "- item"], 3))
+        self.assertEqual([1, 2], self.ancestors(["## A", "### B", "- item"], 3))
+        self.assertEqual([2], self.ancestors(["### A", "## B", "- item"], 3))
+
+    def test_an_item_is_an_ancestor_only_when_less_indented_and_not_closed_off(self):
+        """Not less indented; closed off by a line of its own indent; a blank line between, which
+        has no indent and is skipped; and a heading between, which closes it off whatever its
+        indent."""
+        self.assertEqual([], self.ancestors(["- parent", "- sibling"], 2))
+        self.assertEqual([2], self.ancestors(["- parent", "- between", "  - child"], 3))
+        self.assertEqual([1], self.ancestors(["- parent", "", "  - child"], 3))
+        self.assertEqual([2], self.ancestors(["- parent", "### H", "  - child"], 3))
+        #: A heading more indented than the item still closes it off: by its class, not its indent.
+        self.assertEqual([2], self.ancestors(["- parent", "   ### H", "  - child"], 3))
+
+    def test_the_indent_compared_is_the_ancestors_own(self):
+        """A first sub-item does not block its parent for the later siblings: the lines between
+        are compared with the ancestor's indent and not with the range's first line."""
+        lines = ["- parent", "  - first", "  - second"]
+        self.assertEqual([1], self.ancestors(lines, 3))
+
+    def test_nothing_but_a_heading_and_an_item_start_is_an_ancestor(self):
+        """Not a plain line, not a continuation, not a line at or below the range's first."""
+        lines = ["Some prose", "- item", "  carried on", "    - deeper"]
+        classified = snapshot.classify(lines)
+        self.assertEqual(snapshot.PLAIN, classified[0].cls)
+        self.assertEqual(snapshot.CONTINUATION, classified[2].cls)
+        self.assertEqual([2], self.ancestors(lines, 4))
+        for line in (4, 5):
+            self.assertFalse(validate._is_ancestor(classified, 4, line))
+
+    def test_a_blank_first_line_has_no_item_ancestor_and_keeps_its_headings(self):
+        """A reading the definitions do not state: a first line with no indent of its own."""
+        self.assertEqual([1], self.ancestors(["## H", "- item", ""], 3))
+
+    def test_a_range_whose_first_line_is_past_the_body_has_no_ancestor(self):
+        """The other reading: nothing to compare against, and no line past the body is read."""
+        lines = ["## H", "- item"]
+        classified = snapshot.classify(lines)
+        for first in (3, 250):
+            for line in range(0, first + 1):
+                self.assertFalse(validate._is_ancestor(classified, first, line), (first, line))
+
+    def test_a_separator_item_is_an_ancestor_to_the_tool(self):
+        """Decision 9: the tool reads classes alone. A line that is a separator to the translator's
+        rule is an item start to every check, so an indented item under it has it for an
+        ancestor here, and the narrowing belongs to the translator and to nobody else."""
+        lines = ["- - -", "  - child"]
+        self.assertEqual(snapshot.ITEM_START, snapshot.classify(lines)[0].cls)
+        self.assertEqual([1], self.ancestors(lines, 2))
+
+    def test_an_empty_line_inside_a_fence_does_not_close_an_item_ancestor(self):
+        """The classifier reads an empty line between two fence lines as a fenced line with an
+        indent of 0, and its own rule keeps the item open across it; the ancestor walk judges
+        blankness by the text for the same reason, so the two agree (Sergey, 2026-09-23). A fenced
+        line that holds text at indent 0 still closes the item, as any such line does."""
+        lines = ["- parent", "  ```", "", "  ```", "  - child"]
+        classes = [line.cls for line in snapshot.classify(lines)]
+        self.assertNotIn(snapshot.BLANK, classes)
+        self.assertEqual([1], self.ancestors(lines, 5))
+        self.assertEqual([], self.ancestors(["- parent", "  ```", "text", "  ```", "  - child"], 5))
+
+    # --- a line cited outside its range ------------------------------------------------------------
+
+    def test_a_line_below_the_range_that_is_no_ancestor_is_one_failure_at_the_row(self):
+        """The transplanted date: the heading of the neighbouring entry, quote and line correct and
+        the value unchanged, which the phase above passes."""
+        lines = self.plaid().lines
+        data = self.with_row(field_at(3), line=str(SECOND_HEADING),
+                             quote=quote_of(lines, SECOND_HEADING))
+        run = self.run_over(data)
+        for key in keys_of(validate.QUOTES):
+            self.assertEqual([], registry()[key](run), key)
+        raised = self.assert_alone(run, CITE)
+        self.assertEqual(self.row_at(data, 0, field_at(3)), raised[0].line)
+
+    def test_a_field_with_no_ancestor_citing_a_line_outside_is_that_failure_and_no_other(self):
+        """A line that is no ancestor is the first check's whatever the field allows, never the
+        second's."""
+        lines = self.plaid().lines
+        data = self.with_row(field_at(0), line="3", value=quote_of(lines, 3), quote=quote_of(lines, 3))
+        raised = self.assert_alone(self.run_over(data), CITE)
+        self.assertEqual(self.row_at(data, 0, field_at(0)), raised[0].line)
+
+    def test_a_heading_blocked_by_one_of_its_own_level_is_no_ancestor(self):
+        """Over a body written by hand: a heading above the range with a heading of the same level
+        between is refused, and the same heading with a lower-level one between passes."""
+        for between, outcome in (("## Beta", {CITE: 1}), ("### Beta", {})):
+            lines = ["## Alpha", between, "- The item"]
+            data = self.built([("3", {0: 3, 3: 1})], lines)
+            found = self.fired(self.run_over(data, lines))
+            self.assertEqual(outcome, dict((place, len(found[place])) for place in found), between)
+
+    def test_an_item_start_that_is_not_less_indented_is_no_ancestor(self):
+        cases = ((["- Parent", "- The item"], 2, 1, {CITE: 1}),
+                 (["- Parent", "- Between", "  - The item"], 3, 1, {CITE: 1}),
+                 (["- Parent", "", "  - The item"], 3, 1, {}))
+        for lines, first, cited, outcome in cases:
+            data = self.built([(str(first), {0: first, 1: cited})], lines)
+            found = self.fired(self.run_over(data, lines))
+            self.assertEqual(outcome, dict((place, len(found[place])) for place in found), lines)
+
+    def test_a_row_past_the_body_is_not_read_here(self):
+        """It is a line past the last body line, which the phase above owns."""
+        past = str(len(self.plaid().lines) + 1)
+        data = self.with_row(field_at(0), line=past)
+        self.assertEqual({}, self.fired(self.run_over(data)))
+
+    def test_a_ticket_with_no_readable_range_is_not_read(self):
+        """A source row the row states refused, and a range that runs backwards: neither has a range
+        to hold a row to, and neither range is read by any check of the phase."""
+        lines = self.plaid().lines
+        cited = dict(line=str(SECOND_HEADING), quote=quote_of(lines, SECOND_HEADING))
+        for source in (dict(quote="a quote"), dict(line="3-2"), dict(line="1-1")):
+            model = with_row_in(self.model_of(self.clean()), field_at(3), 0, **cited)
+            model = with_row_in(model, field_at(-1), 0, **source)
+            data = tickets.serialise(model)
+            run = self.run_over(data)
+            self.assertEqual(2, len(validate._ranges(run)), source)
+            self.assertEqual({}, self.fired(run), source)
+
+    # --- an ancestor under a field that allows none --------------------------------------------------
+
+    def test_an_ancestor_is_the_second_checks_under_no_and_nobodys_under_yes(self):
+        """Every field of 1 to 7 cites the heading above the range, one at a time: the ones whose
+        `ancestor` cell reads the one word the tool holds fail the second check at that row, and
+        the others say nothing. The first check never speaks, because the line is an ancestor."""
+        fields = SHIPPED[tickets.FIELDS_TABLE]
+        lines = self.plaid().lines
+        refused = 0
+        for place in range(len(fields.rows) - 1):
+            name = field_at(place)
+            data = self.with_row(name, line="1", value=quote_of(lines, 1), quote=quote_of(lines, 1))
+            found = self.fired(self.run_over(data))
+            if fields.rows[name][validate.ANCESTOR] == validate.NO:
+                refused += 1
+                self.assertEqual([ANCESTOR_UNDER_NO], list(found), name)
+                self.assertEqual([self.row_at(data, 0, name)],
+                                 [failure.line for failure in found[ANCESTOR_UNDER_NO]], name)
+            else:
+                self.assertEqual({}, found, name)
+        self.assertTrue(refused)
+
+    def test_the_column_it_reads_is_the_fields_tables_and_the_word_is_one_of_its_two_readings(self):
+        """The sixth exception, held from both sides. The column is a column of the fields table;
+        every field of 1 to 7 reads one of two words there and the word the tool holds is one of
+        them, so a third reading added to the column fails here rather than being read as the
+        other; and the source row, which cites nothing, reads neither."""
+        fields = SHIPPED[tickets.FIELDS_TABLE]
+        self.assertIn(validate.ANCESTOR, fields.columns)
+        readings = set([fields.rows[name][validate.ANCESTOR] for name in list(fields.rows)[:-1]])
+        self.assertEqual(2, len(readings), readings)
+        self.assertIn(validate.NO, readings)
+        self.assertNotIn(fields.rows[field_at(-1)][validate.ANCESTOR], readings)
+
+    def test_no_class_name_of_the_snapshots_lines_is_written_in_the_tool(self):
+        """The names come through the format module's constants, as the fields table's id does, and
+        the constants the tool uses are rows of the table they name."""
+        classes = SHIPPED["line-classes"]
+        held = set(literals(text_of(validate.__file__)))
+        self.assertEqual(set(), held & set(classes.rows))
+        for name in (snapshot.HEADING, snapshot.ITEM_START, snapshot.CONTINUATION, snapshot.PLAIN,
+                     snapshot.BLANK):
+            self.assertIn(name, classes.rows, name)
+
+    # --- two ranges that overlap ----------------------------------------------------------------------
+
+    def test_identical_ranges_and_disjoint_ranges_pass(self):
+        data = self.built([("2-3", {0: 2, 3: 1}), ("2-3", {0: 3, 3: 1}), ("4", {0: 4})])
+        self.assertEqual({}, self.fired(self.run_over(data)))
+        #: Disjoint the other way round: a later ticket whose whole range lies before an earlier one.
+        data = self.built([("4", {0: 4}), ("2", {0: 2})])
+        self.assertEqual({}, self.fired(self.run_over(data)))
+
+    def test_a_range_spanning_several_items_under_one_heading_passes(self):
+        data = self.built([("2-4", {0: 3, 3: 1})])
+        self.assertEqual({}, self.fired(self.run_over(data)))
+
+    def test_a_nested_range_is_one_failure_at_the_later_row_naming_the_earlier(self):
+        data = self.built([("2-4", {0: 2}), ("3", {0: 3})])
+        raised = self.assert_alone(self.run_over(data), OVERLAP)
+        self.assertEqual(self.source_at(data, 1), raised[0].line)
+        self.assertIn("ticket 1 ", raised[0].message)
+
+    def test_a_partial_overlap_is_one_failure_at_the_later_row(self):
+        data = self.built([("2-3", {0: 2}), ("3-4", {0: 4})])
+        raised = self.assert_alone(self.run_over(data), OVERLAP)
+        self.assertEqual(self.source_at(data, 1), raised[0].line)
+
+    def test_a_ticket_overlapping_two_earlier_ones_is_two_failures(self):
+        """Three ways: each of the later two lies inside the first and not inside each other, so
+        the pairs are walked in file order and each later row is named once."""
+        data = self.built([("2-4", {0: 2}), ("2", {0: 2}), ("3", {0: 3})])
+        raised = self.assert_alone(self.run_over(data), OVERLAP, 2)
+        self.assertEqual([self.source_at(data, 1), self.source_at(data, 2)],
+                         sorted(failure.line for failure in raised))
+        data = self.built([("2-4", {0: 2}), ("3-4", {0: 3}), ("4", {0: 4})])
+        raised = self.assert_alone(self.run_over(data), OVERLAP, 3)
+        self.assertEqual([self.source_at(data, 1)] + [self.source_at(data, 2)] * 2,
+                         [failure.line for failure in raised])
+        self.assertIn("ticket 1 ", raised[1].message)
+        self.assertIn("ticket 2 ", raised[2].message)
+
+    # --- a heading inside a range ------------------------------------------------------------------------
+
+    def test_a_range_spanning_a_heading_is_that_failure_alone(self):
+        data = self.built([("4-6", {0: 4, 3: 1})])
+        raised = self.assert_alone(self.run_over(data), HEADING_INSIDE)
+        self.assertEqual(self.source_at(data, 0), raised[0].line)
+        self.assertIn("line " + str(SECOND_HEADING) + ",", raised[0].message)
+
+    def test_a_range_ending_on_a_heading_is_that_failure_alone(self):
+        """The line after it is an item start of no indent, so the end check passes."""
+        data = self.built([("4-5", {0: 4, 3: 1})])
+        self.assert_alone(self.run_over(data), HEADING_INSIDE)
+
+    def test_a_range_starting_on_a_heading_is_the_start_checks_alone(self):
+        """One edge, one code: the heading check reads from the line after the first."""
+        data = self.built([("1-2", {0: 2, 3: 1})])
+        self.assert_alone(self.run_over(data), START)
+
+    # --- where a range starts ------------------------------------------------------------------------------
+
+    def test_a_range_starting_on_a_continuation_a_blank_or_a_fence_line_is_that_failure(self):
+        fence = "`" * 3
+        cases = ((["### H", "- An item", "  carried on"], "3", 3, snapshot.CONTINUATION),
+                 (["### H", "", "- An item"], "2-3", 3, snapshot.BLANK),
+                 (["### H", fence, "code", fence, "- An item"], "2-4", 3, "fence"),
+                 (["### H", fence, "code", fence, "- An item"], "3", 3, "in_fence"))
+        for lines, cell, cited, cls in cases:
+            self.assertEqual(cls, snapshot.classify(lines)[int(cell.split("-")[0]) - 1].cls)
+            data = self.built([(cell, {0: cited, 3: 1})], lines)
+            raised = self.assert_alone(self.run_over(data, lines), START)
+            self.assertIn("'" + cls + "'", raised[0].message)
+            self.assertEqual(self.source_at(data, 0), raised[0].line)
+
+    def test_a_range_starting_on_a_blank_line_is_never_read_for_its_end(self):
+        """A blank first line has no indent to compare, so the end check passes it over and the
+        start check alone speaks - even where the next line is a deeper item start."""
+        lines = ["### H", "", "  - An item"]
+        data = self.built([("2", {3: 1})], lines)
+        self.assert_alone(self.run_over(data, lines), START)
+
+    def test_a_range_wrong_at_both_edges_raises_both_codes_on_one_row(self):
+        """Two edges, two facts: a range starting on a continuation and followed by a deeper one is
+        the start check's and the end check's, both at the ticket's source row."""
+        lines = ["- item", "  carried", "    more"]
+        data = self.built([("2", {0: 2})], lines)
+        found = self.fired(self.run_over(data, lines))
+        self.assertEqual(sorted([START, END]), sorted(found))
+        for place in (START, END):
+            self.assertEqual([self.source_at(data, 0)], [failure.line for failure in found[place]])
+
+    def test_a_range_starting_on_a_plain_line_or_an_item_start_passes(self):
+        lines = self.plaid().lines
+        last = len(lines)
+        self.assertEqual(snapshot.PLAIN, snapshot.classify(lines)[last - 1].cls)
+        data = self.built([(str(last), {0: last, 3: last - 2})])
+        self.assertEqual({}, self.fired(self.run_over(data)))
+
+    # --- where a range ends ------------------------------------------------------------------------------
+
+    def test_a_parent_standing_alone_ends_inside_its_own_item(self):
+        """The one thing the segmentation file says could catch a parent-only ticket: the next
+        line after it is an item start more indented than the range's first line."""
+        lines = self.plaid().lines
+        self.assertEqual(snapshot.ITEM_START,
+                         snapshot.classify(lines)[PARENT_BODY_LINE].cls)
+        data = self.built([(str(PARENT_BODY_LINE), {0: PARENT_BODY_LINE})])
+        raised = self.assert_alone(self.run_over(data), END)
+        self.assertEqual(self.source_at(data, 0), raised[0].line)
+
+    def test_a_continuation_after_a_blank_line_still_ends_the_range_inside_its_item(self):
+        lines = ["- An item", "", "  carried on"]
+        data = self.built([("1", {0: 1})], lines)
+        self.assert_alone(self.run_over(data, lines), END)
+
+    def test_a_range_ending_before_a_line_of_no_greater_indent_passes(self):
+        """Before a heading, a plain line, the last body line, an item of no greater indent - and a
+        trailer at the indent of the range's own first line, which the indent condition lets
+        through for a continuation as much as for an item start."""
+        cases = ((["- An item", "### H"], "1"),
+                 (["- An item", "Some prose"], "1"),
+                 (["- An item", "- Another"], "1"),
+                 (["- Parent", "  - An item", "  a trailer"], "2"),
+                 (["- An item"], "1"))
+        for lines, cell in cases:
+            data = self.built([(cell, {0: int(cell)})], lines)
+            self.assertEqual({}, self.fired(self.run_over(data, lines)), lines)
+
+    # --- a range outside the body range --------------------------------------------------------------------
+
+    def test_a_range_below_or_above_the_body_range_is_that_failure_alone(self):
+        for body_range, cell in (("3-200", "2"), ("1-3", "4"), ("3-200", "2-3")):
+            data = self.built([(cell, {0: int(cell.split("-")[-1])})], body_range=body_range)
+            raised = self.assert_alone(self.run_over(data), BODY)
+            self.assertEqual(self.source_at(data, 0), raised[0].line)
+
+    def test_a_body_range_the_header_cannot_give_leaves_nothing_to_read(self):
+        """The sentinel, and a range written the wrong way round: both are the header's own defects
+        and give this row nothing to compare."""
+        for body_range in (constant(tickets.SENTINEL), "5-2"):
+            data = self.built([("2", {0: 2})], body_range=body_range)
+            self.assertEqual({}, self.fired(self.run_over(data)), body_range)
+        #: Equal ends: the value pattern refuses them, so no canonical file carries one and the
+        #: header is given it on the run by hand, as a check handed such a run would see it.
+        run = self.run_over(self.built([("2", {0: 2})], body_range="3-200"))
+        run.parsed = run.parsed._replace(header=[
+            item._replace(value="3-3") if item.name == tickets.RANGE_ITEM else item
+            for item in run.parsed.header])
+        self.assertEqual({}, self.fired(run))
+
+    def test_a_range_past_the_body_inside_the_body_range_is_read_by_numbers_alone(self):
+        """The three checks that read the body have nothing to read, the body-range check compares
+        numbers and finds it inside, and a row citing a line inside it passes."""
+        data = self.built([("4-999", {0: 4, 3: 1})], body_range="1-999")
+        self.assertEqual({}, self.fired(self.run_over(data)))
+
+    def test_a_range_whose_last_line_is_past_the_body_is_not_read_at_its_first_either(self):
+        """Carve-out 4 is about the range and not about the line read: a range starting on a
+        heading and running past the body gives the start check nothing to read, although its
+        first line is in the body - a range the body does not hold has no edges to judge."""
+        data = self.built([(str(SECOND_HEADING) + "-999", {3: 1})], body_range="1-999")
+        self.assertEqual({}, self.fired(self.run_over(data)))
+
+    def test_a_range_wholly_past_the_body_has_no_ancestor(self):
+        """No first line to compare against: a row citing the heading at the top is outside the
+        range and no ancestor of it, and nothing reads an index past the body."""
+        data = self.built([("250-260", {3: 1})], body_range="1-999")
+        raised = self.assert_alone(self.run_over(data), CITE)
+        self.assertEqual(self.row_at(data, 0, field_at(3)), raised[0].line)
+
+    def test_a_range_of_thousands_of_digits_is_read_on_every_interpreter(self):
+        """Every number is read by arithmetic, so a range no interpreter from 3.11 on would convert
+        is still read - outside the body range, and past the body for the three that read it."""
+        data = self.built([("4-" + "9" * 5000, {0: 4, 3: 1})])
+        raised = self.assert_alone(self.run_over(data), BODY)
+        self.assertIn("9" * 5000, raised[0].message)
+
+
 # --- what one phase hides from the next -----------------------------------------------------------------
 
 
@@ -2222,11 +2875,12 @@ class TestSuppression(ValidatorCase):
         self.assertEqual(set([code_at(validate.STATES, FILLED_ROW)]), self.codes(lines), lines)
 
     def test_a_quote_failure_suppresses_every_phase_under_it(self):
-        """The three phases below this one are registered and empty, so a fixture of the quotes
-        phase raises one code today whatever else is wrong with the file. That is not a promise the
-        emptiness makes: it is AD-6, and it holds when those phases are written. The proof is a
-        check put into each of them for the length of this test - a file whose unmapped list is also
-        wrong for coverage still raises the one code, and neither injected check is ever called.
+        """The coverage phase is registered and empty, so a fixture of the quotes phase could raise
+        one code today whatever else is wrong with the file. That is not a promise the emptiness
+        makes: it is AD-6, and it holds when that phase is written. The proof is a check put into
+        it for the length of this test - a file whose unmapped list is also wrong for coverage still
+        raises the one code, and the injected check is never called. The row cited is outside its
+        own ticket's range as well, so the written phase between the two would speak if it ran.
         """
         model = self.model_of(self.clean())
         model = with_row_in(model, field_at(0), 0, line="3")
@@ -2236,15 +2890,57 @@ class TestSuppression(ValidatorCase):
             unmapped=model.unmapped._replace(entries=entries)))
         checks = registry()
         heard = []
-        for phase in (validate.RANGES, validate.COVERAGE):
-            key = phase_keys(phase)[0]
-            self.assertIs(validate.pending, checks[key])
-            checks[key] = self.loud(phase, key, heard)
+        key = phase_keys(validate.COVERAGE)[0]
+        self.assertIs(validate.pending, checks[key])
+        checks[key] = self.loud(validate.COVERAGE, key, heard)
         lines, failed = validate.run_phases(self.a_run(data), checks, table())
         self.assertTrue(failed)
         self.assertEqual([], heard)
         self.assertEqual(set([code_at(validate.QUOTES, QUOTE_ON_LINE)]),
                          self.codes(lines), lines)
+
+    def test_a_quote_defect_hides_a_citation_outside_its_range(self):
+        """Two rows, two phases: a quote not on the line one row cites, and another row whose quote
+        and line are right and whose line lies below its own ticket's range. The quotes phase speaks
+        and the ranges phase is suppressed."""
+        model = self.model_of(self.clean())
+        model = with_row_in(model, field_at(0), 1,
+                            quote=self.model_of(self.clean()).tickets[1].rows[0].quote + " for good")
+        model = with_row_in(model, field_at(3), 1, line="5",
+                            quote=quote_of(self.plaid_lines(), 5))
+        data = tickets.serialise(model)
+        run = self.paired(data)
+        self.assertEqual(1, len(check_at(validate.RANGES, CITE)(run)))
+        path = self.write("r.tickets.md", data)
+        code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual(1, code, lines)
+        self.assertEqual(set([code_at(validate.QUOTES, QUOTE_ON_LINE)]), self.codes(lines), lines)
+
+    def test_a_range_failure_suppresses_the_coverage_phase(self):
+        """Now that the ranges phase is written, the proof the quotes case gave moves one phase
+        down: a committed fixture of this phase in a file whose unmapped list is also wrong for
+        coverage raises its one code, and a check injected under the first key of coverage is never
+        called."""
+        name = fixtures_for(keys_of(validate.RANGES)[CITE])[0]
+        model = self.model_of(self.bytes_of(os.path.join(TICKETS_FOLDER, name)))
+        entries = list(model.unmapped.entries)
+        entries[0] = entries[0]._replace(text=entries[0].text + " and something else")
+        data = tickets.serialise(model._replace(
+            unmapped=model.unmapped._replace(entries=entries)))
+        checks = registry()
+        heard = []
+        key = phase_keys(validate.COVERAGE)[0]
+        self.assertIs(validate.pending, checks[key])
+        checks[key] = self.loud(validate.COVERAGE, key, heard)
+        lines, failed = validate.run_phases(self.a_run(data), checks, table())
+        self.assertTrue(failed)
+        self.assertEqual([], heard)
+        self.assertEqual(set([code_at(validate.RANGES, CITE)]), self.codes(lines), lines)
+
+    def plaid_lines(self):
+        header = tickets.parse(self.clean()).header
+        name = [item.value for item in header if item.name == validate.SNAPSHOT_ITEM][0]
+        return snapshot.read(self.bytes_of(os.path.join(SNAPSHOTS_FOLDER, name))).lines
 
     def loud(self, phase, key, heard):
         """A check that speaks whenever it is called, registered under a row nothing is behind."""

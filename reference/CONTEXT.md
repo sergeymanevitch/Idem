@@ -31,8 +31,9 @@ read by the loader itself, on every load, because it is the table that says wher
 `checks` is read by `02_validate/validate.py`, which registers a check under every key of it and
 prints the code each row carries, and by `02_validate/run_fixtures.py`, which counts the rows no
 fixture exercises. That validator reads three tables of `01_schema.md` for its own work as well —
-`fields` for which rows are fields 1 to 7, which is field 8 and how a row's value relates to its
-quote, `schema-constants` for the four values a check compares against, and `refusal-reasons` for
+`fields` for which rows are fields 1 to 7, which is field 8, how a row's value relates to its quote
+and which fields may cite an ancestor line, `schema-constants` for the four values a check
+compares against, and `refusal-reasons` for
 the list a reason must be in — and `breaking-terms`, for the two checks that decide what a quote
 supports. The remaining two — `html-elements` and `warn-patterns` — wait for the phases of the
 validator that are not written and for the HTML routine.
@@ -43,10 +44,11 @@ compiled as the contract loads, and `00_catalogue.md` states that convention.
 **Known debt.** A rule stated here that no pattern can carry is enforced by nothing until the tool
 that owns it exists. Story 1.7 closed half of that: `05_checks.md` now gives almost every one of
 these rules a key and a code, so the thing they are waiting for is a tool and no longer a decision.
-**A key is not a check.** `validate.py` is written as a frame and it enforces five phases of the
+**A key is not a check.** `validate.py` is written as a frame and it enforces six phases of the
 nine: reading the file — the encoding, the five header items and the patterns of their values;
 pairing, which is where the rules of AD-5 and FR-35 about the snapshot are; canonical form and
-grammar; the row states; and quotes and values, all of it but `quote_input`. Everything else below
+grammar; the row states; quotes and values, all of it but `quote_input`; and ranges and ancestors.
+Everything else below
 is registered under its key with nothing behind it, and the list stays here until the phase that
 owns each rule is written and its fixtures pass. There are five groups.
 
@@ -106,19 +108,24 @@ owns each rule is written and its fixtures pass. There are five groups.
   side by side.
 - `02_segmentation.md`, the rules of segmentation that no key of `05_checks.md` can reach, and the
   file names each one where it stands. That a parent list item is never a change: a ticket for a
-  parent written beside tickets for its leaves fails `range_overlap`, but one written instead of
-  them overlaps nothing. The narrowing of separator lines: a range starting on a separator still
-  starts on a line of a class `range_start` accepts. That a unit cut by either edge of `body_range`
+  parent written beside tickets for its leaves fails `range_overlap`, and one written instead of
+  them fails `range_end` when its range stops at the parent's own lines (2026-09-23); one whose
+  range runs on over the leaves beneath it passes every check. The narrowing of separator lines: a
+  range starting on a separator still starts on a line of a class `range_start` accepts, and a
+  separator `item_start` less indented than a range's first line is an ancestor to `cite_range` and
+  `ancestor_field`, which read classes alone — the file says a separator is never one, and the tool
+  does not implement the narrowing (Sergey, 2026-09-23). That a unit cut by either edge of
+  `body_range`
   is not a change, and that an ancestor line outside `body_range` is not cited — `range_body` reads
   `source` ranges and not citations. And the test for a changelog, where `refusal_reason` checks
   the wording of a refusal and nothing compares the shape chosen with the page it was chosen for.
   Two more are holes of a different kind: that a range is exactly one unit and that one unit is
   exactly one ticket — every check reads a range's edges and none of them cuts the body and
-  compares. One more is a reading rather than a rule: `range_end` has a key, but AD-2 does not
-  define "does not end inside a list item", so the file states the reading it works to — the next
-  non-blank line after a range is of some other class, or is a `continuation` or an `item_start` of
-  no greater indent than the range's first line — and the story that writes `validate.py` decides
-  whether the tool adopts it. Owner: `validate.py` for those, and nobody for
+  compares. One reading is closed (2026-09-23): AD-2 does not define "does not end inside a list
+  item", the file states the reading it works to — the next non-blank line after a range is of some
+  other class, or is a `continuation` or an `item_start` of no greater indent than the range's first
+  line — and `range_end` in `validate.py` implements it as written. Owner: `validate.py` for those,
+  and nobody for
   the rest, which is translator prose. Separately, `lib/tests/test_segmentation.py` cuts that
   file's worked examples with a helper of its own — the patterns of `line-classes` plus the
   open-item rule — which proves the examples against the rule the file states and never that a tool

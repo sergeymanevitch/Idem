@@ -22,9 +22,10 @@ for. All three are in the catalogue, so a tool loads them; none of them is copie
 **Keyed is not the same as enforced.** `validate.py` and `run_fixtures.py` are written, and much of
 what is below is still a row and no more. Every row is registered under its key as a callable: the
 checks of the reading stage, of the pairing phase, of canonical form and grammar, of the row
-states and of quotes and values are written — all of that last phase but `quote_input`, which waits
-for the argument that supplies an input text to search — the two rows the frame itself raises are
-raised by the frame, and every other row is registered with nothing behind it. A row
+states, of quotes and values and of ranges and ancestors are written — all of those but
+`quote_input`, which waits for the argument that supplies an input text to search — the two rows
+the frame itself raises are raised by the frame, and every other row is registered with nothing
+behind it. A row
 here says what the validator will check and under what code, never that anything checks it today —
 and `run_fixtures.py` prints, on every run, how many rows nothing exercises yet, so the distance
 between this list and what is enforced is a number a reader gets for free rather than a claim
@@ -142,6 +143,45 @@ are no number at all, so a line cell holding one is `line_form`'s and not `line_
 `quote_line` and `value_quote` are **independent** — a quote that is not on the line cited and a
 value that is not inside its quote are two facts about two cells, and a row wrong both ways raises
 both codes.
+
+**Five carve-outs inside ranges and ancestors, and one reading adopted** (Sergey, 2026-09-23). Each
+carve-out is a reading of a cell that names none of them. A cited line that is a valid ancestor of
+its ticket's range is never `cite_range`'s, whatever its field allows: an ancestor cited under a
+field whose `ancestor` cell reads `no` is `ancestor_field`'s alone. A cited line past the last body
+line is `line_range`'s, a phase above, and no check here reads it. A ticket whose `source` row the
+row states refused, or whose range runs backwards, has no range to hold a row to, and neither its
+rows nor its range are read by any check of this phase. `range_heading`, `range_start` and
+`range_end` read the body, so a range whose last line is past it gives them nothing to read;
+`range_overlap` and `range_body` compare numbers alone and still read it — `range_body` only
+against `body_range`, so a range reaching past the body while inside `body_range` is caught by
+nothing until the sub-rule of `header_value` that holds `body_range` to the body is built — and a
+row citing a line outside a range whose first line is past the body is `cite_range`'s, because such
+a range has no ancestor. A range whose first line is blank has no indent of its own, so it has no
+item ancestor, and its heading ancestors are unchanged; and an empty line inside a fence, which the
+classifier reads as a fenced line, is skipped in the walk to an item ancestor as a blank line is,
+so that the walk and the classifier agree on whether an item is still open. And a range
+**starting** on a heading is
+`range_start`'s alone: `range_heading` reads from the line after the range's first to its last, so
+that one edge raises one code. The reading `range_end` works to is the one `02_segmentation.md`
+states, word for word: a range ends inside a list item when the next non-blank line after it is a
+`continuation` or an `item_start` **and** is more indented than the range's first line; a range
+ending on the last body line passes, and so does one whose first line is blank, which is
+`range_start`'s. A range wrong at both edges raises both codes on its one `source` row: one edge is
+one code, and a cell has two edges. Two more readings follow from what the validator is: it reads
+classes alone, so a separator `item_start` — a line the translator's narrowing passes over — is an
+item to `cite_range` like any other, and an ancestor where it is less indented than a range's first
+line; and it cuts no body into units, so nothing in this phase decides what one change is (AD-2).
+`range_overlap` reports a pair once, at the `source` row of the later ticket, naming the earlier;
+`cite_range` and `ancestor_field` point at the row, and the other five at the ticket's `source`
+row.
+
+**What this phase cannot hold, stated for the README** (Sergey, 2026-09-23). Every check of it reads
+headings and list items, and a changelog written with neither gives it almost nothing to read: no
+line is an ancestor, so `cite_range` still holds every row to its own ticket's range, but
+`range_heading` has nothing to find, `range_start` accepts any line of prose, and `range_end`
+accepts any line at all. With no headings and no lists these checks constrain little — where one
+change ends and the next begins is then held by nothing but the translator's rule — and a reader of
+such a changelog has the quotes and `Unmapped` to go on.
 
 ### What each mode skips
 
@@ -447,7 +487,9 @@ Today `contract.py` loads all three with the rest of the contract and lints the 
 row carries; and `02_validate/validate.py` and `02_validate/run_fixtures.py` read `checks` — the
 validator registers a check under every key of it and prints the code each row carries, and the
 suite counts the rows no fixture exercises. The validator also reads `breaking-terms`, for the two
-checks of the quotes-and-values phase that decide what a quote supports. `warn-patterns` waits for
+checks of the quotes-and-values phase that decide what a quote supports; and, outside this file,
+the `ancestor` column of `fields` for the one check that asks what a field may cite, and the class
+of every body line through `snapshot.classify`, which reads `line-classes`. `warn-patterns` waits for
 the two warnings that read a line of `Unmapped`, and so does the other reading of `breaking-terms`,
 the one those warnings use.
 Every tool takes every code and that pattern from here and keeps no copy: a code

@@ -91,9 +91,11 @@ the last — belong to no unit, are cited by nothing, and land in `Unmapped`.
 
 **That rule is translator-only, and here is the hole it leaves.** A ticket for a parent written
 *beside* tickets for its leaves fails `range_overlap`, because one range would lie inside another.
-A ticket for a parent written *instead* of them overlaps nothing, and the only thing that would
-catch it is the reading of `range_end` stated in the last section — a reading no tool implements
-today. `reference/CONTEXT.md` names it as debt.
+A ticket for a parent written *instead* of them overlaps nothing, and what catches it is the
+reading of `range_end` stated in the last section, which the validator implements (Sergey,
+2026-09-23): a range that stops at the parent's own lines is followed by a sub-item more indented
+than its first line. A parent's range that runs on over the leaves beneath it ends where a leaf
+would, and nothing catches that; `reference/CONTEXT.md` names it as debt.
 
 ## Paragraphs
 
@@ -489,7 +491,8 @@ a trailer standing at the indent of the range's own first line closed the item r
 continuing it. Every leaf's extent satisfies the reading by construction — the line that ended the
 extent was a heading, a line the open-item rule closed on, or a line of no greater indent — and a
 range stopping at a parent's own first line fails it, which is what makes a parent-only ticket
-catchable at all. Whether the tool adopts this reading belongs to the story that writes it.
+catchable at all. The validator adopts this reading as it stands (Sergey, 2026-09-23), and
+`05_checks.md` says so where it states the carve-outs of that phase.
 
 And what nothing checks, each of it named so that nobody has to find it by writing a ticket that
 passes:
@@ -498,8 +501,11 @@ passes:
   range's edges; none of them cuts the body and compares;
 - **that one unit is exactly one ticket**, which is the other half of the same hole: two tickets
   with identical ranges pass `range_overlap`, because AD-2 (1) allows identical ranges;
-- **that a parent is never a change**, where no leaf ticket stands beside it;
-- **the narrowing of separator lines**, which no check can see;
+- **that a parent is never a change**, where no leaf ticket stands beside it and the parent's
+  range runs on over its leaves — one that stops at the parent's own lines fails `range_end`;
+- **the narrowing of separator lines**, which no check can see — to the validator a separator is
+  the class the classifier gives it, so a separator `item_start` less indented than a range's first
+  line is an ancestor there, though never here (Sergey, 2026-09-23);
 - **that a unit cut by the body range is not a change**, and that an ancestor line outside the body
   range is not cited;
 - **the test for a changelog** — the reason on a refusal is checked against the closed list of

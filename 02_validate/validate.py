@@ -4,7 +4,7 @@
     python3 02_validate/validate.py [--snapshots DIR] <tickets>
 
 This is the frame every check drops into, and part of the frame is still empty. Every row of the
-checks table is registered here under its key; the thirty that are written report something,
+checks table is registered here under its key; the thirty-seven that are written report something,
 and the rest are registered as a callable that reads nothing and finds nothing. That is deliberate
 and it is the order the whole folder is built in: the list of what can be wrong was written before
 any tool could find one of them, so that no check is ever invented to describe code already
@@ -16,10 +16,10 @@ The contract is loaded and the registry is built and reconciled with the table b
 is opened once and read once, by the one reader of the format. Then nine phases run in the fixed
 order (AD-6): the tool's own failures, reading the file, pairing it with its snapshot, canonical
 form and grammar, row states, quotes and values, ranges and ancestors, coverage, and the warnings.
-Reading, pairing, canonical form and grammar, the row states and the quotes and values are written,
-but for the one row of that last phase which searches a quote in a supplied input text and has no
-argument to read one from yet. The two phases after them are not, and the story that fills each one
-writes its checks into this file and nowhere else.
+Reading, pairing, canonical form and grammar, the row states, the quotes and values and the ranges
+and ancestors are written, but for the one row of quotes and values which searches a quote in a
+supplied input text and has no argument to read one from yet. The coverage phase after them is not,
+and the story that fills it writes its checks into this file and nowhere else.
 
 HOW A PHASE RUNS
 
@@ -53,13 +53,19 @@ or names of the columns it reads by; the names of the four header items it asks 
 - the snapshot, the digest, the URL and the mode - two of which are also the names of the snapshot
 header fields they are compared against; the three schema constants it asks for beyond the ones the
 format module already names; the folder a snapshot is looked for in when none is named;
-the flag; the word that opens a warning line; the prefix a check's function name carries; and the
-opening words of the cell that tells a warning row from a failure row. **Two values, and two
-only**: the two readings of the `kind` column of the fields table that a check of the quotes and
-values phase asks a row by - the one that says a value is copied out of its quote and the one that
-says a list fills it - written out because a check is selected *by* them and a column of the
-contract is not a place to put a condition (Sergey, 2026-09-22; the fifth exception to AD-1, and it
-is granted in the schema file beside the column itself). The one table id it would
+the flag; the word that opens a warning line; the prefix a check's function name carries; the
+opening words of the cell that tells a warning row from a failure row; and the names of the two
+columns of the fields table it reads by. **Three values, and three only**: the two readings of the
+`kind` column of the fields table that a check of the quotes and values phase asks a row by - the
+one that says a value is copied out of its quote and the one that says a list fills it - and the
+one reading of the `ancestor` column that a check of the ranges and ancestors phase asks a row by,
+the one that says a field may cite no line outside its own ticket's range. All three are written
+out because a check is selected *by* them and a column of the contract is not a place to put a
+condition (Sergey, 2026-09-22 and 2026-09-23; the fifth and sixth exceptions to AD-1, both granted
+in the schema file beside the columns themselves). The third of them is also a value of the phrase
+list, and it is never used to read that list. **No class name of the snapshot's lines is written
+here either**: a check that asks what class a body line is asks by the format module's own
+constants, as it asks for the fields table by the format module's own address. The one table id it would
 otherwise have to write for itself - the fields of a ticket - is asked for through the format
 module, because that id is also a key of the checks table and this tool writes none of those.
 **No key of the checks table
@@ -137,6 +143,14 @@ TERMS_TABLE = "breaking-terms"
 KIND = "kind"
 COPIED = "copied"
 LISTED = "listed"
+#: The column of the fields table that says whether a row may cite a line above its own ticket's
+#: range, and the one reading of it a check asks a row by: the reading that says it may not. It is
+#: the sixth exception to AD-1, granted by Sergey on 2026-09-23 beside the column itself, for the
+#: reason the two above were granted. The same word is a value of the phrase list, and it is never
+#: used to read that list - the list is read by its phrases alone. The other reading of the column
+#: is asked for by nothing, as the third reading of `kind` is asked for by nothing.
+ANCESTOR = "ancestor"
+NO = "no"
 #: Three constants of the schema, each a key and never a value: what a filled line cell reads in the
 #: mode with no line numbers, the largest input this contract is written for, and how many spaces
 #: stand between the two parts of a source row's value. The sentinel is asked for by the name the
@@ -196,6 +210,11 @@ class Run(object):
     check opens a file, parses a line or loads the contract of its own: two readings of one file
     could disagree, and two loadings of the contract would be two contracts.
 
+    `classified` is every body line of that snapshot with its class, its indent and its level, as
+    the format module's classifier gives them: set once, by the same check and on the line after
+    the snapshot, and read by the phases that ask what class a cited line or a range's edge is. A
+    check never classifies a line of its own, for the reason a check never reads a file of its own.
+
     `reached` is the last phase that ran **before the warnings**, and it is here for the warnings.
     Two of the three read a line of the unmapped list against a ticket's range, so the contract
     prints them only on a run that **reaches coverage**: a file that failed at grammar gets
@@ -212,6 +231,7 @@ class Run(object):
         self.directory = directory
         self.tables = tables
         self.snapshot = None
+        self.classified = None
         self.reached = None
 
 
@@ -575,7 +595,8 @@ def check_snapshot_format(run):
     above this one asks for a regular file and ends the phase.
 
     The snapshot is read here, once, and kept on the run: the phases below this one cite lines in
-    it, and two readings of one file could disagree about where line 12 is.
+    it, and two readings of one file could disagree about where line 12 is. Its body lines are
+    classified here too, once, for the same reason.
     """
     item = _item(run, SNAPSHOT_ITEM)
     if item is None:
@@ -595,6 +616,7 @@ def check_snapshot_format(run):
                                  "opened: " + (unreadable.strerror or type(unreadable).__name__))]
     try:
         run.snapshot = snapshot.read(data)
+        run.classified = snapshot.classify(run.snapshot.lines)
     except snapshot.SnapshotError as broken:
         return [Failure(item.at, "'" + item.value + "' is not a snapshot: line " +
                         str(broken.line) + " - " + broken.message)]
@@ -1080,8 +1102,9 @@ check_range_reversed.phase = STATES
 #
 # Three carve-outs keep one code on one row, and each of them is a reading of a cell that names
 # none of them (Sergey, 2026-09-22). The check of a line past the body reads fields 1 to 7 alone,
-# because the source row cites nothing - it carries a range, and a range is held against the body by
-# the phase below this one. The check of a quote against its line passes over a row whose line the
+# because the source row cites nothing - it carries a range, and the phase below this one reads the
+# edges of that range; a range reaching past the body is the header's own defect, a sub-rule of the
+# reading stage that is not built yet. The check of a quote against its line passes over a row whose line the
 # check above it refused, because a line that is not in the body has no text to search. And the
 # check of the value a quote supports passes over a quote the routine finds to support neither
 # value, because that outcome is no value at all and the row that owns it is the one after it.
@@ -1220,8 +1243,9 @@ def check_line_range(run):
     """A row cites a line past the last body line of the snapshot (FR-29).
 
     Zero and a negative number are no number at all and are the line-form row's, a phase above.
-    The range a source row carries is not a citation - it is held against the body by the phase
-    below - so fields 1 to 7 are what is read here.
+    The range a source row carries is not a citation - the phase below reads its edges, and a range
+    reaching past the body is the header's own defect, a sub-rule not built yet - so fields 1 to 7
+    are what is read here.
 
     Nothing to read where there is no model, no ticket, no snapshot on the run, or no row whose line
     cell is a number: it returns an empty list.
@@ -1362,6 +1386,384 @@ def check_breaking_quote(run):
 check_breaking_quote.phase = QUOTES
 
 
+# --- ranges and ancestors: every citation inside the range it is allowed (FR-31, AD-2, AD-9) ----------
+#
+# Every check below reads the model, the snapshot and the classified body lines the pairing phase
+# left on the run, and returns an empty list where any of the three is missing: no model, no ticket,
+# no snapshot, no classified line is a check with nothing to read and not a pass. Under the mode with
+# no line numbers every filled line cell reads the unnumbered word, which is no number, and the
+# source row's line cell reads the sentinel, which is no range - so no check here has a row or a
+# range to read there, and none of them asks the mode. The phase skips AD-10 names are a story of
+# their own and are not built here.
+#
+# The validator never segments (AD-2). Nothing below cuts the body into units, decides whether a line
+# is a change, reads the leaf-and-parent test or the narrowing of separator lines: what is read is
+# the class of a line at the edge of a range a file claims, the classes between a cited line and the
+# range it is cited for, and the numbers of the ranges themselves. A separator line is to this phase
+# what its class says it is, as the segmentation file says of every check.
+#
+# Five readings of cells that name none of them keep one code on one row (Sergey, 2026-09-23), and
+# each is said again in the docstring of the check it belongs to. A cited line that is a valid
+# ancestor is never the first check's, whatever its field allows - an ancestor under a field that
+# allows none is the second check's alone. A cited line past the last body line is the phase above's
+# and is not read here. A ticket whose source row the row states refused, or whose range runs
+# backwards, has no range to hold a row to, and neither its rows nor its range are read. The three
+# checks that read the body read nothing of a range whose last line is past it. And a range starting
+# on a heading is the start check's alone: the heading check reads from the line after the first.
+#
+# What is compared is the model's cells as the reader gives them against `run.classified`, body line
+# n being `run.classified[n - 1]` (AD-8). Every number is read by arithmetic over its digits.
+
+
+def _count(run):
+    """How many body lines the snapshot on the run has, or None where there is nothing to read.
+
+    None where there is no snapshot, no classified line, no model or no ticket - the four ways this
+    phase has no material - so that each check of it asks once and says nothing for any of them.
+    """
+    model = run.parsed.model
+    if run.snapshot is None or run.classified is None:
+        return None
+    if model is None or not model.tickets:
+        return None
+    return len(run.classified)
+
+
+def _ranges(run):
+    """Every ticket's range that this phase can read, as (ticket, source row, first, last).
+
+    In file order, one per ticket at most - not because this loop stops at one, but because the
+    grammar phase refuses a ticket with a second source row, and a file with one never reaches this
+    phase. A source row the row states refused - a value that is
+    not two parts, a line cell of the wrong form, a quote - carries no range this phase can trust,
+    and neither does one whose line cell reads the sentinel or whose range runs backwards: each of
+    those is the phase above's, and nothing here reads it. A bare number is a range of one line, its
+    first and its last the same.
+    """
+    model = run.parsed.model
+    if model is None or not model.tickets:
+        return []
+    order = _field_order(run)
+    if not order:
+        return []
+    sentinel = _constant(run, tickets.SENTINEL)
+    found = []
+    for ticket in model.tickets:
+        for row in ticket.rows:
+            if row.field != order[-1]:
+                continue
+            if _source_defects(run, row) or row.line == sentinel:
+                continue
+            parts = row.line.split(tickets.HYPHEN)
+            if len(parts) == 2 and _above(parts[0], parts[1]):
+                continue
+            found.append((ticket, row, _number(parts[0]), _number(parts[-1])))
+    return found
+
+
+def _is_ancestor(classified, first, line):
+    """Whether body line `line` is an ancestor of a range whose first line is `first` (AD-2 (4)).
+
+    The two definitions of the segmentation file, read over the classes the format module gave and
+    holding no class name of their own. A heading above the range with no heading of the same or a
+    higher level between it and the range - a higher level being a smaller number. Or an item start
+    above the range, less indented than the range's first line, with no heading and no line of
+    equal or lesser indent between them: the indent compared is the ancestor's own, and a blank line
+    has no indent and is skipped. Nothing else is one - not a plain line, not a continuation, not a
+    line at or below the range's first.
+
+    Three readings the definitions do not state. A first line with no indent of its own - a blank
+    line - has no item ancestor, and its heading ancestors are unchanged. A range whose first line
+    is past the last body line has no first line to compare against, so nothing is its ancestor:
+    the walk reads only lines that exist. And an empty line inside a fence, which the classifier
+    reads as a fenced line and not as a blank one, is skipped as a blank line is: blankness is
+    judged by the text, as the classifier itself judges it when it asks whether an item is still
+    open, so that the walk and the classifier agree (Sergey, 2026-09-23).
+    """
+    if line < 1 or line >= first or first > len(classified):
+        return False
+    candidate = classified[line - 1]
+    between = classified[line:first - 1]
+    if candidate.cls == snapshot.HEADING:
+        for other in between:
+            if other.cls == snapshot.HEADING and other.level <= candidate.level:
+                return False
+        return True
+    if candidate.cls != snapshot.ITEM_START:
+        return False
+    start = classified[first - 1]
+    if start.cls == snapshot.BLANK or candidate.indent >= start.indent:
+        return False
+    for other in between:
+        if other.cls == snapshot.HEADING:
+            return False
+        if other.cls == snapshot.BLANK or not other.text.strip(snapshot.WHITESPACE):
+            continue
+        if other.indent <= candidate.indent:
+            return False
+    return True
+
+
+def _outside(run, count):
+    """Every cited row whose line lies outside its own ticket's range, with what it is cited for.
+
+    As (row, first, last, whether the line is an ancestor of that range), in file order. A row
+    whose line is past the last body line is the phase above's and is not read; a row of a ticket
+    with no readable range has no range to be outside of.
+    """
+    cited = set([row.at for row in _cited(run)])
+    last_line = _as_digits(count)
+    found = []
+    for ticket, _source, first, last in _ranges(run):
+        for row in ticket.rows:
+            if row.at not in cited or _above(row.line, last_line):
+                continue
+            line = _number(row.line)
+            if first <= line <= last:
+                continue
+            found.append((row, first, last, _is_ancestor(run.classified, first, line)))
+    return found
+
+
+def _range_text(first, last):
+    """A range as a line cell writes it: the bare number for one line, the two ends otherwise."""
+    if first == last:
+        return _as_digits(first)
+    return _as_digits(first) + tickets.HYPHEN + _as_digits(last)
+
+
+def check_cite_range(run):
+    """A row cites a line neither inside its own ticket's range nor an ancestor of it (FR-31).
+
+    A cited line that is a valid ancestor is not this row's, whatever its field allows: an ancestor
+    cited under a field that allows none is the row below's alone, so that one row raises one code.
+    A line past the last body line is the phase above's. A ticket whose range this phase cannot read
+    has no range to hold a row to, and its rows are not read. A range whose first line is past the
+    body has no ancestor at all, so a row of it citing a line outside it is this row's.
+
+    Nothing to read where there is no model, no ticket, no snapshot or no classified line on the
+    run: it returns an empty list.
+    """
+    count = _count(run)
+    if count is None:
+        return []
+    found = []
+    for row, first, last, ancestor in _outside(run, count):
+        if ancestor:
+            continue
+        found.append(Failure(row.at, "this row cites body line " + row.line + ", and its ticket's "
+                                     "range is '" + _range_text(first, last) + "'; a row cites a "
+                                     "line inside its own ticket's range, or a heading or a parent "
+                                     "item that range stands under, and this line is neither"))
+    return found
+
+
+check_cite_range.phase = RANGES
+
+
+def check_ancestor_field(run):
+    """An ancestor line is cited by a row of a field whose `ancestor` cell allows none (FR-31, AD-9).
+
+    Which fields may cite one is read from the fields table on every run, by the name of the column,
+    and the one reading of it asked for here is the one that says a field may not. A cited line
+    that is outside the range and is no ancestor is the row above's, never this one.
+
+    Nothing to read where there is no model, no ticket, no snapshot or no classified line on the
+    run: it returns an empty list.
+    """
+    count = _count(run)
+    if count is None:
+        return []
+    fields = run.tables[tickets.FIELDS_TABLE].rows
+    found = []
+    for row, first, last, ancestor in _outside(run, count):
+        if not ancestor or fields[row.field][ANCESTOR] != NO:
+            continue
+        found.append(Failure(row.at, "this row cites body line " + row.line + ", which the range '" +
+                                     _range_text(first, last) + "' of its ticket stands under, and "
+                                     "a row of this field cites only a line inside its own "
+                                     "ticket's range"))
+    return found
+
+
+check_ancestor_field.phase = RANGES
+
+
+def check_range_overlap(run):
+    """Two tickets' ranges overlap in part, or one lies inside the other (FR-31, AD-2 (1)).
+
+    Disjoint ranges pass and so do identical ones. One failure per overlapping pair, at the source
+    row of the later ticket, naming the earlier: the pairs are walked in file order, so a ticket
+    overlapping two earlier ones is two failures at its one row. The numbers alone are compared,
+    so a range past the body is read here as any other.
+
+    Nothing to read where there is no model, no ticket, no snapshot or no classified line on the
+    run: it returns an empty list.
+    """
+    if _count(run) is None:
+        return []
+    ranges = _ranges(run)
+    found = []
+    for later in range(len(ranges)):
+        ticket, row, first, last = ranges[later]
+        for earlier in range(later):
+            other, _row, other_first, other_last = ranges[earlier]
+            if (other_first, other_last) == (first, last):
+                continue
+            if other_last < first or last < other_first:
+                continue
+            found.append(Failure(row.at, "this ticket's range '" + _range_text(first, last) + "' "
+                                         "and the range '" + _range_text(other_first, other_last) +
+                                         "' of ticket " + _as_digits(other.number) + " overlap; two "
+                                         "tickets' ranges are disjoint or the same"))
+    return found
+
+
+check_range_overlap.phase = RANGES
+
+
+def check_range_heading(run):
+    """A heading line lies inside a range (FR-31, AD-2 (2)).
+
+    Read from the line after the range's first to its last, both included: a range spanning a
+    heading and a range ending on one are both this row, and a range **starting** on one is the row
+    below's alone, so that one edge is one code. One failure per range, naming the first heading
+    inside it. A range whose last line is past the body gives this row nothing to read.
+
+    Nothing to read where there is no model, no ticket, no snapshot or no classified line on the
+    run: it returns an empty list.
+    """
+    count = _count(run)
+    if count is None:
+        return []
+    found = []
+    for _ticket, row, first, last in _ranges(run):
+        if last > count:
+            continue
+        for line in run.classified[first:last]:
+            if line.cls != snapshot.HEADING:
+                continue
+            found.append(Failure(row.at, "this ticket's range '" + _range_text(first, last) + "' "
+                                         "holds body line " + _as_digits(line.number) + ", which "
+                                         "is a heading, and a range never holds one"))
+            break
+    return found
+
+
+check_range_heading.phase = RANGES
+
+
+def check_range_start(run):
+    """A range starts on a line that is neither an item start nor a plain line (AD-2 (3)).
+
+    A heading, a continuation, a blank line, a fence line and a line inside a fence all fail it,
+    and the message names the class the line has. A range whose last line is past the body gives
+    this row nothing to read.
+
+    Nothing to read where there is no model, no ticket, no snapshot or no classified line on the
+    run: it returns an empty list.
+    """
+    count = _count(run)
+    if count is None:
+        return []
+    found = []
+    for _ticket, row, first, last in _ranges(run):
+        if last > count:
+            continue
+        cls = run.classified[first - 1].cls
+        if cls in (snapshot.ITEM_START, snapshot.PLAIN):
+            continue
+        found.append(Failure(row.at, "this ticket's range '" + _range_text(first, last) + "' "
+                                     "starts on body line " + _as_digits(first) + ", which is of "
+                                     "the class '" + cls + "', and a range starts on the first line "
+                                     "of a list item or on a line of prose"))
+    return found
+
+
+check_range_start.phase = RANGES
+
+
+def check_range_end(run):
+    """A range ends inside a list item (AD-2 (3)).
+
+    Read as the segmentation file states it: a range passes when the next non-blank line after it
+    is of some class other than a continuation and an item start, or else its indent is no greater
+    than that of the range's first line - the indent condition binding both classes. It fails when
+    that line is a continuation or an item start **and** is more indented than the range's first
+    line. A range ending on the last body line passes, and so does one whose first line has no
+    indent to compare - a blank line, which is the row above's. A range whose last line is past the
+    body gives this row nothing to read.
+
+    Nothing to read where there is no model, no ticket, no snapshot or no classified line on the
+    run: it returns an empty list.
+    """
+    count = _count(run)
+    if count is None:
+        return []
+    found = []
+    for _ticket, row, first, last in _ranges(run):
+        if last > count:
+            continue
+        start = run.classified[first - 1]
+        if start.cls == snapshot.BLANK:
+            continue
+        after = None
+        for line in run.classified[last:]:
+            if line.cls != snapshot.BLANK:
+                after = line
+                break
+        if after is None or after.cls not in (snapshot.CONTINUATION, snapshot.ITEM_START):
+            continue
+        if after.indent <= start.indent:
+            continue
+        found.append(Failure(row.at, "this ticket's range '" + _range_text(first, last) + "' ends "
+                                     "inside a list item: body line " + _as_digits(after.number) +
+                                     ", the next line that is not blank, is of the class '" +
+                                     after.cls + "' and more indented than the range's first "
+                                     "line"))
+    return found
+
+
+check_range_end.phase = RANGES
+
+
+def check_range_body(run):
+    """A range lies outside the body range the header gives (FR-26).
+
+    Any line of it: its first below the header's first number, or its last above the header's
+    second. A body range reading the sentinel, or written with its first number not below its
+    second, is the header's own defect and gives this row nothing to read; the value has passed the
+    pattern of its item in the reading stage, so splitting it at the hyphen is safe. The numbers
+    alone are compared, so a range past the body is read here as any other.
+
+    Nothing to read where there is no model, no ticket, no snapshot or no classified line on the
+    run: it returns an empty list.
+    """
+    if _count(run) is None:
+        return []
+    item = _item(run, tickets.RANGE_ITEM)
+    if item is None or item.value == _constant(run, tickets.SENTINEL):
+        return []
+    parts = item.value.split(tickets.HYPHEN)
+    if len(parts) > 2 or not _is_number(parts[0]) or not _is_number(parts[-1]):
+        return []
+    if len(parts) == 2 and not _above(parts[1], parts[0]):
+        return []
+    low = _number(parts[0])
+    high = _number(parts[-1])
+    found = []
+    for _ticket, row, first, last in _ranges(run):
+        if low <= first and last <= high:
+            continue
+        found.append(Failure(row.at, "this ticket's range '" + _range_text(first, last) + "' "
+                                     "reaches outside the body lines '" + item.value + "' this "
+                                     "file says it translated"))
+    return found
+
+
+check_range_body.phase = RANGES
+
+
 # --- the warnings, which are never suppressed and never a failure -------------------------------------
 
 
@@ -1406,9 +1808,11 @@ def _has_material(phase, run):
     leaves each of them with nothing to read. The difference is visible to nobody - a check with
     nothing to read is neither a pass nor a failure either way - and it is a rule about a phase, so
     the story that owns AD-10 moves it here. What stands in for the third is the material rule
-    inside the two checks that read a body line: under that mode every filled line cell reads the
-    unnumbered word, which is no number, so neither of them has a row to read. The two phases below
-    quotes and values are registered with nothing behind them and cannot be seen at all.
+    inside the two checks that read a body line, and inside every check of ranges and ancestors:
+    under that mode every filled line cell reads the unnumbered word, which is no number, and the
+    source row's line cell reads the sentinel, which is no range, so none of them has a row or a
+    range to read. The coverage phase is registered with nothing behind it and cannot be seen at
+    all.
 
     A phase this returns False for does not run at all: its checks are not called, so the run
     records nothing for them and `run.reached` does not move past the phase before it - which is

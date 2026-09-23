@@ -26,8 +26,10 @@ range that runs backwards, the reason of a refusal, the size limit, the substrin
 field and the list that fills the `listed` field are enforced in either mode, and a quote against
 the body line it cites is enforced under `line_numbers: snapshot` — under `line_numbers: none` no
 quote is held against any text, because the check that would search one in the supplied input is
-not built. A citation against the range it is allowed and the coverage of the body are not enforced
-at all.
+not built. A citation against the range it is allowed — inside its own ticket's `source` range, or
+an ancestor line its field's `ancestor` cell allows — and the shape of those ranges are enforced
+under `line_numbers: snapshot`, where there are numbers to compare. The coverage of the body is not
+enforced at all.
 
 ## The eight fields
 
@@ -61,6 +63,17 @@ line inside its own ticket's `source` range. `yes` — it may also cite an **anc
 heading the change sits under, or a parent list item, as `02_segmentation.md` defines. An empty
 cell is neither, and `source` is the one field with an empty cell: it cites nothing, it carries the
 range itself. The cell is empty and never `no`, because `no` is a scope and `source` has none.
+
+**`02_validate/validate.py` holds the one word `no` of this column**, and no other value of it
+(Sergey, 2026-09-23). That is the sixth exception to AD-1, granted for the reason the fifth was: a
+check is **selected by** the reading a field carries — a valid ancestor line cited by a row of a
+field whose cell reads `no` is a failure, and the same line cited under any other field is none —
+and a condition written in terms of a reading cannot be read out of the cell that carries it. `yes`
+is granted to nothing and asked for by nothing: a field that may cite an ancestor is simply one the
+check does not select. The same word is a value of `breaking-terms` in `03_breaking-terms.md`, and
+the tool never uses it to read that table, which it reads by its phrases alone. A reading renamed
+here and not there is caught rather than silent: the fixture of the ancestor check stops raising
+its code, and the negative suite fails.
 
 <!-- table: fields -->
 | field | kind | rows | ancestor | holds |
@@ -564,11 +577,13 @@ a tool's source as well as in this file is a defect and not a convenience (AD-1)
 exception is the thirteen class names, granted above.
 
 `02_validate/validate.py` reads three of them for its own work — `fields` for which rows are fields
-1 to 7 and which is field 8, by position and never by name, and for the `kind` cell of a row whose
-value it is about to hold against that row's quote; `schema-constants` for the sentinel, the
+1 to 7 and which is field 8, by position and never by name, for the `kind` cell of a row whose
+value it is about to hold against that row's quote, and for the `ancestor` cell of a row that cites
+an ancestor line; `schema-constants` for the sentinel, the
 cell a filled line takes in the mode with no line numbers, the size limit and the gap inside a
-`source` value; and `refusal-reasons` for the list a refusal's reason must be in. It holds two
-values of them and no third — the two readings of `kind` granted above — and it asks for `fields`
+`source` value; and `refusal-reasons` for the list a refusal's reason must be in. It holds three
+values of them and no fourth — the two readings of `kind` and the one reading of `ancestor`, granted
+above — and it asks for `fields`
 through `tickets.py`'s own address, because that table's id reads the same as a key of `checks` and
 no tool writes one of those.
 

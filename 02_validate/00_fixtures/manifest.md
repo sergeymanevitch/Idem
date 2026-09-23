@@ -8,11 +8,11 @@ expected set; a mutation that fails for another reason, or by a crash, is a suit
 AD-7).
 
 **The corpus is written one row at a time.** Every row below was written before any of the files it
-names, which is the order the whole folder is built in. Forty-two of those files exist today: the
+names, which is the order the whole folder is built in. Fifty of those files exist today: the
 clean tickets file, the three of the reading stage, the six of the pairing phase, the twelve of
-canonical form and grammar, the eight of the row states, and the twelve of quotes and values — every
-row of that phase but `quote_input`, which waits with the check that would read it. The rest come
-with the checks that read them, and
+canonical form and grammar, the eight of the row states, the twelve of quotes and values — every
+row of that phase but `quote_input`, which waits with the check that would read it — and the eight
+of ranges and ancestors. The rest come with the checks that read them, and
 `run_fixtures.py` prints on every run how many rows still name a file that is not there. Beside that,
 the rows carry the both-ways reconciliation in `test_manifest.py`: every row of `checks` in
 `reference/05_checks.md` is named here, and every code named here is a row of `checks`. The two
@@ -51,7 +51,7 @@ canonical form, and no serialiser would have written it.
 
 ## Rows that need a word
 
-Most rows say all there is to say. Nine do not:
+Most rows say all there is to say. Ten do not:
 
 - **`grammar_shape-01`** is a **missing** block: the `## Unmapped` heading and the blank line above
   it are taken out, so the entries stand where the heading should. Blocks that merely run together
@@ -75,8 +75,8 @@ Most rows say all there is to say. Nine do not:
   all of it through `snapshot.write`. So were `edited-01.txt`, `unreadable-01.txt`, `long-01.txt`
   and `terms-01.txt` — that last one rewrites three body lines **for the text they carry**, so that
   a line holds a phrase of the list that decides `breaking`, and it stands for no refetch of
-  anything; the table in `00_fixtures/CONTEXT.md` says which of the six snapshots is evidence and
-  which five are not.
+  anything; so was `items-01.txt`, for the three rows below that need it; the table in
+  `00_fixtures/CONTEXT.md` says which of the seven snapshots is evidence and which six are not.
 - **`snapshot_sha256-01`** has a snapshot whose body no longer matches its own header digest. Its
   tickets header carries the **recomputed** digest, not the snapshot's stale one, so that the
   pairing check passes and the snapshot's own check is the only thing that fires.
@@ -101,6 +101,27 @@ Most rows say all there is to say. Nine do not:
   the defect `quote_line` is for, raised where another code was wanted. `terms-01.txt` is the same
   body with its three cited lines rewritten to hold those phrases, and the base those three are one
   mutation of is `clean-01` moved onto it.
+- **`cite_range-02`, `range_start-01` and `range_end-01` are paired with `items-01.txt`** (Sergey,
+  2026-09-23). The Plaid body has no `continuation` line and no two lines of one text, so a quote
+  taken from another line holding the same text, a range starting on a continuation, and a range
+  ending inside an item without a second code could not be built on it. `items-01.txt` is the same
+  body with lines 3 and 5 rewritten as one text indented under the item above each — two
+  continuations, so that lines 2–3 and 4–5 are one item each and line 3 holds the text of line 5
+  outside the item line 5 is in. The base those three are one mutation of is `clean-01` moved onto
+  it, with ticket 3 removed, ticket 1 ranging over `2-3`, ticket 2 citing line 5 and ranging over
+  `4-5`, and lines 3 and 4 listed in `Unmapped` as uncited lines inside a range. That base is not
+  committed, because it would be a second clean file no row names; a test rebuilds it from
+  `range_start-01` and runs it. And **`cite_range-01`** is FR-40's "date transplanted from another
+  ticket" made on one ticket: the `entry_date` row of ticket 1 moves to the heading of the
+  neighbouring entry, line 5, which carries the same date, so quote, line and value are all correct
+  and only the range is wrong. A second ticket under that heading would need a fourth ticket in the
+  base, and a row of this table is one mutation. **Both `cite_range` fixtures are single-code
+  because AD-6 suppresses coverage:** `cite_range-01` cites line 5 and `cite_range-02` cites line 3,
+  and each of those lines is still listed under `Unmapped` in its base — `cite_range-02` leaves line
+  5 uncited as well — so a run that reached coverage would add `UNMAPPED_CITED` and, for the second,
+  `UNMAPPED_MISSING`. The ranges phase fails first and the coverage phase never runs. The items base
+  itself is proved silent by the tool through the ranges phase, and for coverage by hand alone,
+  until the coverage checks are written.
 
 One thing the suite does not do: re-decide a refusal. `clean-02` and the shape fixtures are checked
 against the grammar of their shape, never against whether the input really was a changelog, and
@@ -156,12 +177,12 @@ AD-2).
 | breaking_value-02.tickets.md | terms-01.txt | 1 | BREAKING_VALUE |
 | breaking_quote-01.tickets.md | terms-01.txt | 1 | BREAKING_QUOTE |
 | cite_range-01.tickets.md | changelog-01.txt | 1 | CITE_RANGE |
-| cite_range-02.tickets.md | changelog-01.txt | 1 | CITE_RANGE |
+| cite_range-02.tickets.md | items-01.txt | 1 | CITE_RANGE |
 | ancestor_field-01.tickets.md | changelog-01.txt | 1 | ANCESTOR_FIELD |
 | range_overlap-01.tickets.md | changelog-01.txt | 1 | RANGE_OVERLAP |
 | range_heading-01.tickets.md | changelog-01.txt | 1 | RANGE_HEADING |
-| range_start-01.tickets.md | changelog-01.txt | 1 | RANGE_START |
-| range_end-01.tickets.md | changelog-01.txt | 1 | RANGE_END |
+| range_start-01.tickets.md | items-01.txt | 1 | RANGE_START |
+| range_end-01.tickets.md | items-01.txt | 1 | RANGE_END |
 | range_body-01.tickets.md | changelog-01.txt | 1 | RANGE_BODY |
 | unmapped_missing-01.tickets.md | changelog-01.txt | 1 | UNMAPPED_MISSING |
 | unmapped_missing-02.tickets.md | changelog-01.txt | 1 | UNMAPPED_MISSING |
@@ -182,10 +203,11 @@ Sixty-four rows: forty-six checks covered, sixty-one rows naming at least one co
 clean files** that must be accepted with nothing said about them — one of each shape. `clean-01` is
 the tickets shape, `clean-02` a refusal and `clean-03` a zero-ticket file, because a validator that
 accepted only the shape it sees most would pass a suite built out of the other two's mutations.
-Eight snapshots are named — `changelog-01.txt` and its refetch `changelog-02.txt`, `pasted-01.txt`
+Nine snapshots are named — `changelog-01.txt` and its refetch `changelog-02.txt`, `pasted-01.txt`
 for the unnumbered mode, `long-01.txt` for the size limit, `terms-01.txt` for the three mutations
-that need a line holding a listed phrase or a temporal expression, `edited-01.txt` and
-`unreadable-01.txt` for the two snapshot checks, and the absent `no-such-snapshot.txt`.
+that need a line holding a listed phrase or a temporal expression, `items-01.txt` for the three
+that need a continuation line, `edited-01.txt` and `unreadable-01.txt` for the two snapshot checks,
+and the absent `no-such-snapshot.txt`.
 
 ## Where each FR-40 mutation went
 
