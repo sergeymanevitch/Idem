@@ -31,9 +31,10 @@ read by the loader itself, on every load, because it is the table that says wher
 `checks` is read by `02_validate/validate.py`, which registers a check under every key of it and
 prints the code each row carries, and by `02_validate/run_fixtures.py`, which counts the rows no
 fixture exercises. That validator reads three tables of `01_schema.md` for its own work as well —
-`fields` for which rows are fields 1 to 7 and which is field 8, `schema-constants` for the four
-values a check compares against, and `refusal-reasons` for the list a reason must be in. The
-remaining three — `breaking-terms`, `html-elements` and `warn-patterns` — wait for the phases of the
+`fields` for which rows are fields 1 to 7, which is field 8 and how a row's value relates to its
+quote, `schema-constants` for the four values a check compares against, and `refusal-reasons` for
+the list a reason must be in — and `breaking-terms`, for the two checks that decide what a quote
+supports. The remaining two — `html-elements` and `warn-patterns` — wait for the phases of the
 validator that are not written and for the HTML routine.
 `02_segmentation.md` holds no table, so the loader never opens it at all. A pattern is the one kind
 of cell the loader looks inside: a column named `pattern`, or ending `_pattern`, is linted and
@@ -42,12 +43,12 @@ compiled as the contract loads, and `00_catalogue.md` states that convention.
 **Known debt.** A rule stated here that no pattern can carry is enforced by nothing until the tool
 that owns it exists. Story 1.7 closed half of that: `05_checks.md` now gives almost every one of
 these rules a key and a code, so the thing they are waiting for is a tool and no longer a decision.
-**A key is not a check.** `validate.py` is written as a frame and it enforces four phases of the
+**A key is not a check.** `validate.py` is written as a frame and it enforces five phases of the
 nine: reading the file — the encoding, the five header items and the patterns of their values;
 pairing, which is where the rules of AD-5 and FR-35 about the snapshot are; canonical form and
-grammar; and the row states. Everything else below is registered under its key with nothing behind
-it, and the list stays here until the phase that owns each rule is written and its fixtures pass.
-There are five groups.
+grammar; the row states; and quotes and values, all of it but `quote_input`. Everything else below
+is registered under its key with nothing behind it, and the list stays here until the phase that
+owns each rule is written and its fixtures pass. There are five groups.
 
 - `04_snapshot-format.md` — the fence-pairing and open-item rules of `line-classes`, stated in
   `rule` cells, in English. **These get no key, and that is a decision of 2026-09-20**: they are the
@@ -84,22 +85,25 @@ There are five groups.
   `state_filled` and `state_empty`, for which the reader derives each row's state and judges none;
   that a refusal reason is a row of `refusal-reasons` — `refusal_reason`, which is what made that
   table read by a tool at all; and that `unnumbered` appears only under `line_numbers: none` —
-  `line_form`. One is still enforced by nothing: that a filled value of a `copied` field is a
-  substring of its own quote — `value_quote`, which belongs to the phase below the row states.
-  Owner: `validate.py`.
+  `line_form`. **The last of them is closed** (2026-09-22): that a filled value of a `copied` field
+  is a substring of its own quote is `value_quote`, and that check is written, reads the `kind` cell
+  of the row's own field and runs in both modes. Owner of what is left: `validate.py`.
 - `03_breaking-terms.md`, the rules for reading a quote against `breaking-terms`. The table carries
-  the phrases and their values; the routines that read them are prose, and five rules are enforced
-  by nothing. Four are the choices of the lookup that fills the field: that only `A` to `Z` is
-  folded; that the scan runs left to right and continues after a phrase it keeps, rather than
-  taking the longest phrase found anywhere; that a phrase is taken only where the character before
-  it is not an ASCII letter or digit; and that two kept phrases carrying different values make the
-  quote support neither. The first three are sub-rules of `breaking_value` and the fourth is
-  `breaking_quote`. The fifth rule is the FR-37 warning, which reads the same table by a different
-  rule — any phrase of it occurring anywhere in the folded line, with no scan, no left edge and no
-  disagreement — and so fires on a `no` phrase and on a phrase buried inside a word; its key is
-  `warn_breaking`. Owner: `validate.py`, with the Story 3.x fixtures. The tests of
-  `lib/tests/test_breaking_terms.py` run their own reading of the lookup, which proves the table
-  against the cases the file works through and never that a tool implements it.
+  the phrases and their values; the routines that read them are prose. **Four of the five are closed**
+  (2026-09-22): the choices of the lookup that fills the field — that only `A` to `Z` is folded;
+  that the scan runs left to right and continues after a phrase it keeps, rather than taking the
+  longest phrase found anywhere; that a phrase is taken only where the character before it is not an
+  ASCII letter or digit; and that two kept phrases carrying different values make the quote support
+  neither — are implemented in `validate.py`, the first three as sub-rules of `breaking_value` and
+  the fourth as `breaking_quote`, and three committed fixtures exercise them. The fifth rule is the
+  FR-37 warning, which reads the same table by a different rule — any phrase of it occurring
+  anywhere in the folded line, with no scan, no left edge and no disagreement — and so fires on a
+  `no` phrase and on a phrase buried inside a word; its key is `warn_breaking`, it belongs to the
+  coverage phase, and it is enforced by nothing. Owner: `validate.py`. The tests of
+  `lib/tests/test_breaking_terms.py` still run their own reading of the lookup, written from the
+  prose rather than from the tool; `02_validate/test_validate.py` holds the tool's routine against
+  that reading quote by quote, so the two readings of one page are proved to agree rather than left
+  side by side.
 - `02_segmentation.md`, the rules of segmentation that no key of `05_checks.md` can reach, and the
   file names each one where it stands. That a parent list item is never a change: a ticket for a
   parent written beside tickets for its leaves fails `range_overlap`, but one written instead of
@@ -126,9 +130,10 @@ There are five groups.
 naming them is part of what that file is for. **Rules that get no key**: FR-16's "'Deprecated on X'
 alone fills neither field", which is translator-only prose, and two `breaking` rows of one ticket
 that disagree, which breaks no rule any file states. **Keyed, but not decidable today**: longest at
-a position, which `breaking_value` covers although no phrase of the shipped list can exercise it,
-and a false `not in source`, where what is keyed is the backstop — `unmapped_missing` and the two
-warnings — and never the defect itself.
+a position, which `breaking_value` covers although no phrase of the shipped list can exercise it —
+two test files run it on a made-up list that is contract nowhere — and a false `not in source`,
+where what is keyed is the backstop — `unmapped_missing` and the two warnings — and never the
+defect itself.
 
 - **Read by:** `lib/idemlib/contract.py` (marked tables only), the translator (the files a step names).
 - **Written by:** a person. Nothing here is generated.

@@ -11,8 +11,8 @@ the page.
 
 One table below holds the list. It is in the catalogue, so a tool loads it; no tool holds a copy of
 it (AD-1). What the table cannot carry — how a quote is read against it — is the prose of this file,
-and `05_checks.md` now gives it a key; `reference/CONTEXT.md` still names it as debt, because a key
-is not a check until `validate.py` and the fixtures of Epic 3 exist.
+`05_checks.md` gives it a key, and `02_validate/validate.py` now implements it and reads every
+phrase and every value out of the table below on every run.
 
 ## The list
 
@@ -101,8 +101,8 @@ because "breaking change" occurs in it and there is no left edge to stop it. A l
 is *not* breaking, and a line where the phrase is buried inside a word, are both lines worth a
 reader's eye when they were left uncited inside a change's range. A warning that missed them to
 stay tidy would be the wrong trade; a false `not in source` is what FR-37 exists to backstop. That
-warning has its key in `05_checks.md` and will be built in `validate.py`; until that tool exists,
-nothing in this file is enforced by anything.
+warning has its key in `05_checks.md` and is **not** built: the routine below is, and the warning's
+own reading of this list waits for the coverage phase.
 
 ## Worked
 
@@ -163,9 +163,21 @@ the translator has been run against real changelogs, and it leaves the table abo
 phrase is added to the table only by a decision, never by a story that finds a sentence it would
 like to catch.
 
-## Nothing reads this table yet
+## What reads this table
 
-Today `contract.py` loads it with the rest of the contract, and no other tool reads it, because
-`validate.py` is not written. When it is, it owns the lookup above and takes every phrase and every
-value from here, keeping no copy: a phrase that appears in a tool's source as well as in this table
-is a defect and not a convenience (AD-1).
+`contract.py` loads it with the rest of the contract, and `02_validate/validate.py` reads it: it
+owns the routine of "How a quote is read" and takes every phrase and every value from here on every
+run, keeping no copy. A phrase that appears in a tool's source as well as in this table is a defect
+and not a convenience (AD-1), and a test of `02_validate/test_validate.py` reads that tool's source
+back and fails if any phrase of this list stands in it.
+
+Two checks of `05_checks.md` stand on the routine. `breaking_value` holds the value a row gives
+against what the routine reads out of that row's quote — nothing, which should have left the field
+reading the sentinel, or a value that is not the row's. `breaking_quote` is the third outcome of
+"Decide" above: a quote whose kept phrases carry different values supports neither, so no row filled
+from it can be true of it. The routine is one scan and the two checks read it once each; the
+disagreement is not `breaking_value`'s, because a quote supporting neither value gives it nothing to
+compare.
+
+The **warning** of FR-37, which reads this list the other way, is not built: it belongs to the
+coverage phase, and that phase is registered with nothing behind it.

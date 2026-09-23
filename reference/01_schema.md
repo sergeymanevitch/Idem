@@ -20,10 +20,14 @@ so a tool loads them; none of them is copied into any tool (AD-1).
 The grammar here is **described and read**. `lib/idemlib/tickets.py` is the one reader and the one
 writer of a tickets file: it takes every field name, count, literal and pattern from the five tables
 below, gives back a data model and a list of findings, and writes a model back as the bytes of a
-canonical file. What a **cell holds** is the validator's, and the validator now reads some of it:
+canonical file. What a **cell holds** is the validator's, and the validator now reads most of it:
 the two row states, the shape of the `source` row and what it names, the form of a line cell, a
-range that runs backwards, the reason of a refusal and the size limit are enforced; the substring
-rule, every citation against the snapshot and the coverage of the body are not.
+range that runs backwards, the reason of a refusal, the size limit, the substring rule of a `copied`
+field and the list that fills the `listed` field are enforced in either mode, and a quote against
+the body line it cites is enforced under `line_numbers: snapshot` — under `line_numbers: none` no
+quote is held against any text, because the check that would search one in the supplied input is
+not built. A citation against the range it is allowed and the coverage of the body are not enforced
+at all.
 
 ## The eight fields
 
@@ -34,6 +38,17 @@ The `kind` column says how a value relates to its quote. `copied` — the value 
 substring of its own quote, character for character (FR-12, FR-30). `listed` — the value is not in
 the quote at all; the quote holds a phrase from a closed list, and the list maps that phrase to the
 value (FR-14). `range` — the row carries a line range and no quote.
+
+**`02_validate/validate.py` holds the first two of those three readings**, and no other value of
+this file (Sergey, 2026-09-22). That is the fifth exception to AD-1, and the reason is the one that
+granted `snapshot.py` its seven class names and `tickets.py` its thirteen: a check is **selected by**
+the reading a field carries — hold a value to its own quote where the cell reads `copied`, read the
+quote against the phrase list where it reads `listed` — and a condition written in terms of a
+reading cannot be read out of the cell that carries it. The third reading is granted to nothing and
+is asked for by nothing: the one row that carries it is field 8, and field 8 is found by its
+position in this table and never by name. A reading renamed here and not there is caught rather than
+silent: the fixtures of the quotes-and-values phase stop raising their codes, and the negative suite
+fails on every one of them.
 
 The `rows` column says how many rows one ticket may give the field. `1+` is one row, or several
 consecutive rows when the field has several values or needs several lines: a quote is a contiguous
@@ -299,12 +314,12 @@ one field are consecutive and give the eight names in the table's order, that ti
 from 1 without a gap, and that the header holds exactly the five items in that order — those are
 findings of the reader, and a file that breaks one of them has no model. Most of the rest are
 **checks**: they read the model rather than the file, and `02_validate/validate.py` now runs them —
-the two row states, the refusal reason, `unnumbered` under one mode only, and the first number of a
-range lying below the second in an `Unmapped` range and in a `source` row's line cell. Two are
-still enforced by nothing: that the first number of `body_range` lies below its second, and that an
-`Unmapped` range stands for a run of consecutive lines. The substring rule waits for the phase
-below the row states, which is not written. Every one of them is listed as debt in
-`reference/CONTEXT.md`, where the key it was given is named beside it.
+the two row states, the refusal reason, `unnumbered` under one mode only, the first number of a
+range lying below the second in an `Unmapped` range and in a `source` row's line cell, and the
+substring rule of a `copied` field, which is read against the row's own quote and in every mode.
+Two are still enforced by nothing: that the first number of `body_range` lies below its second, and
+that an `Unmapped` range stands for a run of consecutive lines. Every one of them is listed as debt
+in `reference/CONTEXT.md`, where the key it was given is named beside it.
 
 ## The `source` row
 
@@ -549,11 +564,13 @@ a tool's source as well as in this file is a defect and not a convenience (AD-1)
 exception is the thirteen class names, granted above.
 
 `02_validate/validate.py` reads three of them for its own work — `fields` for which rows are fields
-1 to 7 and which is field 8, by position and never by name; `schema-constants` for the sentinel, the
+1 to 7 and which is field 8, by position and never by name, and for the `kind` cell of a row whose
+value it is about to hold against that row's quote; `schema-constants` for the sentinel, the
 cell a filled line takes in the mode with no line numbers, the size limit and the gap inside a
-`source` value; and `refusal-reasons` for the list a refusal's reason must be in. It holds no value
-of any of them either, and it asks for `fields` through `tickets.py`'s own address, because that
-table's id reads the same as a key of `checks` and no tool writes one of those.
+`source` value; and `refusal-reasons` for the list a refusal's reason must be in. It holds two
+values of them and no third — the two readings of `kind` granted above — and it asks for `fields`
+through `tickets.py`'s own address, because that table's id reads the same as a key of `checks` and
+no tool writes one of those.
 
 `refusal-reasons` is read by the validator and by nothing else. The reader carries a refusal's
 reason as written and never compares it with that list — a reason that is not one of the four is a

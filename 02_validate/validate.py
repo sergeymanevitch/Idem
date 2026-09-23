@@ -4,7 +4,7 @@
     python3 02_validate/validate.py [--snapshots DIR] <tickets>
 
 This is the frame every check drops into, and part of the frame is still empty. Every row of the
-checks table is registered here under its key; the twenty-five that are written report something,
+checks table is registered here under its key; the thirty that are written report something,
 and the rest are registered as a callable that reads nothing and finds nothing. That is deliberate
 and it is the order the whole folder is built in: the list of what can be wrong was written before
 any tool could find one of them, so that no check is ever invented to describe code already
@@ -16,8 +16,10 @@ The contract is loaded and the registry is built and reconciled with the table b
 is opened once and read once, by the one reader of the format. Then nine phases run in the fixed
 order (AD-6): the tool's own failures, reading the file, pairing it with its snapshot, canonical
 form and grammar, row states, quotes and values, ranges and ancestors, coverage, and the warnings.
-Reading, pairing, canonical form and grammar, and the row states are written. The three after them
-are not, and the story that fills each one writes its checks into this file and nowhere else.
+Reading, pairing, canonical form and grammar, the row states and the quotes and values are written,
+but for the one row of that last phase which searches a quote in a supplied input text and has no
+argument to read one from yet. The two phases after them are not, and the story that fills each one
+writes its checks into this file and nowhere else.
 
 HOW A PHASE RUNS
 
@@ -52,7 +54,12 @@ or names of the columns it reads by; the names of the four header items it asks 
 header fields they are compared against; the three schema constants it asks for beyond the ones the
 format module already names; the folder a snapshot is looked for in when none is named;
 the flag; the word that opens a warning line; the prefix a check's function name carries; and the
-opening words of the cell that tells a warning row from a failure row. The one table id it would
+opening words of the cell that tells a warning row from a failure row. **Two values, and two
+only**: the two readings of the `kind` column of the fields table that a check of the quotes and
+values phase asks a row by - the one that says a value is copied out of its quote and the one that
+says a list fills it - written out because a check is selected *by* them and a column of the
+contract is not a place to put a condition (Sergey, 2026-09-22; the fifth exception to AD-1, and it
+is granted in the schema file beside the column itself). The one table id it would
 otherwise have to write for itself - the fields of a ticket - is asked for through the format
 module, because that id is also a key of the checks table and this tool writes none of those.
 **No key of the checks table
@@ -116,6 +123,20 @@ SLASH = "/"
 #: checks table, so it is written here; the fields of a ticket are asked for through the format
 #: module instead, because that table's id **is** a key of the checks table.
 REASONS_TABLE = "refusal-reasons"
+#: The closed list of phrases that decide the one field a list fills, by table id. The routine that
+#: reads a quote against it is written here; no phrase and no value of it is (AD-1). The rows are
+#: keyed on the phrase, so the phrase column needs no name, and the value column is asked for by the
+#: name the format module already holds.
+TERMS_TABLE = "breaking-terms"
+#: The column of the fields table that says how a value relates to its quote, and the two readings
+#: of it a check asks a row by. These two words are the one value of any contract table written in
+#: this file, granted by Sergey on 2026-09-22 and recorded in the schema file: a check is chosen by
+#: which of them a row's field carries, and a condition written in terms of a reading cannot be read
+#: out of the cell that carries it. The third reading, the one the row carrying a range takes, is
+#: asked for by nothing - that row is field 8, and field 8 is found by position.
+KIND = "kind"
+COPIED = "copied"
+LISTED = "listed"
 #: Three constants of the schema, each a key and never a value: what a filled line cell reads in the
 #: mode with no line numbers, the largest input this contract is written for, and how many spaces
 #: stand between the two parts of a source row's value. The sentinel is asked for by the name the
@@ -1048,6 +1069,299 @@ def check_range_reversed(run):
 check_range_reversed.phase = STATES
 
 
+# --- quotes and values: every quote on the line cited, every value inside its quote (FR-29, FR-30) ----
+#
+# A **cited row** is a row of fields 1 to 7 whose value is not the sentinel and whose line cell is a
+# number. The phase above has already refused every other filled row, and a sentinel row carrying a
+# line is `state_sentinel`'s, so nothing here re-reports either. Under the mode with no line numbers
+# a filled line cell reads the unnumbered word, which is no number, so the two checks that read a
+# body line have nothing to read there without asking the mode; the phase skip AD-10 states for that
+# mode is a story of its own and is not built here.
+#
+# Three carve-outs keep one code on one row, and each of them is a reading of a cell that names
+# none of them (Sergey, 2026-09-22). The check of a line past the body reads fields 1 to 7 alone,
+# because the source row cites nothing - it carries a range, and a range is held against the body by
+# the phase below this one. The check of a quote against its line passes over a row whose line the
+# check above it refused, because a line that is not in the body has no text to search. And the
+# check of the value a quote supports passes over a quote the routine finds to support neither
+# value, because that outcome is no value at all and the row that owns it is the one after it.
+#
+# Nothing is trimmed, folded or normalised anywhere in this phase but by the fold of the routine
+# itself: what is compared is the model's cells as the reader gives them - the two escapes already
+# removed and nothing else - against the snapshot's own prefix-free line text, body line n being
+# `run.snapshot.lines[n - 1]` (AD-8). A snapshot's header line is no body line and can never be
+# cited, so a header line quoted under a body line number is simply a quote that is not on the line.
+
+
+def _cited(run):
+    """Every row of fields 1 to 7 that cites a body line, in file order.
+
+    Filled - a value that is neither empty nor the sentinel, and a quote - with its line cell a
+    number. A row with no line, an empty value, an empty quote, a sentinel carrying a line and a
+    line cell of any other form are each a row of the phase above this one, and are not read again
+    here. Each of the three cells is tested rather than left to the phase above: this list is what
+    two checks read, and a check handed such a row on its own would report a second code for a row
+    already refused.
+    """
+    sentinel = _constant(run, tickets.SENTINEL)
+    return [row for row in _rows(run)[0]
+            if row.value != tickets.EMPTY and row.value != sentinel
+            and row.quote != tickets.EMPTY and _is_number(row.line)]
+
+
+def _body_line(run, row):
+    """The text of the body line this row cites, or None where the body has no such line.
+
+    The snapshot was read once by the pairing phase and left on the run; nothing here opens a file
+    or reads one a second time, because two readings of one file could disagree about where line 12
+    is. The line is the text alone: the reader has already taken the number prefix off.
+    """
+    lines = run.snapshot.lines
+    if _above(row.line, _as_digits(len(lines))):
+        return None
+    return lines[_number(row.line) - 1]
+
+
+def _of_kind(run, reading):
+    """Every row of fields 1 to 7 whose field relates to its quote this way, filled, with a quote.
+
+    A value that is empty or reads the sentinel, and an empty quote cell, are each the row states'
+    and are left to them. What is left is a cell holding something a reader would take for a value -
+    a filler that carries a line and a quote among them, which is exactly what the phase above says
+    cannot be told from one - against a quote that carries something to read it in.
+    """
+    fields = run.tables[tickets.FIELDS_TABLE].rows
+    sentinel = _constant(run, tickets.SENTINEL)
+    found = []
+    for row in _rows(run)[0]:
+        if fields[row.field][KIND] != reading:
+            continue
+        if row.value == tickets.EMPTY or row.value == sentinel:
+            continue
+        if row.quote == tickets.EMPTY:
+            continue
+        found.append(row)
+    return found
+
+
+# --- the routine of the phrase list, which holds no phrase --------------------------------------------
+
+
+def _fold(text):
+    """Every character A to Z as its lower-case letter, and nothing else changed.
+
+    Not a hyphen, not a space, not a character outside ASCII: `str.lower()` would fold an upper-case
+    letter of another alphabet as well, and a phrase is lower-case ASCII, so folding more than the
+    contract says would change a quote in a way no phrase can benefit from.
+    """
+    folded = []
+    for character in text:
+        place = string.ascii_uppercase.find(character)
+        folded.append(character if place < 0 else string.ascii_lowercase[place])
+    return tickets.EMPTY.join(folded)
+
+
+def _edge(folded, index):
+    """Whether a phrase may be taken here: the start of the quote, or no ASCII letter or digit
+    behind it. The edge is ASCII as the contract writes it, so a letter of another alphabet does not
+    close it and a phrase standing directly after one is taken."""
+    return index == 0 or folded[index - 1] not in tickets.ALPHANUMERIC
+
+
+def _kept(quote, phrases):
+    """The phrases the scan keeps in this quote, left to right, in the order it keeps them.
+
+    At a position with an open left edge it takes the **longest** phrase standing there as a
+    substring - the right edge is open on purpose, so a plural is taken - keeps it, and continues
+    after its last character; where no phrase stands it moves on one. Longest applies at one
+    position and never anywhere in the quote: read the other way, a quote holding the negated form
+    of a phrase would come out as the phrase itself.
+    """
+    folded = _fold(quote)
+    found = []
+    index = 0
+    while index < len(folded):
+        longest = None
+        if _edge(folded, index):
+            for phrase in phrases:
+                if folded[index:index + len(phrase)] != phrase:
+                    continue
+                if longest is None or len(phrase) > len(longest):
+                    longest = phrase
+        if longest is None:
+            index += 1
+            continue
+        found.append(longest)
+        index += len(longest)
+    return found
+
+
+def _read_breaking(run, quote):
+    """What the routine reads out of one quote: the values its kept phrases carry, in order.
+
+    Empty is a quote that decides nothing and leaves the field reading the sentinel; one value is
+    what the field should read; two are a quote that supports neither, which is a row of its own.
+    Every phrase and every value is a cell of the contract table, read on every run and written
+    nowhere here (AD-1).
+    """
+    rows = run.tables[TERMS_TABLE].rows
+    values = []
+    for phrase in _kept(quote, rows):
+        value = rows[phrase][tickets.VALUE]
+        if value not in values:
+            values.append(value)
+    return values
+
+
+# --- the five checks, in the row order of the table ----------------------------------------------------
+
+
+def check_line_range(run):
+    """A row cites a line past the last body line of the snapshot (FR-29).
+
+    Zero and a negative number are no number at all and are the line-form row's, a phase above.
+    The range a source row carries is not a citation - it is held against the body by the phase
+    below - so fields 1 to 7 are what is read here.
+
+    Nothing to read where there is no model, no ticket, no snapshot on the run, or no row whose line
+    cell is a number: it returns an empty list.
+    """
+    if run.snapshot is None:
+        return []
+    last = _as_digits(len(run.snapshot.lines))
+    found = []
+    for row in _cited(run):
+        if not _above(row.line, last):
+            continue
+        found.append(Failure(row.at, "this row cites body line " + row.line + ", and the snapshot "
+                                     "this file names has " + last + " body lines"))
+    return found
+
+
+check_line_range.phase = QUOTES
+
+
+def check_quote_line(run):
+    """The quote is not found verbatim on the body line cited (FR-29).
+
+    A row the check above refused is not read here: a line that is not in the body has no text to
+    search, and one row raises one code. What is searched is the line's text as the snapshot carries
+    it, and what is searched for is the quote cell as the reader gives it; neither is trimmed and
+    neither is folded.
+
+    **A blank body line needs no test of its own.** A quote is non-empty and neither begins nor ends
+    with a space or a tab, so it can never be a substring of a line that is spaces and tabs alone,
+    and the substring test refuses it without asking what class the line is. An empty quote cell is
+    a filled row missing a cell and is the row states', so it is not read here - `_cited` drops it,
+    rather than leaving it to pass this test vacuously as a substring of every line there is.
+
+    **A header line of the snapshot is no body line.** The number space is the body's alone, so a
+    header line quoted under a body line number is simply a quote that is not on the line cited.
+
+    Nothing to read where there is no model, no ticket, no snapshot on the run, or no row whose line
+    cell is a number: it returns an empty list.
+    """
+    if run.snapshot is None:
+        return []
+    found = []
+    for row in _cited(run):
+        text = _body_line(run, row)
+        if text is None or row.quote in text:
+            continue
+        found.append(Failure(row.at, "the quote of this row is not on body line " + row.line +
+                                     ", which reads '" + text + "'"))
+    return found
+
+
+check_quote_line.phase = QUOTES
+
+
+def check_value_quote(run):
+    """A filled value of a copied field is not a contiguous substring of its own quote (FR-30).
+
+    Character for character: case, whitespace and a single character all count, and nothing is
+    trimmed or folded on either side. It is read on the row and not on the line, so it runs in every
+    mode and says nothing about whether the quote is where the row says it is - a quote not on its
+    line and a value not inside its quote are two facts about two cells, and a row wrong both ways
+    reports both (Sergey, 2026-09-22).
+
+    The field a list fills is not read here and neither is the row carrying a range: what each of
+    those holds is held by the two rows below and by the source row's own.
+
+    Nothing to read where there is no model, no ticket, or no such row: it returns an empty list.
+    """
+    found = []
+    for row in _of_kind(run, COPIED):
+        if row.value in row.quote:
+            continue
+        found.append(Failure(row.at, "this row gives the value '" + row.value + "', and a value of "
+                                     "this field is a span of its own quote, character for "
+                                     "character"))
+    return found
+
+
+check_value_quote.phase = QUOTES
+
+
+def check_breaking_value(run):
+    """The value is not the one the routine of the contract reads out of the quote (FR-14, FR-30).
+
+    Two ways, and they are one rule: the routine reads **nothing** out of the quote, so the field
+    should have read the sentinel however plain the answer looks to a reader of the page; or it
+    reads one value and the row gives another - which covers a row giving a word that is neither of
+    the two values the list maps to.
+
+    A quote the routine finds to support **neither** value is passed over here and is the row
+    below's alone: that outcome is no value at all, so there is nothing for this row to compare, and
+    a quote holding both answers is a question about which quote should have been cited.
+
+    Nothing to read where there is no model, no ticket, or no filled row of that field with a quote:
+    it returns an empty list.
+    """
+    found = []
+    for row in _of_kind(run, LISTED):
+        values = _read_breaking(run, row.quote)
+        if len(values) > 1 or values == [row.value]:
+            continue
+        if not values:
+            message = ("this row reads '" + row.value + "', and its quote holds no phrase of the "
+                       "list that decides this field, so the field states nothing the source does")
+        else:
+            message = ("this row reads '" + row.value + "', and the list that decides this field "
+                       "reads '" + values[0] + "' out of its quote")
+        found.append(Failure(row.at, message))
+    return found
+
+
+check_breaking_value.phase = QUOTES
+
+
+def check_breaking_quote(run):
+    """The phrases the routine keeps in one quote carry different values (FR-30).
+
+    The quote supports neither answer, so no row filled from it can be true of it, and the remedy is
+    a narrower quote - one sentence rather than a paragraph holding both. It is per quote and not
+    per ticket: two rows of one ticket that disagree break no rule stated anywhere, and the checks
+    file names that as a limit with no key.
+
+    Nothing to read where there is no model, no ticket, or no filled row of that field with a quote:
+    it returns an empty list.
+    """
+    found = []
+    for row in _of_kind(run, LISTED):
+        values = _read_breaking(run, row.quote)
+        if len(values) < 2:
+            continue
+        found.append(Failure(row.at, "this quote holds phrases of the list that decides this field "
+                                     "carrying different values - " + ", ".join(values) + " - so "
+                                     "it supports neither, and a narrower quote is what a row of "
+                                     "this field is filled from"))
+    return found
+
+
+check_breaking_quote.phase = QUOTES
+
+
 # --- the warnings, which are never suppressed and never a failure -------------------------------------
 
 
@@ -1091,8 +1405,10 @@ def _has_material(phase, run):
     every one of them reads the model, and a shape that carries no ticket and no unmapped list
     leaves each of them with nothing to read. The difference is visible to nobody - a check with
     nothing to read is neither a pass nor a failure either way - and it is a rule about a phase, so
-    the story that owns AD-10 moves it here. The three phases below row states are registered with
-    nothing behind them and cannot be seen at all.
+    the story that owns AD-10 moves it here. What stands in for the third is the material rule
+    inside the two checks that read a body line: under that mode every filled line cell reads the
+    unnumbered word, which is no number, so neither of them has a row to read. The two phases below
+    quotes and values are registered with nothing behind them and cannot be seen at all.
 
     A phase this returns False for does not run at all: its checks are not called, so the run
     records nothing for them and `run.reached` does not move past the phase before it - which is

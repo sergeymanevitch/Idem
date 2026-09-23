@@ -5,13 +5,19 @@
 These read the shipped contract and never a temp tree: what is under test is what the folder says,
 and a copy written for the test would prove nothing about it.
 
-Nothing here is the lookup. `validate.py` is not written, and when it is, it owns the routine the
-file states and takes every phrase and every value from the table (AD-1). `lookup()` below is a
-reading of that prose, written here so that the table can be exercised against the cases the file
-works through. It is not a second home for the rule: it holds no phrase and no value, it is handed
-both, and nothing enforces that it still says what the prose says - which is why the four choices it
-implements, the fold, the scan order, the left edge and the disagreement, are named as debt in
-`reference/CONTEXT.md` until `05_checks.md` gives the rule a key and the Epic 3 fixtures exercise it.
+Nothing here is the lookup. `02_validate/validate.py` owns the routine the file states and takes
+every phrase and every value from the table (AD-1); the four choices it implements - the fold, the
+scan order, the left edge and the disagreement - are the tool's now, and three committed fixtures
+exercise them, so they are no longer the debt `reference/CONTEXT.md` once named. `lookup()` below is
+a reading of that same prose, written from the file rather than from the tool, so that the table can
+be exercised against the cases the file works through. It is not a second home for the rule: it
+holds no phrase and no value, and it is handed both.
+
+**It is also the oracle the tool is held against.** `02_validate/test_validate.py` imports the
+helpers below and runs the validator's routine beside them on the shipped table, on the worked
+illustration and on a made-up list, quote by quote. So the two readings of one page are proved to
+agree rather than left standing side by side, and a change made to one of them without the other
+fails there.
 
 The literals here are the ones the story fixes: the three phrases its acceptance criteria require,
 the one they forbid, the two values a phrase maps to - this table's `value` column is their first

@@ -138,6 +138,11 @@ carries is a value no tool writes. The same file refuses one in the other direct
 `02_validate/validate.py` asks for **every** row of `checks`, and forty-eight keys typed into one
 file would be a second copy of that table, so a key stands there as the suffix of a `check_`
 function name instead — an address a reader can see and a string sweep cannot (Sergey, 2026-09-22).
+That tool has one allowance of its own, granted in `01_schema.md` beside the column it is about: the
+two readings of the `kind` column of `fields` a check is selected by — the one that says a value is
+copied out of its quote and the one that says a closed list fills it. It is the fifth exception, and
+it is the same reason as the two above: a condition written in terms of a reading cannot be read out
+of the cell that carries it.
 
 ## The failure line, in one place
 

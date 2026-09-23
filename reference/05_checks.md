@@ -21,9 +21,10 @@ for. All three are in the catalogue, so a tool loads them; none of them is copie
 
 **Keyed is not the same as enforced.** `validate.py` and `run_fixtures.py` are written, and much of
 what is below is still a row and no more. Every row is registered under its key as a callable: the
-checks of the reading stage, of the pairing phase, of canonical form and grammar and of the row
-states are written, the two rows the frame itself raises are raised by the frame, and every other
-row is registered with nothing behind it. A row
+checks of the reading stage, of the pairing phase, of canonical form and grammar, of the row
+states and of quotes and values are written — all of that last phase but `quote_input`, which waits
+for the argument that supplies an input text to search — the two rows the frame itself raises are
+raised by the frame, and every other row is registered with nothing behind it. A row
 here says what the validator will check and under what code, never that anything checks it today —
 and `run_fixtures.py` prints, on every run, how many rows nothing exercises yet, so the distance
 between this list and what is enforced is a number a reader gets for free rather than a claim
@@ -127,6 +128,20 @@ slash, so the check fires; if the phase went on, every check under it would join
 snapshot directory and open a file outside it — which is the whole of what a bare name is for
 (AD-5). The name is not normalised and nothing of it is looked for: the phase ends at the
 character.
+
+**Three carve-outs inside quotes and values** (Sergey, 2026-09-22), and each of them is a reading of
+a cell that names none of them rather than a rule the cell states. `line_range` reads rows of fields
+1 to 7 and no source row, because a source row cites no line — it carries the range of a whole
+change, which `range_body` holds against the body. `quote_line` reads nothing on a row `line_range`
+refused: a line that is not in the body has no text to search a quote in, and one row raises one
+code. And `breaking_value` passes over a quote the routine of `03_breaking-terms.md` finds to
+support **neither** value, because that outcome is no value at all and there is nothing to compare
+the row against; the row that owns it is `breaking_quote`. Two more readings follow from cells
+elsewhere and are written here so that nobody has to find them by hand: zero and a negative number
+are no number at all, so a line cell holding one is `line_form`'s and not `line_range`'s; and
+`quote_line` and `value_quote` are **independent** — a quote that is not on the line cited and a
+value that is not inside its quote are two facts about two cells, and a row wrong both ways raises
+both codes.
 
 ### What each mode skips
 
@@ -384,8 +399,9 @@ the longest phrase standing at a position. The rule is a sub-rule of `breaking_v
 keyed — but no phrase of the shipped table begins another, so today no quote can tell that scan from
 one taking the shortest phrase, and `breaking_value` cannot fail for it. The rule is stated because
 a decision may add a phrase that needs it; until one does, the check covers a distinction nothing in
-the contract exercises, and the tests of `lib/tests/test_breaking_terms.py` exercise it on a made-up
-list that is not contract.
+the contract exercises, and two test files exercise it on a made-up list that is not contract:
+`lib/tests/test_breaking_terms.py`, on the reading of this prose that it holds, and
+`02_validate/test_validate.py`, on the routine `validate.py` runs.
 
 **A false `not in source`.** FR-37 says it: the source states something, the ticket says it does
 not, and nothing mechanical can tell. What is keyed is the backstop, not the defect: `unmapped_missing`
@@ -430,8 +446,11 @@ Today `contract.py` loads all three with the rest of the contract and lints the 
 `00_fetch/fetch.py` reads `fetch-failures`, asking for a row by its key and printing the code that
 row carries; and `02_validate/validate.py` and `02_validate/run_fixtures.py` read `checks` — the
 validator registers a check under every key of it and prints the code each row carries, and the
-suite counts the rows no fixture exercises. `warn-patterns` waits for the two warnings that read a
-line of `Unmapped`. Every tool takes every code and that pattern from here and keeps no copy: a code
+suite counts the rows no fixture exercises. The validator also reads `breaking-terms`, for the two
+checks of the quotes-and-values phase that decide what a quote supports. `warn-patterns` waits for
+the two warnings that read a line of `Unmapped`, and so does the other reading of `breaking-terms`,
+the one those warnings use.
+Every tool takes every code and that pattern from here and keeps no copy: a code
 that appears in a tool's source as well as in this file is a defect and not a convenience (AD-1) —
 excepting `CONTRACT_TABLE` and `INTERNAL`, for the reason stated above.
 

@@ -1,12 +1,13 @@
 # 02_validate — tickets to pass or fail
 
 One job: prove that every quote sits on the line cited and every value sits inside its quote, or
-say with a stable code what does not. **`validate.py` is built as a frame, and half of the frame is
-still empty.** Every row of `../reference/05_checks.md` is registered as a callable under its key;
-the reading stage, the pairing phase, canonical form and grammar, and the row states are written,
-and every other row is registered with nothing behind it. `run_fixtures.py` is built and runs the
-fixtures that exist; `00_fixtures/manifest.md` names all of them and `test_manifest.py` holds it
-against the checks table.
+say with a stable code what does not. **`validate.py` is built as a frame, and two phases of the
+frame are still empty.** Every row of `../reference/05_checks.md` is registered as a callable under
+its key; the reading stage, the pairing phase, canonical form and grammar, the row states and
+quotes and values are written — all of that last phase but the row that searches a quote in a
+supplied input text — and every other row is registered with nothing behind it. `run_fixtures.py`
+is built and runs the fixtures that exist; `00_fixtures/manifest.md` names all of them and
+`test_manifest.py` holds it against the checks table.
 
 ## Inputs
 - Working: a tickets file, and the snapshot its header names.
@@ -39,7 +40,8 @@ nothing but warnings was, 2 when the tool could not run at all.
 | pairing | written — the snapshot's name, that it is there, that it is a snapshot, its own digest, and the two values the tickets header copied from it |
 | canonical form and grammar | written — canonical form, a line no class claims, the blocks of the shape, the ticket numbers, the fields of a ticket, the reason of a refusal, the form of an unmapped entry, the size limit |
 | row states | written — the two states and the empty cell that is neither, the shape of the `source` row and what it names, the form of a line cell, a range that runs backwards |
-| quotes and values, ranges and ancestors, coverage | registered and empty |
+| quotes and values | written — a line past the last body line, a quote not on the line cited, a value not inside its own quote, and the two that read a quote against the phrase list. `quote_input` is registered and empty: nothing supplies an input text to search yet |
+| ranges and ancestors, coverage | registered and empty |
 | warnings | the one about the unnumbered mode is written; the two that read `Unmapped` are not |
 
 The registry is the answer to a check that exists and is exercised by nothing (AD-7). It is built
@@ -65,20 +67,20 @@ under it, and like a step script each puts `../lib/` on `sys.path` itself:
   every written check against the phase its row falls in, the five that end a phase against the
   prose that names them, the map between the classes of finding `tickets.py` makes and the checks
   that report them — both ways, by injection and never by a typed key — one bullet of the contract
-  at a time for the grammar and row-states checks, and each committed fixture against the codes its
-  own manifest row expects.
+  at a time for the grammar, row-states and quotes-and-values checks, the routine of
+  `../reference/03_breaking-terms.md` against the reading of that prose which `../lib/tests/`
+  holds, and each committed fixture against the codes its own manifest row expects.
 - `test_run_fixtures.py` runs the committed corpus through the suite, and proves each way the suite
   has to fail on a temporary corpus written for the test.
 
 ## Human check
 
-**Exit 0 does not clear a tickets file today, and will not until the three empty phases are
-written.** What it says now is only this: nothing the four written phases could catch. A quote that
-is not on the line it cites, a value that is not inside its own quote, a date filed under the wrong
-field, a citation outside its own ticket's range, a body line left out of `Unmapped` — every one of
-those exits 0 and says nothing, because quotes and values, ranges and ancestors, and coverage are
-registered and empty. Read `Unmapped`, every quote and every `not in source` row by eye until they
-are not.
+**Exit 0 does not clear a tickets file today, and will not until the two empty phases are
+written.** What it says now is only this: nothing the five written phases could catch. A date filed
+under the wrong field, a citation outside its own ticket's range, a quote taken from another line
+holding the same text, a body line left out of `Unmapped` — every one of those exits 0 and says
+nothing, because ranges and ancestors and coverage are registered and empty. Read `Unmapped`, every
+citation and every `not in source` row by eye until they are not.
 
 What exit 0 **is** good for: it says the file is UTF-8, its header is the five items in order with
 values of the right form, and it is about the snapshot it names — that snapshot is there, it is a
@@ -87,6 +89,14 @@ are the ones it carries. It says the file is canonical and holds nothing but the
 names, that its tickets are numbered from 1 and give the eight fields in order, that a refusal's
 reason is one of the four and a body range is inside the size limit. And it says every row is one
 of the two states with the cells that state takes, that the `source` row is the shape field 8 takes
-and names what the header names, and that no range in it runs backwards. That is the whole of it.
+and names what the header names, and that no range in it runs backwards. It says every value of a
+`copied` field is a span of its own quote character for character, and that every `breaking` value
+is the one the closed list of `../reference/03_breaking-terms.md` reads out of that row's quote —
+both of those in either mode. **Under `line_numbers: snapshot` only**, it also says every line
+cited is a line the body has and every quote is found verbatim on the line cited. Under
+`line_numbers: none` there are no line numbers to bind, so no quote is held against any text at
+all: `quote_input`, which would search the quote in the input the run was given, is the one row of
+this phase registered with nothing behind it, and `WARN_UNBOUND` says on every such run that the
+binding was not checked. That is the whole of it.
 
 The suite passes before a change to any check is kept.

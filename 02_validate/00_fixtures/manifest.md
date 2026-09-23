@@ -8,9 +8,11 @@ expected set; a mutation that fails for another reason, or by a crash, is a suit
 AD-7).
 
 **The corpus is written one row at a time.** Every row below was written before any of the files it
-names, which is the order the whole folder is built in. Thirty of those files exist today: the clean
-tickets file, the three of the reading stage, the six of the pairing phase, the twelve of canonical
-form and grammar, and the eight of the row states. The rest come with the checks that read them, and
+names, which is the order the whole folder is built in. Forty-two of those files exist today: the
+clean tickets file, the three of the reading stage, the six of the pairing phase, the twelve of
+canonical form and grammar, the eight of the row states, and the twelve of quotes and values — every
+row of that phase but `quote_input`, which waits with the check that would read it. The rest come
+with the checks that read them, and
 `run_fixtures.py` prints on every run how many rows still name a file that is not there. Beside that,
 the rows carry the both-ways reconciliation in `test_manifest.py`: every row of `checks` in
 `reference/05_checks.md` is named here, and every code named here is a row of `checks`. The two
@@ -49,7 +51,7 @@ canonical form, and no serialiser would have written it.
 
 ## Rows that need a word
 
-Most rows say all there is to say. Eight do not:
+Most rows say all there is to say. Nine do not:
 
 - **`grammar_shape-01`** is a **missing** block: the `## Unmapped` heading and the blank line above
   it are taken out, so the entries stand where the heading should. Blocks that merely run together
@@ -70,9 +72,11 @@ Most rows say all there is to say. Eight do not:
   passes and the digest alone disagrees. Swapping in a snapshot of another URL would raise two
   codes and prove less. It was **built by hand** from `changelog-01.txt` and never fetched: one
   body line changed, a later `retrieved` written in, the digest recomputed over the changed body,
-  all of it through `snapshot.write`. So were `edited-01.txt`, `unreadable-01.txt` and
-  `long-01.txt`; the table in `00_fixtures/CONTEXT.md` says which of the five snapshots is evidence
-  and which four are not.
+  all of it through `snapshot.write`. So were `edited-01.txt`, `unreadable-01.txt`, `long-01.txt`
+  and `terms-01.txt` — that last one rewrites three body lines **for the text they carry**, so that
+  a line holds a phrase of the list that decides `breaking`, and it stands for no refetch of
+  anything; the table in `00_fixtures/CONTEXT.md` says which of the six snapshots is evidence and
+  which five are not.
 - **`snapshot_sha256-01`** has a snapshot whose body no longer matches its own header digest. Its
   tickets header carries the **recomputed** digest, not the snapshot's stale one, so that the
   pairing check passes and the snapshot's own check is the only thing that fires.
@@ -89,6 +93,14 @@ Most rows say all there is to say. Eight do not:
 - **`unmapped_missing-03`** is the zero-ticket shape with one body line left out of `Unmapped`.
   A zero-ticket file is all coverage and nothing else, so it is the one shape where this mutation
   has nowhere to hide, and Story 3.8 needs it.
+- **`value_quote-05`, `breaking_value-02` and `breaking_quote-01` are paired with
+  `terms-01.txt`** and not with `changelog-01.txt`, which is why their `snapshot` cell differs from
+  the rest (Sergey, 2026-09-22). No line of the Plaid body holds a phrase of the list that decides
+  `breaking`, and none holds the temporal expression FR-40's last mutation resolves to a date, so
+  each of those three mutations would have had to invent a quote that stands on no line — which is
+  the defect `quote_line` is for, raised where another code was wanted. `terms-01.txt` is the same
+  body with its three cited lines rewritten to hold those phrases, and the base those three are one
+  mutation of is `clean-01` moved onto it.
 
 One thing the suite does not do: re-decide a refusal. `clean-02` and the shape fixtures are checked
 against the grammar of their shape, never against whether the input really was a changelog, and
@@ -139,10 +151,10 @@ AD-2).
 | value_quote-02.tickets.md | changelog-01.txt | 1 | VALUE_QUOTE |
 | value_quote-03.tickets.md | changelog-01.txt | 1 | VALUE_QUOTE |
 | value_quote-04.tickets.md | changelog-01.txt | 1 | VALUE_QUOTE |
-| value_quote-05.tickets.md | changelog-01.txt | 1 | VALUE_QUOTE |
+| value_quote-05.tickets.md | terms-01.txt | 1 | VALUE_QUOTE |
 | breaking_value-01.tickets.md | changelog-01.txt | 1 | BREAKING_VALUE |
-| breaking_value-02.tickets.md | changelog-01.txt | 1 | BREAKING_VALUE |
-| breaking_quote-01.tickets.md | changelog-01.txt | 1 | BREAKING_QUOTE |
+| breaking_value-02.tickets.md | terms-01.txt | 1 | BREAKING_VALUE |
+| breaking_quote-01.tickets.md | terms-01.txt | 1 | BREAKING_QUOTE |
 | cite_range-01.tickets.md | changelog-01.txt | 1 | CITE_RANGE |
 | cite_range-02.tickets.md | changelog-01.txt | 1 | CITE_RANGE |
 | ancestor_field-01.tickets.md | changelog-01.txt | 1 | ANCESTOR_FIELD |
@@ -170,9 +182,10 @@ Sixty-four rows: forty-six checks covered, sixty-one rows naming at least one co
 clean files** that must be accepted with nothing said about them — one of each shape. `clean-01` is
 the tickets shape, `clean-02` a refusal and `clean-03` a zero-ticket file, because a validator that
 accepted only the shape it sees most would pass a suite built out of the other two's mutations.
-Seven snapshots are named — `changelog-01.txt` and its refetch `changelog-02.txt`, `pasted-01.txt`
-for the unnumbered mode, `long-01.txt` for the size limit, `edited-01.txt` and `unreadable-01.txt`
-for the two snapshot checks, and the absent `no-such-snapshot.txt`.
+Eight snapshots are named — `changelog-01.txt` and its refetch `changelog-02.txt`, `pasted-01.txt`
+for the unnumbered mode, `long-01.txt` for the size limit, `terms-01.txt` for the three mutations
+that need a line holding a listed phrase or a temporal expression, `edited-01.txt` and
+`unreadable-01.txt` for the two snapshot checks, and the absent `no-such-snapshot.txt`.
 
 ## Where each FR-40 mutation went
 

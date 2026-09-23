@@ -20,6 +20,7 @@ find it too. What is written is the path of the two files that are read as prose
 the two passages in them a test reads, the counts the story fixes, the manifest columns by
 position, and the shapes a line must have.
 """
+import ast
 import io
 import os
 import re
@@ -36,6 +37,10 @@ sys.path.insert(0, HERE)
 
 import validate  # noqa: E402  - the path has to be set first
 from idemlib import contract, snapshot, tickets  # noqa: E402  - and so does this
+#: The reading of the phrase-list prose that `lib/tests/` already holds. It is a second
+#: implementation of the routine, written from the file rather than from the tool, and the tool is
+#: held against it here - two readings of one page that agree are worth more than one.
+from tests import test_breaking_terms as prose  # noqa: E402
 
 #: The two files read as prose, and the table ids read out of the contract.
 CHECKS_FILE = os.path.join(ROOT, "reference", "05_checks.md")
@@ -65,11 +70,11 @@ ANCHORED_RE = re.compile(r"^`([^`]+)`$")
 #: Its columns, by position: the phase, the key that opens it, the key that closes it.
 FIRST, LAST = 1, 2
 
-#: What the story fixes about the shipped table: twenty-five checks written, two rows the frame
+#: What the story fixes about the shipped table: thirty checks written, two rows the frame
 #: raises, and the rest registered with nothing behind them. They are counted, never listed.
-WRITTEN = 25
+WRITTEN = 30
 FRAME_ROWS = 2
-PENDING_ROWS = 21
+PENDING_ROWS = 16
 #: The checks that end their phase. The count is in the prose; the names are read from it.
 ENDING = 5
 #: The nine phases of AD-6.
@@ -87,13 +92,25 @@ CANONICAL, STRAY, BLOCKS, NUMBERS, FIELD_ROWS, REASON, ENTRY_FORM, SIZE = range(
 #: The checks of the row-states phase, by the same rule: the three states, the shape of the source
 #: row, what that row names, the form of a line cell, and the range that runs backwards.
 SENTINEL_ROW, FILLED_ROW, EMPTY_ROW, SOURCE_SHAPE, SOURCE_NAMES, LINE_CELL, REVERSED = range(7)
-#: How many committed fixtures each of the two phases has. More than one key carries several.
+#: The **written** checks of the quotes-and-values phase, by the same rule: a line past the body, a
+#: quote not on the line cited, a value not inside its quote, and the two that read the phrase list.
+#: The sixth row of that phase is registered with nothing behind it and carries no phase, so it is
+#: in none of these positions - which is what `test_one_row_of_the_phase_is_still_pending` says.
+LINE_PAST, QUOTE_ON_LINE, VALUE_IN_QUOTE, BREAKING_READ, BREAKING_BOTH = range(5)
+#: How many committed fixtures each of the three phases has. More than one key carries several.
 GRAMMAR_FIXTURES = 12
 STATES_FIXTURES = 8
+QUOTES_FIXTURES = 12
 #: The nine classes of finding the one reader of the format makes, counted and never listed.
 FINDING_CLASSES = 9
 #: The stray sentence the grammar fixtures are built with.
 A_STRAY_LINE = "A sentence no class of the grammar claims."
+#: Two phrases made up for one test and contract nowhere, the first opening the second: no phrase of
+#: the shipped table begins another, so nothing in the contract can tell a scan that takes the
+#: longest phrase standing at a position from one that takes the shortest. `05_checks.md` names this
+#: file and the one in `lib/tests/` as the two places that rule is exercised. The values they map to
+#: are the shipped table's own and are not written here.
+MADE_UP = ["alpha", "alpha beta"]
 
 SHIPPED = {}
 ROWS = []
@@ -140,6 +157,21 @@ def text_of(path):
         return handle.read()
     finally:
         handle.close()
+
+
+def literals(source):
+    """Every string literal of a module's source, docstrings among them."""
+    return [node.value for node in ast.walk(ast.parse(source))
+            if isinstance(node, ast.Constant) and isinstance(node.value, str)]
+
+
+def with_row_in(model, field, place=0, **cells):
+    """That model with the cells of every row of one field of one ticket changed."""
+    built = list(model.tickets)
+    ticket = built[place]
+    rows = [row._replace(**cells) if row.field == field else row for row in ticket.rows]
+    built[place] = ticket._replace(rows=rows)
+    return model._replace(tickets=built)
 
 
 def illustration():
@@ -218,6 +250,18 @@ def keys_of(phase):
     """The keys of one phase, in the table's order, from the registry itself."""
     checks = registry()
     return [key for key in checks if getattr(checks[key], validate.PHASE, None) == phase]
+
+
+def phase_keys(phase):
+    """Every key one phase spans, written or not, read out of the illustration of `05_checks.md`.
+
+    `keys_of` gives the keys of a phase that have a check behind them; this gives the rows, so that
+    a test can reach a key nothing is registered under yet - which is what a phase with nothing
+    written in it needs.
+    """
+    keys = order()
+    first, last = spans()[validate.PHASES.index(phase)]
+    return keys[first:last + 1]
 
 
 def check_at(phase, place):
@@ -429,13 +473,36 @@ class ValidatorCase(unittest.TestCase):
         built[place] = ticket._replace(rows=rows)
         return tickets.serialise(model._replace(tickets=built))
 
+    def paired(self, data, directory=None):
+        """One run with its snapshot read onto it, as the pairing phase leaves it.
+
+        `a_run` opens nothing, so `run.snapshot` is None on one - which is what the checks that read
+        a body line are held to when there is no snapshot. A check of the quotes-and-values phase
+        runs after pairing on any real run, so the phase is run here rather than the file read a
+        second way: two readings of one snapshot could disagree about where line 12 is.
+        """
+        run = self.a_run(data, directory)
+        for key in keys_of(validate.PAIRING):
+            registry()[key](run)
+        return run
+
     def raised_by(self, phase, place, data):
         """What one check finds in these bytes, as failures."""
         return check_at(phase, place)(self.a_run(data))
 
+    def raised_on(self, phase, place, data, directory=None):
+        """The same, with the snapshot read onto the run first."""
+        return check_at(phase, place)(self.paired(data, directory))
+
     def assert_silent(self, phase, data):
         """Every check of a phase finds nothing in these bytes."""
         run = self.a_run(data)
+        for key in keys_of(phase):
+            self.assertEqual([], registry()[key](run), key)
+
+    def assert_quiet(self, phase, data, directory=None):
+        """Every check of a phase finds nothing in these bytes, the snapshot read onto the run."""
+        run = self.paired(data, directory)
         for key in keys_of(phase):
             self.assertEqual([], registry()[key](run), key)
 
@@ -532,13 +599,8 @@ class TestTheRegistry(ValidatorCase):
         keys = set(order())
         for path in (validate.__file__, os.path.join(HERE, "run_fixtures.py")):
             source = text_of(path)
-            for literal in self.literals(source):
+            for literal in literals(source):
                 self.assertNotIn(literal, keys, path + " " + repr(literal))
-
-    def literals(self, source):
-        import ast
-        return [node.value for node in ast.walk(ast.parse(source))
-                if isinstance(node, ast.Constant) and isinstance(node.value, str)]
 
     def test_the_four_item_names_it_asks_by_are_rows_of_the_header_items_table(self):
         """They are addresses and the tool may hold them (AD-1), but only addresses that are
@@ -1489,6 +1551,647 @@ class TestTheRowStates(ValidatorCase):
         return found[-1]
 
 
+# --- quotes and values ------------------------------------------------------------------------------
+
+
+#: The body line of the corpus snapshot that is blank, and the one that holds the word a negated
+#: quote is built around. Both are positions in a committed file and neither is a value of anything.
+BLANK_BODY_LINE = 25
+NEGATED_BODY_LINE = 28
+
+
+class TestQuotesAndValues(ValidatorCase):
+    """The five written rows of the phase, one bullet of the contract at a time.
+
+    Three of them read the model alone and two read the body of the snapshot the pairing phase left
+    on the run, so a case here is built on a run that has been paired - `paired()` - except where
+    the point of the case is a run that has not.
+    """
+
+    # --- the corpus ---------------------------------------------------------------------------
+
+    def test_each_row_of_the_quotes_phase_raises_its_own_code_alone(self):
+        found = 0
+        for key in keys_of(validate.QUOTES):
+            names = fixtures_for(key)
+            self.assertTrue(names, key)
+            for name in names:
+                found += 1
+                lines = self.assert_manifest(name)
+                self.assertEqual(1, len(lines), lines)
+        self.assertEqual(QUOTES_FIXTURES, found)
+
+    def test_the_base_the_three_fixtures_over_the_second_snapshot_mutate_is_clean(self):
+        """Three fixtures of this phase are one mutation of a base the corpus does not carry -
+        `clean-01` moved onto the snapshot whose body holds a phrase of the list. That base is a
+        second clean file no manifest row names, so committing it would fail the suite; without it
+        nothing says the three mutations fail for their own reason rather than for the base's.
+
+        So the base is rebuilt here from one of them, by putting every row of the field a list fills
+        back into the state the base has it in - the sentinel, with no line and no quote - and the
+        file is run through `main` as a person runs it.
+        """
+        name = "breaking_quote-01.tickets.md"
+        model = self.model_of(self.bytes_of(os.path.join(TICKETS_FOLDER, name)))
+        built = []
+        for ticket in model.tickets:
+            built.append(ticket._replace(rows=[
+                row._replace(value=constant(tickets.SENTINEL), line="", quote="")
+                if row.field == field_at(2) else row for row in ticket.rows]))
+        path = self.write("base.tickets.md", tickets.serialise(model._replace(tickets=built)))
+        code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual([], lines)
+        self.assertEqual(0, code)
+        self.assertNotEqual(self.bytes_of(path),
+                            self.bytes_of(os.path.join(TICKETS_FOLDER, name)))
+
+    def test_the_two_readings_of_a_field_it_asks_a_row_by_are_cells_of_the_contract(self):
+        """The fifth exception to AD-1, held from both sides. The column is a column of the fields
+        table and the two words are values of it, so a reading renamed by decision leaves the tool
+        asking for something no cell carries; every field of 1 to 7 carries one of the two, so a
+        **third** reading added to that column would be read by no check of this phase and fails
+        here rather than passing in silence; the column the phrase list's values are read by is a
+        column of that table; and no other literal of the tool is a cell of either table.
+        """
+        fields = SHIPPED[tickets.FIELDS_TABLE]
+        self.assertIn(validate.KIND, fields.columns)
+        readings = set([fields.rows[name][validate.KIND] for name in fields.rows])
+        for word in (validate.COPIED, validate.LISTED):
+            self.assertIn(word, readings, word)
+        self.assertNotEqual(validate.COPIED, validate.LISTED)
+        for name in list(fields.rows)[:-1]:
+            self.assertIn(fields.rows[name][validate.KIND],
+                          (validate.COPIED, validate.LISTED), name)
+        self.assertIn(tickets.VALUE, SHIPPED[validate.TERMS_TABLE].columns)
+        held = set(literals(text_of(validate.__file__)))
+        for table_id in (tickets.FIELDS_TABLE, validate.TERMS_TABLE):
+            table = SHIPPED[table_id]
+            cells = set(table.rows)
+            for name in table.rows:
+                for column in table.columns:
+                    cells.add(table.rows[name][column])
+            self.assertEqual(set([validate.COPIED, validate.LISTED]) & cells,
+                             held & cells, table_id)
+
+    def test_one_row_of_the_phase_is_still_pending_and_its_fixture_waits_with_it(self):
+        """Nothing supplies an input text to search until the flag that takes one is built, so the
+        row that searches a quote in one is registered with nothing behind it; a check written now
+        would return an empty list on every run there is, which is a check exercised by nothing."""
+        checks = registry()
+        rows = phase_keys(validate.QUOTES)
+        idle = [key for key in rows if checks[key] is validate.pending]
+        self.assertEqual(1, len(idle), idle)
+        self.assertEqual(len(keys_of(validate.QUOTES)) + 1, len(rows))
+        self.assertEqual([], fixtures_for(idle[0]))
+
+    def test_the_clean_file_says_nothing_in_this_phase(self):
+        self.assert_quiet(validate.QUOTES, self.clean())
+
+    # --- what the phase reads -------------------------------------------------------------------
+
+    def snapshot_name(self):
+        """The snapshot the clean file names, read out of its own header."""
+        return [item.value for item in self.model_of(self.clean()).header
+                if item.name == validate.SNAPSHOT_ITEM][0]
+
+    def body(self):
+        """The body of that snapshot, as the lines a row cites by number."""
+        return self.read_snapshot().lines
+
+    def read_snapshot(self, name=None):
+        return snapshot.read(self.bytes_of(os.path.join(
+            SNAPSHOTS_FOLDER, self.snapshot_name() if name is None else name)))
+
+    def past_the_body(self):
+        """One line number past the last body line, derived and never written."""
+        return str(len(self.body()) + 1)
+
+    def lines_of(self, data, field, place=0):
+        """The lines the rows of one field of one ticket stand on, in file order.
+
+        Every failure of this phase points at the row that made the claim, and a check reporting the
+        line after it would still report one failure of the right code - so each single-failure case
+        asks where.
+        """
+        return [row.at for row in self.model_of(data).tickets[place].rows if row.field == field]
+
+    def with_snapshot(self, data, name=None):
+        """A run over these bytes with a snapshot put on it by hand.
+
+        Used where the file names no snapshot of its own - the unnumbered mode, a refusal - so that
+        a check reading nothing is shown to read nothing for its own reason and not because there
+        was no body to look in.
+        """
+        run = self.a_run(data)
+        run.snapshot = self.read_snapshot(name)
+        return run
+
+    def test_the_two_checks_that_read_a_body_line_read_nothing_without_one(self):
+        """A run built with nothing opened carries no snapshot, and the two checks that read one
+        have nothing to read; the three that read a row alone still speak."""
+        run = self.a_run(self.with_row(field_at(0), line=self.past_the_body()))
+        self.assertIsNone(run.snapshot)
+        for place in (LINE_PAST, QUOTE_ON_LINE):
+            self.assertEqual([], check_at(validate.QUOTES, place)(run), place)
+        loose = self.a_run(self.with_row(field_at(0), value="a value of its own"))
+        self.assertIsNone(loose.snapshot)
+        self.assertEqual(1, len(check_at(validate.QUOTES, VALUE_IN_QUOTE)(loose)))
+        said = self.a_run(self.with_row(field_at(2), value="a word neither of them",
+                                        line="2", quote=self.body()[1]))
+        self.assertEqual(1, len(check_at(validate.QUOTES, BREAKING_READ)(said)))
+
+    # --- a line past the body ---------------------------------------------------------------------
+
+    def test_a_line_past_the_last_body_line_is_one_failure_and_its_quote_is_not_read(self):
+        """One code per row: a line that is not in the body has no text to search, so the check
+        below this one passes the row over."""
+        data = self.with_row(field_at(0), line=self.past_the_body())
+        raised = self.raised_on(validate.QUOTES, LINE_PAST, data)
+        self.assertEqual(1, len(raised))
+        self.assertEqual(self.lines_of(data, field_at(0)), [raised[0].line])
+        self.assertEqual([], self.raised_on(validate.QUOTES, QUOTE_ON_LINE, data))
+
+    def test_the_last_body_line_is_inside_the_body(self):
+        """The boundary from the other side: a check written with the wrong comparison would refuse
+        the last line of every snapshot there is."""
+        lines = self.body()
+        data = self.with_row(field_at(0), value=lines[-1], line=str(len(lines)), quote=lines[-1])
+        self.assert_quiet(validate.QUOTES, data)
+
+    def test_zero_and_a_negative_number_are_no_number_and_are_not_read_here(self):
+        """They are the line-form row's, a phase above: a line cell that is not a number is not a
+        citation of anything."""
+        for cell in ("0", "-3", "2.0"):
+            data = self.with_row(field_at(0), line=cell)
+            self.assert_quiet(validate.QUOTES, data)
+            self.assertEqual(1, len(self.raised_by(validate.STATES, LINE_CELL, data)), cell)
+
+    def test_the_source_row_carries_a_range_and_is_not_read_here(self):
+        """It cites nothing - the range of a whole change is held against the body by the phase
+        below - so a range past the body says nothing in this one. Both forms the line cell takes,
+        because a range of one line is written as the bare number: a source row reading `201` over a
+        body of two hundred lines is the case a check reading rows of every field would fire on."""
+        for cell in ("2-" + self.past_the_body(), self.past_the_body()):
+            data = self.with_row(field_at(-1), line=cell)
+            self.assert_quiet(validate.QUOTES, data)
+            self.assertEqual([], self.raised_on(validate.QUOTES, LINE_PAST, data), cell)
+
+    # --- a quote against its line -------------------------------------------------------------------
+
+    def test_a_quote_that_is_not_on_the_line_cited_is_one_failure(self):
+        data = self.with_row(field_at(0), line="3")
+        raised = self.raised_on(validate.QUOTES, QUOTE_ON_LINE, data)
+        self.assertEqual(1, len(raised))
+        self.assertEqual(self.model_of(data).tickets[0].rows[0].at, raised[0].line)
+
+    def test_a_quote_that_is_on_the_line_cited_says_nothing(self):
+        lines = self.body()
+        for number in (2, 3, 4):
+            data = self.with_row(field_at(0), value=lines[number - 1], line=str(number),
+                                 quote=lines[number - 1])
+            self.assert_quiet(validate.QUOTES, data)
+
+    def test_the_quote_is_searched_as_it_stands_and_never_folded(self):
+        """Character for character on both sides. A quote that stands on its line only once the case
+        is folded is a quote that is not on that line - the fold of the phrase list is the one fold
+        in this phase, and it is done to nothing else."""
+        lines = self.body()
+        shouted = lines[1].upper()
+        self.assertNotEqual(lines[1], shouted)
+        value = shouted.split(" ")[1]
+        data = self.with_row(field_at(0), value=value, line="2", quote=shouted)
+        self.assertEqual(1, len(self.raised_on(validate.QUOTES, QUOTE_ON_LINE, data)))
+        self.assertEqual([], self.raised_on(validate.QUOTES, VALUE_IN_QUOTE, data))
+
+    def test_nothing_is_trimmed_on_either_side_before_the_search(self):
+        """The quote is searched as the reader gives it and the line as the snapshot carries it.
+
+        The character used is a vertical tab, which the grammar of a cell allows at either edge -
+        it bans a space and a tab there and nothing else - and which `str.strip()` would take off.
+        A quote that stands on its line only once such a character is trimmed away is a quote that
+        is not on the line, and a check that trimmed either side would pass it.
+        """
+        lines = self.body()
+        quote = chr(0x0b) + lines[1]
+        data = self.with_row(field_at(0), value=lines[1], line="2", quote=quote)
+        self.assertEqual([], tickets.parse(data).findings)
+        self.assertEqual(quote, self.model_of(data).tickets[0].rows[0].quote)
+        self.assertEqual(1, len(self.raised_on(validate.QUOTES, QUOTE_ON_LINE, data)))
+        self.assertEqual([], self.raised_on(validate.QUOTES, VALUE_IN_QUOTE, data))
+
+    def test_a_blank_body_line_carries_no_quote(self):
+        """No class of the snapshot's lines is asked about. A quote is non-empty and neither begins
+        nor ends with a space or a tab, so it can never be a substring of a line that is spaces and
+        tabs alone, and the substring test refuses it on its own."""
+        lines = self.body()
+        self.assertEqual("", lines[BLANK_BODY_LINE - 1].strip(" \t"))
+        data = self.with_row(field_at(0), line=str(BLANK_BODY_LINE))
+        self.assertEqual(1, len(self.raised_on(validate.QUOTES, QUOTE_ON_LINE, data)))
+
+    def test_a_header_line_of_the_snapshot_is_no_body_line(self):
+        """The number space is the body's alone, so a header line quoted under a body line number is
+        simply a quote that is not on the line cited. The quote keeps its value inside it, so the
+        row raises this one code."""
+        first = self.bytes_of(os.path.join(SNAPSHOTS_FOLDER,
+                                           self.snapshot_name())).decode("utf-8").split("\n")[0]
+        value = first.rsplit(" ", 1)[-1]
+        self.assertIn(value, first)
+        data = self.with_row(field_at(0), value=value, line="1", quote=first)
+        self.assertEqual(1, len(self.raised_on(validate.QUOTES, QUOTE_ON_LINE, data)))
+        self.assertEqual([], self.raised_on(validate.QUOTES, VALUE_IN_QUOTE, data))
+
+    def test_an_empty_quote_cell_is_not_read_here(self):
+        """It is a filled row missing a cell and the row states own it. The line cited is past the
+        body, so a check that read the row at all would say so: a test that only asked whether the
+        quote was found would pass on an empty quote either way, because an empty quote is a
+        substring of every line there is."""
+        data = self.with_row(field_at(0), quote="", line=self.past_the_body())
+        self.assert_quiet(validate.QUOTES, data)
+        self.assertEqual(1, len(self.raised_by(validate.STATES, FILLED_ROW, data)))
+        said = self.with_row(field_at(2), value="a word neither of them", line="2", quote="")
+        self.assert_quiet(validate.QUOTES, said)
+        self.assertEqual(1, len(self.raised_by(validate.STATES, FILLED_ROW, said)))
+
+    def test_an_empty_value_cell_is_not_read_here(self):
+        """The same from the other side: an empty value is neither of the two states and is the row
+        states', so no check of this phase reads the row. The line cited is past the body and the
+        quote stands on no line, so every check here would have something to say if it did."""
+        data = self.with_row(field_at(0), value="", line=self.past_the_body(),
+                             quote="on no line of this snapshot")
+        self.assert_quiet(validate.QUOTES, data)
+        self.assertEqual(1, len(self.raised_by(validate.STATES, EMPTY_ROW, data)))
+
+    def test_a_quote_off_its_line_and_a_value_outside_it_are_two_codes(self):
+        """Two facts about two cells, and a row wrong both ways reports both. Every fixture of the
+        corpus keeps its value inside its new quote so that each of them raises one code; this is
+        the case that shows the rule the fixtures are written around."""
+        data = self.with_row(field_at(0), value="a value of its own", line="3")
+        self.assertEqual(1, len(self.raised_on(validate.QUOTES, QUOTE_ON_LINE, data)))
+        self.assertEqual(1, len(self.raised_on(validate.QUOTES, VALUE_IN_QUOTE, data)))
+        path = self.write("b.tickets.md", data)
+        code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual(1, code, lines)
+        self.assertEqual(set([code_at(validate.QUOTES, QUOTE_ON_LINE),
+                              code_at(validate.QUOTES, VALUE_IN_QUOTE)]), self.codes(lines), lines)
+
+    # --- a value against its quote --------------------------------------------------------------------
+
+    def test_a_value_that_is_no_span_of_its_quote_is_one_failure(self):
+        data = self.with_row(field_at(0), value="Added labels to all strings")
+        raised = self.raised_on(validate.QUOTES, VALUE_IN_QUOTE, data)
+        self.assertEqual(1, len(raised))
+        self.assertEqual(self.lines_of(data, field_at(0)), [raised[0].line])
+        self.assertEqual([], self.raised_on(validate.QUOTES, QUOTE_ON_LINE, data))
+
+    def test_case_and_whitespace_and_one_character_all_count(self):
+        """FR-40's own mutations. The comparison is character for character, and nothing is trimmed
+        or folded on either side.
+
+        The last two values carry whitespace at an **edge**, which is what a check that trimmed its
+        two cells would drop: a no-break space and a vertical tab are both whitespace to
+        `str.strip()` and neither is the space or the tab the cell grammar bans there, so each of
+        them is a value a canonical file can carry and no span of the quote holds.
+        """
+        quote = self.body()[1]
+        inside = quote[2:]
+        for value in (inside.lower(), inside.upper(), inside.replace(" ", "  ", 1),
+                      inside[:-1] + "x", inside[1:] + ".",
+                      chr(0xa0) + inside, inside + chr(0x0b)):
+            data = self.with_row(field_at(0), value=value)
+            self.assertEqual([], tickets.parse(data).findings, repr(value))
+            self.assertEqual(1, len(self.raised_on(validate.QUOTES, VALUE_IN_QUOTE, data)),
+                             repr(value))
+        data = self.with_row(field_at(0), value=inside)
+        self.assertEqual([], self.raised_on(validate.QUOTES, VALUE_IN_QUOTE, data))
+        #: A plain space at an edge never reaches this phase: the cell grammar refuses one, and a
+        #: file written with it reads back as the value without it, which is a departure from
+        #: canonical form and a failure two phases up.
+        spaced = self.with_row(field_at(0), value=" " + inside)
+        self.assertTrue(tickets.parse(spaced).findings)
+
+    def test_a_negated_quote_is_the_other_rows_and_not_this_one(self):
+        """`deprecated` stands inside `is not deprecated`, so the value **is** a span of its quote
+        and what is wrong with the row is that the quote is on no such line."""
+        data = self.with_row(field_at(0), value="deprecated", line=str(NEGATED_BODY_LINE),
+                             quote="is not deprecated")
+        self.assertIn("deprecated", self.body()[NEGATED_BODY_LINE - 1])
+        self.assertEqual([], self.raised_on(validate.QUOTES, VALUE_IN_QUOTE, data))
+        self.assertEqual(1, len(self.raised_on(validate.QUOTES, QUOTE_ON_LINE, data)))
+
+    def test_the_field_a_list_fills_and_the_row_carrying_a_range_are_not_read(self):
+        """The substring rule is a rule about a copied field. The value of the field a list fills is
+        not in its quote at all - that is what makes it a list - and the row carrying a range has no
+        quote to be inside."""
+        quote = self.body()[1]
+        data = self.with_row(field_at(2), value="a word neither of them", line="2", quote=quote)
+        self.assertEqual([], self.raised_on(validate.QUOTES, VALUE_IN_QUOTE, data))
+        self.assertEqual([], self.raised_on(validate.QUOTES, VALUE_IN_QUOTE, self.clean()))
+
+    def test_a_row_reading_the_sentinel_is_read_by_no_check_of_the_phase(self):
+        """It says the source does not state this, so there is no value and no quote to compare.
+
+        The second case is the one that carries weight: a sentinel row that carries a line and a
+        quote as well is `state_sentinel`'s alone, and a check of this phase that read it would
+        raise a second code for a row the phase above has already refused. The line used is past the
+        body and the quote is on no line at all, so every check here would have something to say if
+        it read the row.
+        """
+        quiet = self.with_row(field_at(0), value=constant(tickets.SENTINEL), line="", quote="")
+        self.assert_quiet(validate.QUOTES, quiet)
+        loud = self.with_row(field_at(0), value=constant(tickets.SENTINEL),
+                             line=self.past_the_body(), quote="on no line of this snapshot")
+        self.assert_quiet(validate.QUOTES, loud)
+        self.assertEqual(1, len(self.raised_by(validate.STATES, SENTINEL_ROW, loud)))
+        inside = self.with_row(field_at(0), value=constant(tickets.SENTINEL), line="2",
+                               quote="on no line of this snapshot")
+        self.assert_quiet(validate.QUOTES, inside)
+
+    def test_the_two_escapes_are_off_both_sides_before_anything_is_compared(self):
+        """A pipe is written `\\|` in a tickets file and stands for itself in a body line. The
+        reader takes the escape off the cell, and what is compared is the value and the quote the
+        model carries against the line the snapshot carries - so a file whose value, quote and body
+        line all hold a pipe passes with nothing said."""
+        lines = list(self.body())
+        piped = "- A " + contract.PIPE + " B was renamed"
+        lines[1] = piped
+        body = snapshot.join(lines)
+        header = dict(self.read_snapshot().header)
+        header[validate.DIGEST_ITEM] = snapshot.digest(body)
+        name = "piped-01.txt"
+        self.write(name, snapshot.write(header, body))
+        model = self.model_of(self.clean())
+        items = [item._replace(value=name) if item.name == validate.SNAPSHOT_ITEM
+                 else item._replace(value=header[validate.DIGEST_ITEM])
+                 if item.name == validate.DIGEST_ITEM else item for item in model.header]
+        url = [item.value for item in items if item.name == validate.URL_ITEM][0]
+        gap = " " * int(constant(validate.SOURCE_GAP))
+        built = []
+        for ticket in model.tickets:
+            rows = [row._replace(value=url + gap + name) if row.field == field_at(-1) else row
+                    for row in ticket.rows]
+            built.append(ticket._replace(rows=rows))
+        moved = model._replace(header=items, tickets=built)
+        data = tickets.serialise(with_row_in(moved, field_at(0), 0,
+                                             value="A " + contract.PIPE + " B", quote=piped))
+        self.assertIn(contract.BACKSLASH + contract.PIPE, data.decode("utf-8"))
+        self.assert_quiet(validate.QUOTES, data, self.directory)
+
+    # --- the field a list fills ----------------------------------------------------------------------
+
+    def listed(self):
+        """The phrase list as {phrase: value}, read from the shipped table."""
+        rows = SHIPPED[validate.TERMS_TABLE].rows
+        return dict([(phrase, rows[phrase][tickets.VALUE]) for phrase in rows])
+
+    def reading(self, quote):
+        """What the routine of the tool reads out of one quote, through a run of the tool."""
+        return validate._read_breaking(self.a_run(self.clean()), quote)
+
+    def filled_with(self, value, quote):
+        """The clean file with the row of the field a list fills given this value and quote."""
+        return self.with_row(field_at(2), value=value, line="2", quote=quote)
+
+    def sample(self, value):
+        """One phrase of the list that maps to this value, and one that does not."""
+        listed = self.listed()
+        return [phrase for phrase in listed if listed[phrase] == value]
+
+    def test_a_quote_holding_no_phrase_of_the_list_leaves_the_field_the_sentinel(self):
+        """The row says something the list does not read out of the quote, however plain the answer
+        looks to the person reading the page."""
+        quote = self.body()[187]
+        self.assertEqual([], self.reading(quote))
+        for value in set(self.listed().values()):
+            data = self.filled_with(value, quote)
+            raised = self.raised_by(validate.QUOTES, BREAKING_READ, data)
+            self.assertEqual(1, len(raised), value)
+            self.assertEqual(self.lines_of(data, field_at(2)), [raised[0].line], value)
+            self.assertEqual([], self.raised_by(validate.QUOTES, BREAKING_BOTH, data), value)
+
+    def test_a_value_the_quote_does_not_support_is_that_failure(self):
+        listed = self.listed()
+        for phrase in listed:
+            for value in set(listed.values()):
+                data = self.filled_with(value, prose.BEFORE + phrase + prose.AFTER)
+                raised = self.raised_by(validate.QUOTES, BREAKING_READ, data)
+                if value == listed[phrase]:
+                    self.assertEqual([], raised, phrase + " " + value)
+                else:
+                    self.assertEqual(1, len(raised), phrase + " " + value)
+
+    def test_a_value_that_is_neither_of_the_two_is_that_failure_either_way(self):
+        """A word the list maps nothing to is not the value the routine read, whether the routine
+        read one or read none at all."""
+        invented = "a word neither of them"
+        self.assertNotIn(invented, list(self.listed().values()))
+        for quote in ([prose.BEFORE + phrase + prose.AFTER for phrase in self.listed()] +
+                      [self.body()[187]]):
+            data = self.filled_with(invented, quote)
+            self.assertEqual(1, len(self.raised_by(validate.QUOTES, BREAKING_READ, data)),
+                             repr(quote))
+
+    def test_a_quote_holding_both_answers_is_the_row_below_and_never_this_one(self):
+        """The one outcome the row above passes over: a quote the routine finds to support neither
+        value is no value at all, so there is nothing for that row to compare, and what is wrong is
+        the quote."""
+        listed = self.listed()
+        values = sorted(set(listed.values()))
+        self.assertEqual(2, len(values))
+        quote = (prose.BEFORE + self.sample(values[0])[0] + " and also " +
+                 self.sample(values[1])[0] + prose.AFTER)
+        self.assertEqual(2, len(self.reading(quote)))
+        for value in values + ["a word neither of them"]:
+            data = self.filled_with(value, quote)
+            self.assertEqual([], self.raised_by(validate.QUOTES, BREAKING_READ, data), value)
+            raised = self.raised_by(validate.QUOTES, BREAKING_BOTH, data)
+            self.assertEqual(1, len(raised), value)
+            self.assertEqual(self.lines_of(data, field_at(2)), [raised[0].line], value)
+
+    def test_a_row_of_that_field_reading_its_quotes_own_value_says_nothing(self):
+        listed = self.listed()
+        for phrase in listed:
+            data = self.filled_with(listed[phrase], prose.BEFORE + phrase + prose.AFTER)
+            self.assert_silent(validate.QUOTES, data)
+
+    def test_two_phrases_of_one_value_in_one_quote_are_one_value_and_no_disagreement(self):
+        """The outcome is the **set** of the values the scan kept, so a quote saying the same thing
+        twice reads once. A routine that counted phrases instead would call it a disagreement and
+        refuse a quote that says one thing plainly."""
+        listed = self.listed()
+        for value in set(listed.values()):
+            phrases = self.sample(value)
+            if len(phrases) < 2:
+                continue
+            quote = prose.BEFORE + phrases[0] + ", and " + phrases[1] + prose.AFTER
+            self.assertEqual(2, len(prose.kept(quote, listed)), repr(quote))
+            self.assertEqual([value], self.reading(quote), repr(quote))
+            data = self.filled_with(value, quote)
+            self.assert_silent(validate.QUOTES, data)
+            other = [word for word in set(listed.values()) if word != value][0]
+            self.assertEqual(1, len(self.raised_by(validate.QUOTES, BREAKING_READ,
+                                                   self.filled_with(other, quote))))
+            self.assertEqual([], self.raised_by(validate.QUOTES, BREAKING_BOTH,
+                                                self.filled_with(other, quote)))
+
+    # --- the routine itself ---------------------------------------------------------------------------
+
+    def test_the_routine_agrees_with_the_reading_of_the_prose_on_the_worked_table(self):
+        """The ten quotes of the contract's own worked illustration. It is unmarked, so no tool
+        loads it and nothing but a test stands between a reader trusting it and the routine doing
+        something else; the reading in `lib/tests/` was written from the prose and this one from the
+        tool, and both are run over it."""
+        listed = self.listed()
+        rows = prose.worked()
+        self.assertTrue(rows)
+        for cells in rows:
+            quote = cells[0]
+            self.assertEqual(prose.kept(quote, listed), validate._kept(quote, listed), repr(quote))
+            self.assert_reading(quote, listed)
+
+    def test_the_routine_agrees_with_it_on_everything_else_that_file_states(self):
+        """The limits the file names as costs, the cases the illustration does not hold, and every
+        phrase on its own and inside a frame."""
+        listed = self.listed()
+        corpus = ([quote for quote, _reads in prose.MATRIX] +
+                  [quote for quote, _reads in prose.LIMITS] +
+                  list(listed) + [prose.BEFORE + phrase + prose.AFTER for phrase in listed] +
+                  [prose.BEFORE + prose.AFTER, ""])
+        for quote in corpus:
+            self.assertEqual(prose.kept(quote, listed), validate._kept(quote, listed), repr(quote))
+            self.assert_reading(quote, listed)
+
+    def assert_reading(self, quote, listed):
+        """The tool's reading of one quote against the prose's, outcome for outcome."""
+        outcome = prose.lookup(quote, listed)
+        values = self.reading(quote)
+        if outcome is prose.NOTHING:
+            self.assertEqual([], values, repr(quote))
+        elif outcome == prose.DISAGREEMENT:
+            self.assertEqual(2, len(values), repr(quote))
+        else:
+            self.assertEqual([outcome], values, repr(quote))
+
+    def test_the_fold_is_ascii_and_the_left_edge_is_ascii(self):
+        """`A` to `Z` and nothing else is folded, and a letter of another alphabet does not close the
+        left edge - so a phrase standing directly after one is taken, and a phrase standing after an
+        ASCII letter is not."""
+        other = chr(0xc9)
+        self.assertEqual(other, validate._fold(other))
+        self.assertNotEqual(other, other.lower())
+        self.assertEqual("a" + other + "z", validate._fold("A" + other + "Z"))
+        listed = self.listed()
+        for phrase in listed:
+            #: Upper case and lower case, because the fold leaves both where they stand and the
+            #: edge is closed by an ASCII letter or digit and by nothing else.
+            self.assertEqual([phrase], validate._kept(other + phrase, listed), phrase)
+            self.assertEqual([phrase], validate._kept(other.lower() + phrase, listed), phrase)
+            self.assertEqual([phrase], validate._kept("-" + phrase, listed), phrase)
+            #: A letter in front of a phrase keeps the scan from taking it **there**; a shorter
+            #: phrase standing at an open edge inside it may still be taken, which is what the
+            #: negated forms of the list are made of. A **digit** closes the edge as a letter does,
+            #: and it is the half of the rule the fold cannot stand in for: after the fold there is
+            #: no upper-case ASCII letter left, so a rule reading "lower-case letter" would look
+            #: right on every phrase and let a phrase be taken out of the middle of `v2breaking`.
+            for before in ("x", "7"):
+                self.assertNotIn(phrase, validate._kept(before + phrase, listed),
+                                 before + " " + phrase)
+
+    def test_longest_at_one_position_of_a_scan_and_not_longest_anywhere(self):
+        """The list as it stands has no phrase beginning another, so it cannot tell the two apart;
+        the rule is exercised on a list made up for the purpose, which is contract nowhere. The two
+        values it maps to are the shipped table's own, so nothing here is a value either."""
+        values = sorted(set(self.listed().values()))
+        self.assertEqual(len(MADE_UP), len(values))
+        made = dict(zip(MADE_UP, values))
+        self.assertTrue(MADE_UP[1].startswith(MADE_UP[0]))
+        self.assertEqual([MADE_UP[1]], validate._kept("an " + MADE_UP[1] + " thing", made))
+        self.assertEqual([MADE_UP[0]], validate._kept("an " + MADE_UP[0] + " thing", made))
+        self.assertEqual(prose.kept("an " + MADE_UP[1] + " thing", made),
+                         validate._kept("an " + MADE_UP[1] + " thing", made))
+
+    def test_the_scan_continues_past_the_phrase_it_kept(self):
+        """The whole of why the negated form of a phrase does not read as the phrase: the scan
+        reaches the longer negation first, keeps it, and continues after its last character, so the
+        phrase standing inside it is at no position the scan looks at."""
+        listed = self.listed()
+        pairs = 0
+        for longer in listed:
+            for shorter in listed:
+                if listed[longer] == listed[shorter] or longer.find(shorter) <= 0:
+                    continue
+                pairs += 1
+                self.assertEqual([longer], validate._kept(prose.BEFORE + longer + prose.AFTER,
+                                                          listed), longer)
+        self.assertTrue(pairs)
+
+    def test_no_phrase_of_the_list_stands_in_the_source_of_the_tool(self):
+        """AD-1 for this table: the routine is written in the tool and the list is not. A phrase
+        inside a message or a docstring would be a second home for a cell of the contract."""
+        source = text_of(validate.__file__)
+        for phrase in self.listed():
+            self.assertNotIn(phrase, source, phrase)
+            self.assertNotIn(phrase, " ".join(literals(source)), phrase)
+
+    # --- nothing to read -------------------------------------------------------------------------------
+
+    def test_every_check_of_the_phase_reads_nothing_where_there_is_no_model(self):
+        run = validate.Run("a.tickets.md", b"", tickets.Parsed(None, [], None, None),
+                           SNAPSHOTS_FOLDER, SHIPPED)
+        run.snapshot = self.read_snapshot()
+        for key in keys_of(validate.QUOTES):
+            self.assertEqual([], registry()[key](run), key)
+
+    def test_every_check_of_the_phase_reads_nothing_in_a_refusal(self):
+        """A refusal translated nothing: there is no ticket, so there is no row to read - and the
+        snapshot is put on the run by hand here, so that the silence is the shape's and not a
+        missing body's."""
+        data = self.bytes_of(os.path.join(TICKETS_FOLDER, "refusal_reason-01.tickets.md"))
+        self.assertIsNotNone(tickets.parse(data).model)
+        run = self.with_snapshot(data)
+        for key in keys_of(validate.QUOTES):
+            self.assertEqual([], registry()[key](run), key)
+
+    def test_every_check_of_the_phase_reads_nothing_in_a_zero_ticket_file(self):
+        """A zero-ticket file is all coverage: it carries an unmapped list and no ticket, so no row
+        of any field stands in it to be read."""
+        found = [block for block in examples()
+                 if constant(tickets.TICKETS_NONE_LINE) in block]
+        self.assertEqual(1, len(found))
+        run = self.with_snapshot(as_bytes(found[0]))
+        for key in keys_of(validate.QUOTES):
+            self.assertEqual([], registry()[key](run), key)
+
+    def test_a_file_the_grammar_refused_has_no_row_to_read(self):
+        lines = self.clean().decode("utf-8").split("\n")
+        lines.insert(len(lines) - 1, A_STRAY_LINE)
+        data = ("\n".join(lines)).encode("utf-8")
+        self.assertIsNone(tickets.parse(data).model)
+        self.assert_quiet(validate.QUOTES, data)
+
+    def test_under_the_mode_with_no_line_numbers_the_value_checks_still_read_the_row(self):
+        """And the two that read a body line have nothing to read, with no mode asked about: a
+        filled line cell in that mode reads the unnumbered word, which is no number. The snapshot is
+        put on the run by hand, so the two are silent for the cell and not for a missing body."""
+        model = self.model_of(as_bytes(self.unnumbered()))
+        self.assertEqual(constant(validate.UNNUMBERED_CELL), model.tickets[0].rows[0].line)
+        data = tickets.serialise(with_row_in(model, field_at(0), 0, value="a value of its own"))
+        run = self.with_snapshot(data)
+        for place in (LINE_PAST, QUOTE_ON_LINE):
+            self.assertEqual([], check_at(validate.QUOTES, place)(run), place)
+        self.assertEqual(1, len(check_at(validate.QUOTES, VALUE_IN_QUOTE)(run)))
+        said = self.with_snapshot(tickets.serialise(
+            with_row_in(model, field_at(2), 0, value="a word neither of them",
+                        line=constant(validate.UNNUMBERED_CELL), quote="nothing on any list")))
+        self.assertEqual(1, len(check_at(validate.QUOTES, BREAKING_READ)(said)))
+
+    def unnumbered(self):
+        found = [block for block in examples()
+                 if item_line(validate.MODE_ITEM, tickets.unnumbered_mode()) in block
+                 and block[len(list(SHIPPED[ITEMS].rows))] == ""]
+        self.assertTrue(found)
+        return found[-1]
+
+
 # --- what one phase hides from the next -----------------------------------------------------------------
 
 
@@ -1505,6 +2208,53 @@ class TestSuppression(ValidatorCase):
         code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
         self.assertEqual(1, code, lines)
         self.assertEqual(set([code_at(validate.GRAMMAR, STRAY)]), self.codes(lines), lines)
+
+    def test_a_row_state_defect_hides_a_quote_defect(self):
+        """One file, two defects, two phases: a filled row missing its quote, and a quote that is
+        not on the line the row cites. The phase above speaks and this one is suppressed, so the
+        reader is sent to the row that cannot be read before the row that can."""
+        model = self.model_of(self.clean())
+        model = with_row_in(model, field_at(0), 0, line="3")
+        model = with_row_in(model, field_at(3), 1, quote="")
+        path = self.write("q.tickets.md", tickets.serialise(model))
+        code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual(1, code, lines)
+        self.assertEqual(set([code_at(validate.STATES, FILLED_ROW)]), self.codes(lines), lines)
+
+    def test_a_quote_failure_suppresses_every_phase_under_it(self):
+        """The three phases below this one are registered and empty, so a fixture of the quotes
+        phase raises one code today whatever else is wrong with the file. That is not a promise the
+        emptiness makes: it is AD-6, and it holds when those phases are written. The proof is a
+        check put into each of them for the length of this test - a file whose unmapped list is also
+        wrong for coverage still raises the one code, and neither injected check is ever called.
+        """
+        model = self.model_of(self.clean())
+        model = with_row_in(model, field_at(0), 0, line="3")
+        entries = list(model.unmapped.entries)
+        entries[0] = entries[0]._replace(text=entries[0].text + " and something else")
+        data = tickets.serialise(model._replace(
+            unmapped=model.unmapped._replace(entries=entries)))
+        checks = registry()
+        heard = []
+        for phase in (validate.RANGES, validate.COVERAGE):
+            key = phase_keys(phase)[0]
+            self.assertIs(validate.pending, checks[key])
+            checks[key] = self.loud(phase, key, heard)
+        lines, failed = validate.run_phases(self.a_run(data), checks, table())
+        self.assertTrue(failed)
+        self.assertEqual([], heard)
+        self.assertEqual(set([code_at(validate.QUOTES, QUOTE_ON_LINE)]),
+                         self.codes(lines), lines)
+
+    def loud(self, phase, key, heard):
+        """A check that speaks whenever it is called, registered under a row nothing is behind."""
+
+        def watch(run):
+            heard.append(key)
+            return [validate.Failure(1, "this phase was not suppressed")]
+
+        watch.phase = phase
+        return watch
 
     def test_no_pairing_fixture_ever_reports_what_its_source_rows_say(self):
         """Every pairing mutation leaves its source rows naming the snapshot the clean file names,
@@ -1769,7 +2519,6 @@ class TestItWritesNothing(unittest.TestCase):
         return sorted(found)
 
     def test_it_is_written_in_syntax_every_python_3_parses(self):
-        import ast
         for path in (validate.__file__, os.path.join(HERE, "run_fixtures.py")):
             for node in ast.walk(ast.parse(text_of(path))):
                 self.assertNotIsInstance(node, ast.JoinedStr)
