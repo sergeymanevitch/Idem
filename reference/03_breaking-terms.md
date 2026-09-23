@@ -101,8 +101,9 @@ because "breaking change" occurs in it and there is no left edge to stop it. A l
 is *not* breaking, and a line where the phrase is buried inside a word, are both lines worth a
 reader's eye when they were left uncited inside a change's range. A warning that missed them to
 stay tidy would be the wrong trade; a false `not in source` is what FR-37 exists to backstop. That
-warning has its key in `05_checks.md` and is **not** built: the routine below is, and the warning's
-own reading of this list waits for the coverage phase.
+warning has its key in `05_checks.md` and is built: `02_validate/validate.py` holds both readings
+of this list — the routine below and the warning's own — reads every phrase from the table on each
+run, and never lets one reading stand in for the other.
 
 ## Worked
 

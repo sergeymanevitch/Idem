@@ -11,10 +11,10 @@ snapshot and the tickets file — the first step script is built — `00_fetch/f
 URL — and `00_fetch/00_snapshots/` holds the three example snapshots it wrote, one vendor each.
 `02_validate/validate.py` is built as a frame: every check of `reference/05_checks.md` is
 registered under its key, the reading stage, the pairing phase, canonical form and grammar, the row
-states, quotes and values, and ranges and ancestors are written — all of those but the row that
-searches a quote in a supplied input text — and every other row is registered with nothing behind
-it. `02_validate/run_fixtures.py` runs the fixture corpus, of which fifty-seven files exist — fifty
-tickets files and seven snapshots.**
+states, quotes and values, ranges and ancestors, coverage and the three warnings are written — all
+of those but the row that searches a quote in a supplied input text, which is registered with
+nothing behind it. `02_validate/run_fixtures.py` runs the fixture corpus, of which sixty-nine files
+exist — sixty-one tickets files and eight snapshots.**
 `reference/00_catalogue.md` states the strict-table grammar and names every contract table;
 `reference/01_schema.md` holds the five tables of the ticket schema — the eight fields, the
 constants and the canonical form, the header items, the refusal reasons, the classes of line — with
@@ -53,10 +53,13 @@ tickets file to pass or to coded failures, nine phases in the fixed order of AD-
 table registered as a callable under its key and reconciled with it both ways. What is written is
 the reading stage — the encoding, the five header items and their values — the whole pairing phase,
 canonical form and grammar, the row states, five of the six rows of quotes and values, the seven
-rows of ranges and ancestors, and the warning about the unnumbered mode; the coverage phase below
-them is registered and empty, and the story that fills it writes its checks into that file and
-nowhere else. The ancestor test of `reference/02_segmentation.md` is implemented there once, over
-the classes `snapshot.classify` gives, and nothing of segmentation beside it. The routine of
+rows of ranges and ancestors, the six rows of coverage — `Unmapped` held to the body: every
+uncited non-blank line inside `body_range` listed, nothing listed that is cited, repeated, blank or
+absent, every entry's text its line's verbatim — and the three warnings, the two that read an
+`Unmapped` line inside a ticket's range printing only on a run that reached coverage; `quote_input`
+is the one row registered and empty. The ancestor test of `reference/02_segmentation.md` is
+implemented there once, over the classes `snapshot.classify` gives, and nothing of segmentation
+beside it. The routine of
 `reference/03_breaking-terms.md` — the fold, the left-to-right scan, the longest phrase at a
 position and the disagreement — is implemented there and reads every phrase out of that table. No
 key of `checks` is a string literal in it: a check is the function
@@ -64,10 +67,11 @@ named for its key. Six of the grammar checks report one class of finding of `tic
 nothing else, and a test holds that map both ways, so a class of finding with no check and a check
 claiming two of them both fail. `02_validate/run_fixtures.py` runs the corpus and prints how far it
 has got. `02_validate/00_fixtures/manifest.md` names every fixture and the codes it must raise, held
-against `05_checks.md` by `02_validate/test_manifest.py`; fifty of the tickets files it names
-exist — one clean file over the Plaid snapshot, one refusal built from its header, and one mutation
-per row of the six written phases — beside seven snapshots, of which one is the fetched Plaid file
-and six were built by hand from it.
+against `05_checks.md` by `02_validate/test_manifest.py`; sixty-one of the tickets files it names
+exist — one clean file over the Plaid snapshot, one zero-ticket clean file over the same, one
+refusal built from its header, and at least one mutation per row of the seven written phases and the two
+warnings that read `Unmapped` — beside eight snapshots, of which one is the fetched Plaid file and
+seven were built by hand from it.
 `identity.md` says what Idem is, takes, returns and refuses; `rules.md` is the first-draft
 procedure — six numbered steps, each naming the file and the section it depends on, the self-check
 of FR-27 before the emit step, and the prohibitions under them — and it says where it is still a

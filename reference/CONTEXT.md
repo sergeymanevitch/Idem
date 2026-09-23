@@ -44,13 +44,14 @@ compiled as the contract loads, and `00_catalogue.md` states that convention.
 **Known debt.** A rule stated here that no pattern can carry is enforced by nothing until the tool
 that owns it exists. Story 1.7 closed half of that: `05_checks.md` now gives almost every one of
 these rules a key and a code, so the thing they are waiting for is a tool and no longer a decision.
-**A key is not a check.** `validate.py` is written as a frame and it enforces six phases of the
-nine: reading the file — the encoding, the five header items and the patterns of their values;
-pairing, which is where the rules of AD-5 and FR-35 about the snapshot are; canonical form and
-grammar; the row states; quotes and values, all of it but `quote_input`; and ranges and ancestors.
-Everything else below
-is registered under its key with nothing behind it, and the list stays here until the phase that
-owns each rule is written and its fixtures pass. There are five groups.
+**A key is not a check.** `validate.py` is written as a frame and it enforces seven phases of the
+nine and the warnings: reading the file — the encoding, the five header items and the patterns of
+their values; pairing, which is where the rules of AD-5 and FR-35 about the snapshot are; canonical
+form and grammar; the row states; quotes and values, all of it but `quote_input`; ranges and
+ancestors; coverage — the six checks that hold `Unmapped` to the body; and the three warnings, the
+two that read an `Unmapped` line inside a ticket's range printing only on a run that reached
+coverage. One row, `quote_input`, is registered under its key with nothing behind it, and the list
+stays here until each rule below is written and its fixtures pass. There are five groups.
 
 - `04_snapshot-format.md` — the fence-pairing and open-item rules of `line-classes`, stated in
   `rule` cells, in English. **These get no key, and that is a decision of 2026-09-20**: they are the
@@ -75,9 +76,13 @@ owns each rule is written and its fixtures pass. There are five groups.
   with the mode; all three are in the deferred ledger under Story 3.3's decision 7. The same rule in
   an `Unmapped` range and in a `source` row's line cell, which has no pattern at all, is
   `range_reversed`, and that one **is** enforced. And an `Unmapped` range standing for a run of
-  consecutive, non-blank, uncited lines — `unmapped_missing`, `unmapped_cited` and `unmapped_blank`
-  between them — needs the snapshot beside the tickets file and waits for the coverage phase. Owner:
-  `validate.py`.
+  consecutive, non-blank, uncited lines — `unmapped_missing`, `unmapped_cited`, `unmapped_blank` and
+  `unmapped_phantom` between them — **is closed** (2026-09-23): the coverage phase reads the
+  snapshot beside the tickets file. What it leaves is recorded for the story that owns the AD-10
+  skips: a reversed range in a zero-ticket file's `Unmapped` is dropped from the listed set, so its
+  lines come back as missing under `unmapped_missing` and no line names the range itself, and a
+  `body_range` reading the sentinel under `line_numbers: snapshot` gives `unmapped_missing` nothing
+  to read until the `header_value` sub-rule refuses it. Owner: `validate.py`.
 - `01_schema.md`, rules about what a cell holds, which the line patterns do not carry. Each now
   has a key, and **two of them are read the same way**: that a `field` cell holds one of the eight
   field names and that a ticket's rows give them in order — `fields` — and that a header item's
@@ -91,8 +96,8 @@ owns each rule is written and its fixtures pass. There are five groups.
   is a substring of its own quote is `value_quote`, and that check is written, reads the `kind` cell
   of the row's own field and runs in both modes. Owner of what is left: `validate.py`.
 - `03_breaking-terms.md`, the rules for reading a quote against `breaking-terms`. The table carries
-  the phrases and their values; the routines that read them are prose. **Four of the five are closed**
-  (2026-09-22): the choices of the lookup that fills the field — that only `A` to `Z` is folded;
+  the phrases and their values; the routines that read them are prose. **All five are closed**
+  (2026-09-22 and 2026-09-23): the choices of the lookup that fills the field — that only `A` to `Z` is folded;
   that the scan runs left to right and continues after a phrase it keeps, rather than taking the
   longest phrase found anywhere; that a phrase is taken only where the character before it is not an
   ASCII letter or digit; and that two kept phrases carrying different values make the quote support
@@ -100,8 +105,9 @@ owns each rule is written and its fixtures pass. There are five groups.
   the fourth as `breaking_quote`, and three committed fixtures exercise them. The fifth rule is the
   FR-37 warning, which reads the same table by a different rule — any phrase of it occurring
   anywhere in the folded line, with no scan, no left edge and no disagreement — and so fires on a
-  `no` phrase and on a phrase buried inside a word; its key is `warn_breaking`, it belongs to the
-  coverage phase, and it is enforced by nothing. Owner: `validate.py`. The tests of
+  `no` phrase and on a phrase buried inside a word; its key is `warn_breaking`, and `validate.py`
+  holds that reading beside the routine, reusing nothing of the scan for it, since 2026-09-23. The
+  tests of
   `lib/tests/test_breaking_terms.py` still run their own reading of the lookup, written from the
   prose rather than from the tool; `02_validate/test_validate.py` holds the tool's routine against
   that reading quote by quote, so the two readings of one page are proved to agree rather than left

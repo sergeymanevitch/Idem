@@ -75,11 +75,11 @@ ANCHORED_RE = re.compile(r"^`([^`]+)`$")
 #: Its columns, by position: the phase, the key that opens it, the key that closes it.
 FIRST, LAST = 1, 2
 
-#: What the story fixes about the shipped table: thirty-seven checks written, two rows the frame
-#: raises, and the rest registered with nothing behind them. They are counted, never listed.
-WRITTEN = 37
+#: What the story fixes about the shipped table: forty-five checks written, two rows the frame
+#: raises, and the one registered with nothing behind it. They are counted, never listed.
+WRITTEN = 45
 FRAME_ROWS = 2
-PENDING_ROWS = 9
+PENDING_ROWS = 1
 #: The checks that end their phase. The count is in the prose; the names are read from it.
 ENDING = 5
 #: The nine phases of AD-6.
@@ -87,7 +87,10 @@ PHASE_COUNT = 9
 
 #: A failure line and a warning line, by shape alone.
 FAILURE_RE = re.compile(r"^[A-Z][A-Z0-9_]*\t[^\t]+:[0-9]+\t[^\t]+$")
+WARNING_RE = re.compile(r"^" + validate.WARNING_FIELD + r"\t[A-Z][A-Z0-9_]*\t[^\t]+:[0-9]+\t[^\t]+$")
 CLEAN = "clean-01.tickets.md"
+#: The zero-ticket clean file: the same header, no ticket, every non-blank body line listed.
+ZERO_TICKETS = "clean-03.tickets.md"
 
 #: The checks of the canonical-form-and-grammar phase, by the position of their row in the table:
 #: canonical form, a line no class claims, the blocks of the shape, the ticket numbers, the fields
@@ -107,11 +110,19 @@ LINE_PAST, QUOTE_ON_LINE, VALUE_IN_QUOTE, BREAKING_READ, BREAKING_BOTH = range(5
 #: overlap, a heading inside a range, the line a range starts on, the line it ends on, and a range
 #: outside the body range of the header.
 CITE, ANCESTOR_UNDER_NO, OVERLAP, HEADING_INSIDE, START, END, BODY = range(7)
+#: The checks of the coverage phase, by the same rule: a line cited by no row and not listed, a
+#: line both cited and listed, a line listed twice, a listed line that is not in the body or is
+#: outside the body range, a blank line listed, and an entry whose text is not the line's.
+MISSING, CITED, TWICE, PHANTOM, BLANK_LISTED, TEXT = range(6)
+#: The three warnings, by position in their phase: the date, the phrase, and the unbound mode.
+DATE_WARNING, BREAKING_WARNING, UNBOUND_WARNING = range(3)
 #: How many committed fixtures each of the four phases has. More than one key carries several.
 GRAMMAR_FIXTURES = 12
 STATES_FIXTURES = 8
 QUOTES_FIXTURES = 12
 RANGES_FIXTURES = 8
+COVERAGE_FIXTURES = 8
+WARNING_FIXTURES = 2
 #: The nine classes of finding the one reader of the format makes, counted and never listed.
 FINDING_CLASSES = 9
 #: The stray sentence the grammar fixtures are built with.
@@ -688,8 +699,8 @@ class TestThePhases(ValidatorCase):
 
     def test_the_run_records_the_last_phase_it_reached_before_the_warnings(self):
         """Two of the three warnings read the unmapped list against a ticket's range, so the
-        contract prints them only on a run that reaches coverage. Neither is written yet; what the
-        frame owes the story that writes them is a way to say how far the run got."""
+        contract prints them only on a run that reaches coverage. What the frame gives them is how
+        far the run got: coverage on the clean file, pairing on a file that failed there."""
         found = {}
 
         def remember(name):
@@ -709,6 +720,22 @@ class TestThePhases(ValidatorCase):
         found.clear()
         self.fixture(keys_of(validate.PAIRING)[1] + "-01.tickets.md")
         self.assertEqual([validate.PAIRING] * len(found), list(found.values()), found)
+
+    def test_the_two_warnings_that_read_the_list_print_only_on_a_run_that_reached_coverage(self):
+        """The real warnings, no watcher: the two warning fixtures print theirs, and the same files
+        with a stray line before the unmapped heading print the grammar code alone - not a warning
+        suppressed but a warning with nothing to read."""
+        for place in (DATE_WARNING, BREAKING_WARNING):
+            name = fixtures_for(keys_of(validate.WARNINGS)[place])[0]
+            code, lines = self.fixture(name)
+            self.assertEqual(0, code, lines)
+            self.assertEqual(set([code_at(validate.WARNINGS, place)]), self.codes(lines), lines)
+            block = self.bytes_of(os.path.join(TICKETS_FOLDER, name)).decode("utf-8").split("\n")
+            block.insert(line_at(block, constant(tickets.UNMAPPED_HEADING_TEXT)), A_STRAY_LINE)
+            path = self.write("s.tickets.md", ("\n".join(block)).encode("utf-8"))
+            code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+            self.assertEqual(1, code, lines)
+            self.assertEqual(set([code_at(validate.GRAMMAR, STRAY)]), self.codes(lines), lines)
 
     def test_the_spans_of_the_illustration_partition_the_table(self):
         """The teeth under the mapping above: a phase that did not bound a run of rows would let a
@@ -2227,15 +2254,17 @@ def quote_of(lines, number):
     return lines[number - 1].strip(" \t")
 
 
-class TestRangesAndAncestors(ValidatorCase):
-    """The seven rows of the phase, one bullet of the contract at a time.
+class BuiltCase(ValidatorCase):
+    """A case built over the corpus body or over a body written by hand.
 
-    Every check of the phase reads the model, the snapshot and the classified body lines the
-    pairing phase leaves on the run, so a case here is built on a run that has been paired -
-    `paired()` - except where the point of the case is a run that has not. A body the corpus does
-    not hold is written by hand, through the one writer of the format, into the case's temporary
-    directory, and paired from there.
+    Every check of the two phases that use this reads the model, the snapshot and the classified
+    body lines the pairing phase leaves on the run, so a case is built on a run that has been
+    paired - `paired()` - except where the point of the case is a run that has not. A body the
+    corpus does not hold is written by hand, through the one writer of the format, into the case's
+    temporary directory, and paired from there. `PHASE` is the phase `fired` reads.
     """
+
+    PHASE = None
 
     # --- what a case is built from -------------------------------------------------------------
 
@@ -2305,7 +2334,7 @@ class TestRangesAndAncestors(ValidatorCase):
     def fired(self, run):
         """{position of the check in the phase: its failures} for every check that says something."""
         found = {}
-        keys = keys_of(validate.RANGES)
+        keys = keys_of(self.PHASE)
         for place in range(len(keys)):
             raised = registry()[keys[place]](run)
             if raised:
@@ -2325,6 +2354,13 @@ class TestRangesAndAncestors(ValidatorCase):
         self.assertEqual([place], list(found), found)
         self.assertEqual(count, len(found[place]), found)
         return found[place]
+
+
+
+class TestRangesAndAncestors(BuiltCase):
+    """The seven rows of the phase, one bullet of the contract at a time."""
+
+    PHASE = validate.RANGES
 
     # --- the corpus -----------------------------------------------------------------------------
 
@@ -2848,6 +2884,782 @@ class TestRangesAndAncestors(ValidatorCase):
 # --- what one phase hides from the next -----------------------------------------------------------------
 
 
+# --- coverage: the lines no row cites are the lines the list stands for (FR-34) -----------------------
+
+
+def entry(number, text=None, last=None):
+    """One entry of the unmapped list as a case writes it: the line it stands on is not read."""
+    return tickets.Entry(number, last, text, 0)
+
+
+class CoverageCase(BuiltCase):
+    """What a case of the coverage phase, or of the two warnings that read its material, is built
+    from. A case that needs another list replaces the entries through the model and serialises, so
+    the file stays canonical and fails for the reason it was built to."""
+
+    PHASE = validate.COVERAGE
+
+    # --- what a case is built from -------------------------------------------------------------
+
+    def listing(self, data, entries):
+        """These bytes with the unmapped list replaced: the entries given, or the one word."""
+        model = self.model_of(data)
+        block = model.unmapped._replace(entries=list(entries),
+                                        none_at=None if entries else model.unmapped.at + 2)
+        return tickets.serialise(model._replace(unmapped=block))
+
+    def entries_of(self, data):
+        return list(self.model_of(data).unmapped.entries)
+
+    def replaced(self, data, numbers, entries):
+        """The clean file with the line entries for these numbers taken out and these put in."""
+        kept = self.entries_of(data)
+        places = [index for index in range(len(kept))
+                  if kept[index].last is None and kept[index].number in numbers]
+        self.assertEqual(len(numbers), len(places), numbers)
+        kept[places[0]:places[-1] + 1] = list(entries)
+        return self.listing(data, kept)
+
+    def heading_at(self, data):
+        return self.model_of(data).unmapped.at
+
+    def entry_at(self, data, number):
+        """The line the entry standing for this number stands on."""
+        found = [item.at for item in self.entries_of(data) if item.number == number]
+        self.assertEqual(1, len(found), number)
+        return found[0]
+
+    def without_ticket(self, data, place):
+        """These bytes with one ticket taken out and the rest renumbered."""
+        model = self.model_of(data)
+        kept = [ticket for index, ticket in enumerate(model.tickets) if index != place]
+        kept = [ticket._replace(number=index + 1) for index, ticket in enumerate(kept)]
+        return tickets.serialise(model._replace(tickets=kept))
+
+    def with_range(self, data, body_range):
+        block = data.decode("utf-8").split("\n")
+        return ("\n".join(with_item(block, tickets.RANGE_ITEM, body_range))).encode("utf-8")
+
+    def zero_tickets(self):
+        return self.bytes_of(os.path.join(TICKETS_FOLDER, ZERO_TICKETS))
+
+    def called(self, phase):
+        """Every check of a phase wrapped, for the length of the test, to record that it ran."""
+        heard = []
+
+        def wrap(key, original):
+            def watch(run):
+                heard.append(key)
+                return original(run)
+            watch.phase = original.phase
+            return watch
+
+        for key in keys_of(phase):
+            original = getattr(validate, validate.CHECK_PREFIX + key)
+            setattr(validate, validate.CHECK_PREFIX + key, wrap(key, original))
+            self.addCleanup(setattr, validate, validate.CHECK_PREFIX + key, original)
+        return heard
+
+
+
+class TestCoverage(CoverageCase):
+    """The six rows of the phase, one bullet of the contract at a time (Sergey, 2026-09-23). The
+    material is the model's entries as the reader gives them against the classified body lines the
+    pairing phase left on the run."""
+
+    # --- the corpus -----------------------------------------------------------------------------
+
+    def test_each_row_of_the_coverage_phase_raises_its_own_code_alone(self):
+        found = 0
+        for key in keys_of(validate.COVERAGE):
+            names = fixtures_for(key)
+            self.assertTrue(names, key)
+            for name in names:
+                found += 1
+                lines = self.assert_manifest(name)
+                self.assertEqual(1, len(lines), lines)
+        self.assertEqual(COVERAGE_FIXTURES, found)
+        self.assertEqual(len(phase_keys(validate.COVERAGE)), len(keys_of(validate.COVERAGE)))
+
+    def test_the_clean_file_says_nothing_and_every_check_of_the_phase_was_called_on_it(self):
+        """The hand check of the clean file's list is now a run: every check of the phase is
+        called, with material, and none of them speaks."""
+        heard = self.called(validate.COVERAGE)
+        code, lines = self.fixture(CLEAN)
+        self.assertEqual([], lines)
+        self.assertEqual(0, code)
+        self.assertEqual(keys_of(validate.COVERAGE), heard)
+        run = self.paired(self.clean())
+        self.assertIsNotNone(validate._listed(run))
+        self.assertEqual({}, self.fired(run))
+
+    def test_the_zero_ticket_file_is_silent_and_is_all_coverage(self):
+        """The fourth clean file. It carries no ticket, so every phase from the row states to the
+        ranges reads nothing of it; coverage reads it whole - every non-blank body line stands in
+        its list - and the run reaches coverage."""
+        heard = self.called(validate.COVERAGE)
+        reached = []
+
+        def watch(run):
+            reached.append(run.reached)
+            return []
+
+        key = keys_of(validate.WARNINGS)[UNBOUND_WARNING]
+        original = getattr(validate, validate.CHECK_PREFIX + key)
+        watch.phase = original.phase
+        setattr(validate, validate.CHECK_PREFIX + key, watch)
+        self.addCleanup(setattr, validate, validate.CHECK_PREFIX + key, original)
+        code, lines = self.fixture(ZERO_TICKETS)
+        self.assertEqual([], lines)
+        self.assertEqual(0, code)
+        self.assertEqual(keys_of(validate.COVERAGE), heard)
+        self.assertEqual([validate.COVERAGE], reached)
+        model = self.model_of(self.zero_tickets())
+        self.assertEqual([], list(model.tickets))
+        classified = snapshot.classify(self.plaid().lines)
+        self.assertEqual([line.number for line in classified if line.cls != snapshot.BLANK],
+                         [item.number for item in model.unmapped.entries])
+        for item in model.unmapped.entries:
+            self.assertIsNone(item.last)
+            self.assertEqual(classified[item.number - 1].text, item.text)
+        header = self.model_of(self.clean()).header
+        self.assertEqual(header, model.header)
+
+    def test_the_zero_ticket_fixture_is_one_entry_away_from_the_zero_ticket_file(self):
+        name = fixtures_for(keys_of(validate.COVERAGE)[MISSING])
+        name = [found for found in name if found.endswith("-03.tickets.md")][0]
+        kept = self.entries_of(self.zero_tickets())
+        self.assertEqual([1, 2], [item.number for item in kept[:2]])
+        self.assertEqual(self.bytes_of(os.path.join(TICKETS_FOLDER, name)),
+                         self.listing(self.zero_tickets(), kept[:1] + kept[2:]))
+
+    def test_the_items_base_is_silent_through_coverage_with_two_entries_or_one_range(self):
+        """The base of three ranges fixtures, rebuilt as the ranges tests rebuild it, lists lines 3
+        and 4 as two entries - uncited lines inside a range, which is the passing half of the rule
+        that a source range is no citation. Written as one range `3-4` it is as silent."""
+        name = fixtures_for(keys_of(validate.RANGES)[START])[0]
+        model = self.model_of(self.bytes_of(os.path.join(TICKETS_FOLDER, name)))
+        base = tickets.serialise(with_row_in(model, field_at(-1), 1, line="4-5"))
+        for data in (base, self.replaced(base, [3, 4], [entry(3, last=4)])):
+            path = self.write("base.tickets.md", data)
+            code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+            self.assertEqual([], lines)
+            self.assertEqual(0, code)
+            self.assertEqual({}, self.fired(self.run_over(data)))
+        self.assertEqual([3, 4], [item.number for item in self.entries_of(base)][:2])
+
+    # --- nothing to read ------------------------------------------------------------------------
+
+    def fixtures(self):
+        for key in keys_of(validate.COVERAGE):
+            for name in fixtures_for(key):
+                yield name, self.bytes_of(os.path.join(TICKETS_FOLDER, name))
+
+    def test_every_check_of_the_phase_reads_nothing_without_a_snapshot(self):
+        for name, data in self.fixtures():
+            run = self.a_run(data)
+            self.assertIsNone(run.snapshot)
+            self.assertIsNone(validate._listed(run))
+            self.assertEqual({}, self.fired(run), name)
+
+    def test_every_check_of_the_phase_reads_nothing_without_classified_lines(self):
+        for name, data in self.fixtures():
+            run = self.paired(data)
+            run.classified = None
+            self.assertIsNotNone(run.snapshot)
+            self.assertEqual({}, self.fired(run), name)
+
+    def test_every_check_of_the_phase_reads_nothing_where_there_is_no_model(self):
+        name = fixtures_for(keys_of(validate.GRAMMAR)[FIELD_ROWS])[0]
+        run = self.paired(self.bytes_of(os.path.join(TICKETS_FOLDER, name)))
+        self.assertIsNone(run.parsed.model)
+        self.assertIsNotNone(run.classified)
+        self.assertEqual({}, self.fired(run))
+
+    def test_a_refusal_has_no_unmapped_block_and_is_never_read(self):
+        block = TestWhatHasNothingToRead.refusal(self)
+        run = self.a_run(as_bytes(block))
+        self.assertIsNone(run.parsed.model.unmapped)
+        run.snapshot = self.plaid()
+        run.classified = snapshot.classify(run.snapshot.lines)
+        self.assertIsNone(validate._listed(run))
+        self.assertEqual({}, self.fired(run))
+
+    def test_under_the_mode_with_no_line_numbers_no_entry_carries_a_number(self):
+        """Decision 1: the snapshot and its classes put on the run by hand, and still nothing to
+        read - every entry is text alone, and the body range reads the sentinel in that mode."""
+        block = TestWhatHasNothingToRead.unnumbered(self)
+        run = self.a_run(as_bytes(block))
+        run.snapshot = self.plaid()
+        run.classified = snapshot.classify(run.snapshot.lines)
+        self.assertTrue(run.parsed.model.unmapped.entries)
+        self.assertEqual([], validate._listed(run))
+        self.assertIsNone(validate._body_bounds(run))
+        self.assertEqual({}, self.fired(run))
+
+    def test_an_empty_list_is_read_and_a_reversed_range_stands_for_nothing(self):
+        data = self.listing(self.clean(), [])
+        run = self.paired(data)
+        self.assertEqual([], validate._listed(run))
+        reversed_range = self.listing(self.clean(), [entry(10, last=6)] + self.entries_of(self.clean()))
+        self.assertEqual([], [item for item in validate._listed(self.paired(reversed_range))
+                              if item.last is not None])
+
+    # --- a line no row cites that is not listed -----------------------------------------------------
+
+    def test_a_missing_line_is_one_failure_at_the_heading_naming_the_line_and_its_text(self):
+        data = self.replaced(self.clean(), [6], [])
+        found = self.assert_alone(self.run_over(data), MISSING)
+        self.assertEqual(self.heading_at(data), found[0].line)
+        self.assertIn("6", found[0].message)
+        self.assertIn(self.plaid().lines[5], found[0].message)
+
+    def test_a_list_reading_the_one_word_lists_nothing_so_every_uncited_line_fires(self):
+        data = self.listing(self.clean(), [])
+        found = self.assert_alone(self.run_over(data), MISSING, 145)
+        self.assertEqual(set([self.heading_at(data)]), set([item.line for item in found]))
+
+    def test_a_list_reading_the_one_word_under_a_file_citing_every_line_passes(self):
+        lines = ["### Heading", "- one", "- two"]
+        data = self.built([("2", {0: 2, 3: 1}), ("3", {0: 3})], lines=lines, body_range="1-3")
+        data = self.listing(data, [])
+        self.assertEqual({}, self.fired(self.run_over(data, lines)))
+
+    def test_an_uncited_line_inside_a_source_range_is_missing_when_not_listed(self):
+        """The failing half of the rule that a source range is no citation; the items base above is
+        the passing half."""
+        data = self.without_ticket(self.with_row(field_at(-1), 0, line="2-3"), 1)
+        run = self.run_over(data)
+        self.assertEqual([], check_at(validate.RANGES, OVERLAP)(run))
+        self.assertEqual([], check_at(validate.RANGES, END)(run))
+        found = self.assert_alone(run, MISSING)
+        self.assertIn("3", found[0].message)
+
+    def test_a_line_outside_the_body_range_is_not_missing(self):
+        """Ticket 1 removed and the body range moved to start at line 3: line 2 is uncited and not
+        listed, and it was not translated. Listed instead, it is a phantom and nothing else."""
+        data = self.with_range(self.without_ticket(self.clean(), 0), "3-200")
+        self.assertEqual({}, self.fired(self.run_over(data)))
+        listed = self.listing(data, [entry(2, self.plaid().lines[1])] + self.entries_of(data))
+        found = self.assert_alone(self.run_over(listed), PHANTOM)
+        self.assertEqual(self.entry_at(listed, 2), found[0].line)
+        self.assertTrue(found[0].message.startswith("this entry stands for body line 2,"),
+                        found[0].message)
+        #: and a range reaching over the upper bound names the first line above it
+        below = [item for item in self.entries_of(self.clean()) if item.number < 95]
+        over = self.with_range(self.listing(self.clean(), below + [entry(95, last=105)]), "1-100")
+        found = self.assert_alone(self.run_over(over), PHANTOM)
+        self.assertEqual(self.entry_at(over, 95), found[0].line)
+        self.assertTrue(found[0].message.startswith("this entry stands for body line 101,"),
+                        found[0].message)
+
+    def test_a_body_range_the_header_cannot_give_leaves_the_missing_check_nothing(self):
+        for value in (constant(tickets.SENTINEL), "200-1"):
+            data = self.with_range(self.replaced(self.clean(), [6], []), value)
+            run = self.run_over(data)
+            self.assertIsNone(validate._body_bounds(run))
+            self.assertEqual([], check_at(validate.COVERAGE, MISSING)(run), value)
+            #: and the phantom check reads the body half only
+            past = self.listing(data, self.entries_of(data) + [entry(201, "x")])
+            found = self.assert_alone(self.run_over(past), PHANTOM)
+            self.assertIn("201", found[0].message)
+
+    def test_a_line_above_the_body_range_is_not_missing_either(self):
+        """The body range cut to the first hundred lines and the list cut with it: nothing above
+        the range is translated, so nothing above it is missing."""
+        kept = [item for item in self.entries_of(self.clean()) if item.number <= 100]
+        data = self.with_range(self.listing(self.clean(), kept), "1-100")
+        run = self.run_over(data)
+        self.assertEqual([], check_at(validate.COVERAGE, MISSING)(run))
+        self.assertEqual([], check_at(validate.COVERAGE, PHANTOM)(run))
+
+    def test_a_listed_line_above_the_body_range_is_a_phantom_and_nothing_else(self):
+        """The full list under a body range cut to the first hundred lines: every entry above it
+        fires the phantom check once, the first at the entry for line 101 naming 101, and neither
+        the blank check nor the text check reads one of them."""
+        data = self.with_range(self.clean(), "1-100")
+        found = self.fired(self.run_over(data))
+        self.assertEqual([PHANTOM], list(found), found)
+        above = [item for item in self.entries_of(data) if item.number > 100]
+        self.assertEqual([item.at for item in above], [item.line for item in found[PHANTOM]])
+        self.assertEqual(101, above[0].number)
+        self.assertTrue(found[PHANTOM][0].message.startswith("this entry stands for body line 101,"),
+                        found[PHANTOM][0].message)
+
+    def test_a_blank_line_is_never_missing(self):
+        self.assertEqual(snapshot.BLANK, snapshot.classify(self.plaid().lines)[24].cls)
+        self.assertEqual({}, self.fired(self.run_over(self.clean())))
+
+    # --- a line both cited and listed ----------------------------------------------------------------
+
+    def test_a_listed_line_a_row_cites_is_one_failure_at_the_entry(self):
+        data = self.listing(self.clean(), [entry(2, self.plaid().lines[1])] + self.entries_of(self.clean()))
+        found = self.assert_alone(self.run_over(data), CITED)
+        self.assertEqual(self.entry_at(data, 2), found[0].line)
+        self.assertIn("2", found[0].message)
+
+    def test_a_range_holding_a_cited_line_fails_once_naming_the_first(self):
+        data = self.listing(self.clean(), [entry(2, last=3)] + self.entries_of(self.clean()))
+        found = self.assert_alone(self.run_over(data), CITED)
+        self.assertEqual(self.entry_at(data, 2), found[0].line)
+        self.assertTrue(found[0].message.startswith("body line 2 "), found[0].message)
+
+    def test_a_cited_line_inside_a_range_whose_first_line_is_not_cited_is_found(self):
+        """Ticket 1 gone, line 2 uncited, the range `2-3` listed: line 3 is still cited by ticket
+        2, so the range fails once and names 3 - every member is read, not the first alone."""
+        data = self.without_ticket(self.clean(), 0)
+        data = self.listing(data, [entry(2, last=3)] + self.entries_of(data))
+        found = self.assert_alone(self.run_over(data), CITED)
+        self.assertEqual(self.entry_at(data, 2), found[0].line)
+        self.assertTrue(found[0].message.startswith("body line 3 "), found[0].message)
+
+    def test_a_source_range_is_no_citation(self):
+        run = self.run_over(self.clean())
+        self.assertEqual(set([1, 2, 3, 4]), validate._cited_lines(run))
+        for ticket in run.parsed.model.tickets:
+            self.assertNotIn(ticket.rows[-1].at, [row.at for row in validate._cited(run)])
+
+    def test_a_line_both_invented_and_cited_raises_two_codes(self):
+        """The body range starts at 3 and ticket 1 is gone, so line 1 - the heading every ticket
+        cites as an ancestor - is outside the range and cited: two facts about one entry, and the
+        ranges phase is silent about it."""
+        data = self.with_range(self.without_ticket(self.clean(), 0), "3-200")
+        data = self.listing(data, [entry(1, self.plaid().lines[0])] + self.entries_of(data))
+        run = self.run_over(data)
+        self.assertEqual([], check_at(validate.RANGES, BODY)(run))
+        self.assertEqual([], check_at(validate.RANGES, CITE)(run))
+        found = self.fired(run)
+        self.assertEqual(sorted([CITED, PHANTOM]), sorted(found), found)
+        for place in found:
+            self.assertEqual([self.entry_at(data, 1)], [item.line for item in found[place]])
+
+    # --- a line listed twice ---------------------------------------------------------------------------
+
+    def test_a_line_listed_twice_is_one_failure_at_the_later_entry(self):
+        kept = self.entries_of(self.clean())
+        place = [index for index in range(len(kept)) if kept[index].number == 8][0]
+        kept.insert(place + 1, kept[place])
+        data = self.listing(self.clean(), kept)
+        found = self.assert_alone(self.run_over(data), TWICE)
+        self.assertEqual(self.entries_of(data)[place + 1].at, found[0].line)
+        self.assertIn("8", found[0].message)
+
+    def test_two_overlapping_ranges_are_one_failure_at_the_later_naming_the_first_repeated(self):
+        data = self.replaced(self.clean(), [6, 7, 8, 9, 10], [entry(6, last=8), entry(8, last=10)])
+        found = self.assert_alone(self.run_over(data), TWICE)
+        self.assertEqual(self.entry_at(data, 8), found[0].line)
+        self.assertTrue(found[0].message.startswith("body line 8 "), found[0].message)
+
+    def test_the_line_named_is_the_lowest_the_two_share(self):
+        data = self.replaced(self.clean(), [6, 7, 8, 9, 10], [entry(6, last=9), entry(7, last=10)])
+        found = self.assert_alone(self.run_over(data), TWICE)
+        self.assertEqual(self.entry_at(data, 7), found[0].line)
+        self.assertTrue(found[0].message.startswith("body line 7 "), found[0].message)
+
+    def test_the_lowest_shared_line_is_folded_across_two_earlier_entries(self):
+        data = self.replaced(self.clean(), [6, 7, 8, 9, 10],
+                             [entry(6, last=7), entry(9, last=10), entry(6, last=10)])
+        found = self.assert_alone(self.run_over(data), TWICE)
+        third = [item for item in self.entries_of(data) if (item.number, item.last) == (6, 10)]
+        self.assertEqual([third[0].at], [item.line for item in found])
+        self.assertTrue(found[0].message.startswith("body line 6 "), found[0].message)
+
+    def test_a_line_inside_an_earlier_range_is_that_failure(self):
+        data = self.replaced(self.clean(), [6, 7, 8], [entry(6, last=8), entry(7, self.plaid().lines[6])])
+        found = self.assert_alone(self.run_over(data), TWICE)
+        self.assertEqual(self.entry_at(data, 7), found[0].line)
+
+    # --- a listed line that is not there -------------------------------------------------------------
+
+    def test_a_line_past_the_body_is_one_failure_at_the_entry_and_its_text_is_not_read(self):
+        data = self.listing(self.clean(), self.entries_of(self.clean()) + [entry(201, "something")])
+        found = self.assert_alone(self.run_over(data), PHANTOM)
+        self.assertEqual(self.entry_at(data, 201), found[0].line)
+        self.assertIn("201", found[0].message)
+
+    def test_a_range_past_the_body_inside_the_body_range_is_that_failure_alone(self):
+        """Decision 6: the body range is read literally, so a range reaching past the body while
+        inside it fires here; blank and text read nothing of the entry."""
+        self.assertEqual(snapshot.BLANK, snapshot.classify(self.plaid().lines)[198].cls)
+        data = self.with_range(self.replaced(self.clean(), [200], [entry(199, last=201)]), "1-250")
+        found = self.assert_alone(self.run_over(data), PHANTOM)
+        self.assertEqual(self.entry_at(data, 199), found[0].line)
+        self.assertIn("201", found[0].message)
+
+    def test_a_range_with_a_huge_upper_bound_is_compared_as_an_interval(self):
+        """Decision 10: the listed set is built only up to the last body line, so no file can hang
+        the run; the entry is still a phantom, and a cited line inside it is still cited."""
+        huge = 10 ** 100
+        data = self.replaced(self.clean(), [200], [entry(199, last=huge)])
+        found = self.assert_alone(self.run_over(data), PHANTOM)
+        self.assertEqual(self.entry_at(data, 199), found[0].line)
+        data = self.listing(self.clean(), [entry(4, last=huge)])
+        found = self.fired(self.run_over(data))
+        self.assertEqual(sorted([CITED, PHANTOM]), sorted(found), found)
+        self.assertEqual(self.entry_at(data, 4), found[CITED][0].line)
+
+    def test_it_does_not_end_the_phase(self):
+        """A phantom and a wrong text in one file are two codes, and the phantom check carries no
+        end-of-phase mark."""
+        self.assertFalse(getattr(check_at(validate.COVERAGE, PHANTOM), validate.ENDS_PHASE, False))
+        kept = self.entries_of(self.clean())
+        place = [index for index in range(len(kept)) if kept[index].number == 6][0]
+        kept[place] = kept[place]._replace(text=kept[place].text + " and more")
+        data = self.listing(self.clean(), kept + [entry(201, "x")])
+        path = self.write("p.tickets.md", data)
+        code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual(1, code, lines)
+        self.assertEqual(set([code_at(validate.COVERAGE, PHANTOM), code_at(validate.COVERAGE, TEXT)]),
+                         self.codes(lines), lines)
+
+    # --- a blank line listed -----------------------------------------------------------------------------
+
+    def test_a_blank_line_inside_a_range_is_one_failure_at_the_entry(self):
+        data = self.replaced(self.clean(), [24, 26], [entry(24, last=26)])
+        found = self.assert_alone(self.run_over(data), BLANK_LISTED)
+        self.assertEqual(self.entry_at(data, 24), found[0].line)
+        self.assertIn("25", found[0].message)
+
+    def test_a_range_holding_two_blank_lines_fails_once_naming_the_first(self):
+        classes = snapshot.classify(self.plaid().lines)
+        self.assertEqual([25, 29], [number for number in range(24, 31)
+                                    if classes[number - 1].cls == snapshot.BLANK])
+        data = self.replaced(self.clean(), [24, 26, 27, 28, 30], [entry(24, last=30)])
+        found = self.assert_alone(self.run_over(data), BLANK_LISTED)
+        self.assertTrue(found[0].message.startswith("body line 25 "), found[0].message)
+
+    def test_a_blank_line_listed_on_its_own_is_two_facts_about_one_entry(self):
+        kept = self.entries_of(self.clean())
+        place = [index for index in range(len(kept)) if kept[index].number == 26][0]
+        kept.insert(place, entry(25, "x"))
+        data = self.listing(self.clean(), kept)
+        found = self.fired(self.run_over(data))
+        self.assertEqual(sorted([BLANK_LISTED, TEXT]), sorted(found), found)
+        for place in found:
+            self.assertEqual([self.entry_at(data, 25)], [item.line for item in found[place]])
+
+    # --- an entry's text ---------------------------------------------------------------------------------
+
+    def test_a_text_that_is_not_the_line_is_one_failure_naming_what_the_line_reads(self):
+        kept = self.entries_of(self.clean())
+        place = [index for index in range(len(kept)) if kept[index].number == 6][0]
+        kept[place] = kept[place]._replace(text=kept[place].text + " and something else")
+        data = self.listing(self.clean(), kept)
+        found = self.assert_alone(self.run_over(data), TEXT)
+        self.assertEqual(self.entry_at(data, 6), found[0].line)
+        self.assertIn(self.plaid().lines[5], found[0].message)
+
+    def test_one_space_a_case_and_a_trailing_space_each_count(self):
+        kept = self.entries_of(self.clean())
+        place = [index for index in range(len(kept)) if kept[index].number == 6][0]
+        text = kept[place].text
+        for changed in (text.replace(" ", "  ", 1), text.upper(), text + " ", text[:-1],
+                        text.lower()):
+            self.assertNotEqual(text, changed)
+            kept[place] = kept[place]._replace(text=changed)
+            found = self.assert_alone(self.run_over(self.listing(self.clean(), kept)), TEXT)
+            self.assertEqual(1, len(found), changed)
+
+    def test_a_range_entry_carries_no_text_and_is_not_read(self):
+        data = self.replaced(self.clean(), [6, 7, 8], [entry(6, last=8)])
+        self.assertEqual({}, self.fired(self.run_over(data)))
+
+    # --- the literals --------------------------------------------------------------------------------------
+
+    def test_the_two_new_addresses_are_a_table_id_and_a_row_name_and_the_pattern_is_not_written(self):
+        held = set(literals(text_of(validate.__file__)))
+        self.assertIn(validate.PATTERNS_TABLE, held)
+        self.assertIn(validate.DATE_ROW, held)
+        patterns = SHIPPED[validate.PATTERNS_TABLE]
+        self.assertIn(validate.DATE_ROW, patterns.rows)
+        self.assertEqual(1, len(patterns.rows))
+        source = text_of(validate.__file__)
+        for name in patterns.rows:
+            cell = patterns.rows[name][contract.PATTERN_COLUMN]
+            self.assertNotIn(cell, source)
+            for literal in held:
+                self.assertNotIn(cell, literal)
+        for key in order():
+            self.assertNotIn(key, held)
+            self.assertNotIn(code_of(key), held)
+        self.assertEqual(set(), held & set(SHIPPED["line-classes"].rows))
+
+    def test_the_pattern_is_compiled_at_run_time_from_the_loaded_contract(self):
+        """The warning asks the run's tables and compiles the cell then: a contract handed to the
+        run with another cell is what the warning reads, so no compiled object is kept."""
+        tables = dict(SHIPPED)
+        table = tables[validate.PATTERNS_TABLE]
+        rows = dict(table.rows)
+        rows[validate.DATE_ROW] = dict(rows[validate.DATE_ROW])
+        rows[validate.DATE_ROW][contract.PATTERN_COLUMN] = "quarter"
+        tables[validate.PATTERNS_TABLE] = table._replace(rows=rows)
+        name = fixtures_for(keys_of(validate.WARNINGS)[DATE_WARNING])[0]
+        data = self.bytes_of(os.path.join(TICKETS_FOLDER, name))
+        run = validate.Run("a.tickets.md", data, tickets.parse(data), SNAPSHOTS_FOLDER, tables)
+        for key in keys_of(validate.PAIRING):
+            registry()[key](run)
+        run.reached = validate.COVERAGE
+        self.assertEqual([], check_at(validate.WARNINGS, DATE_WARNING)(run))
+        #: and the positive half: a pattern matching the listed line inside ticket 1's range
+        rows[validate.DATE_ROW][contract.PATTERN_COLUMN] = "title attributes"
+        found = check_at(validate.WARNINGS, DATE_WARNING)(run)
+        self.assertEqual(1, len(found), found)
+        self.assertEqual(run.parsed.model.unmapped.entries[0].at, found[0].line)
+        self.assertEqual(3, run.parsed.model.unmapped.entries[0].number)
+
+
+# --- the two warnings that read the list (FR-37) ---------------------------------------------------------
+
+
+class TestTheTwoWarnings(CoverageCase):
+    """A listed line inside a change's range that holds a date or a phrase: one warning per kind per
+    entry, never the exit code, printed only by a run that reached coverage."""
+
+    def warns_base(self):
+        """The base of the two warning fixtures, rebuilt from the date fixture: ticket 1 back over
+        its one line, the ticket over line 3 put back in, the entry for line 3 taken out."""
+        name = fixtures_for(keys_of(validate.WARNINGS)[DATE_WARNING])[0]
+        model = self.model_of(self.bytes_of(os.path.join(TICKETS_FOLDER, name)))
+        body = self.warns().lines
+        first, third = model.tickets
+        first = first._replace(rows=[row._replace(line="2") if row.field == field_at(-1) else row
+                                     for row in first.rows])
+        text = quote_of(body, 3)
+        #: the value carries no list marker: what stands before the clean value inside its quote
+        clean = [row for row in self.model_of(self.clean()).tickets[1].rows
+                 if row.field == field_at(0)][0]
+        marker = clean.quote[:len(clean.quote) - len(clean.value)]
+        self.assertTrue(marker and text.startswith(marker), marker)
+        second = first._replace(number=2, rows=[
+            row._replace(value=text[len(marker):], quote=text, line="3") if row.field == field_at(0)
+            else row._replace(line="3") if row.field == field_at(-1) else row
+            for row in first.rows])
+        third = third._replace(number=3)
+        self.assertEqual(3, model.unmapped.entries[0].number)
+        return tickets.serialise(model._replace(
+            tickets=[first, second, third],
+            unmapped=model.unmapped._replace(entries=model.unmapped.entries[1:])))
+
+    def warns(self):
+        name = manifest_row(fixtures_for(keys_of(validate.WARNINGS)[DATE_WARNING])[0]).cells[SNAPSHOT]
+        return snapshot.read(self.bytes_of(os.path.join(SNAPSHOTS_FOLDER, name)))
+
+    def warned(self, run, place):
+        run.reached = validate.COVERAGE
+        return check_at(validate.WARNINGS, place)(run)
+
+    def both(self, run):
+        return dict([(place, self.warned(run, place)) for place in (DATE_WARNING, BREAKING_WARNING)
+                     if self.warned(run, place)])
+
+    def date_pattern(self):
+        return re.compile(SHIPPED[validate.PATTERNS_TABLE].rows[validate.DATE_ROW][contract.PATTERN_COLUMN])
+
+    # --- the corpus -----------------------------------------------------------------------------
+
+    def test_each_warning_fixture_prints_one_warning_line_and_exits_zero(self):
+        found = 0
+        for place in (DATE_WARNING, BREAKING_WARNING):
+            for name in fixtures_for(keys_of(validate.WARNINGS)[place]):
+                found += 1
+                lines = self.assert_manifest(name)
+                self.assertEqual(1, len(lines), lines)
+                self.assertTrue(WARNING_RE.match(lines[0]), lines)
+                self.assertEqual(0, expected_exit(name))
+        self.assertEqual(WARNING_FIXTURES, found)
+
+    def test_the_warns_base_is_silent_and_the_second_fixture_is_one_mutation_of_it(self):
+        base = self.warns_base()
+        path = self.write("base.tickets.md", base)
+        code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual([], lines)
+        self.assertEqual(0, code)
+        model = self.model_of(base)
+        self.assertEqual(["2", "3", "4"], [ticket.rows[-1].line for ticket in model.tickets])
+        #: the phrase fixture: ticket 2 over 3-4, ticket 3 removed, the entry for line 4 first
+        mutated = self.without_ticket(self.with_row_of(base, 1, "3-4"), 2)
+        mutated = self.listing(mutated, [entry(4, self.warns().lines[3])] + self.entries_of(mutated))
+        name = fixtures_for(keys_of(validate.WARNINGS)[BREAKING_WARNING])[0]
+        self.assertEqual(self.bytes_of(os.path.join(TICKETS_FOLDER, name)), mutated)
+
+    def with_row_of(self, data, place, cell):
+        return tickets.serialise(with_row_in(self.model_of(data), field_at(-1), place, line=cell))
+
+    def test_the_eighth_snapshot_is_the_corpus_body_with_lines_3_and_4_rewritten(self):
+        warns = self.warns()
+        plaid = self.plaid()
+        self.assertEqual(len(plaid.lines), len(warns.lines))
+        changed = [number for number in range(1, len(warns.lines) + 1)
+                   if warns.lines[number - 1] != plaid.lines[number - 1]]
+        self.assertEqual([3, 4], changed)
+        classified = snapshot.classify(warns.lines)
+        phrases = list(SHIPPED[validate.TERMS_TABLE].rows)
+        for number in changed:
+            self.assertEqual(snapshot.ITEM_START, classified[number - 1].cls, number)
+        self.assertIsNotNone(self.date_pattern().search(warns.lines[2]))
+        self.assertIsNone(self.date_pattern().search(warns.lines[3]))
+        self.assertFalse([phrase for phrase in phrases if phrase in validate._fold(warns.lines[2])])
+        self.assertTrue([phrase for phrase in phrases if phrase in validate._fold(warns.lines[3])])
+        self.assertEqual(plaid.header[validate.URL_ITEM], warns.header[validate.URL_ITEM])
+        self.assertEqual(snapshot.digest(warns.body), warns.header[validate.DIGEST_ITEM])
+        self.assertNotEqual(plaid.header["retrieved"], warns.header["retrieved"])
+        #: and the corpus body could carry neither: no non-heading line holds a date, none a phrase
+        for line in snapshot.classify(plaid.lines):
+            if line.cls != snapshot.HEADING:
+                self.assertIsNone(self.date_pattern().search(line.text), line)
+            self.assertFalse([phrase for phrase in phrases if phrase in validate._fold(line.text)])
+
+    # --- nothing to read ------------------------------------------------------------------------
+
+    def test_both_warnings_read_nothing_where_coverage_had_nothing_to_read(self):
+        name = fixtures_for(keys_of(validate.WARNINGS)[DATE_WARNING])[0]
+        data = self.bytes_of(os.path.join(TICKETS_FOLDER, name))
+        run = self.a_run(data)
+        self.assertEqual({}, self.both(run))
+        run = self.paired(data)
+        run.classified = None
+        self.assertEqual({}, self.both(run))
+        run = self.paired(as_bytes(TestWhatHasNothingToRead.refusal(self)))
+        self.assertEqual({}, self.both(run))
+        run = self.paired(data)
+        self.assertTrue(self.both(run))
+
+    def test_both_warnings_read_nothing_unless_the_run_reached_coverage(self):
+        name = fixtures_for(keys_of(validate.WARNINGS)[DATE_WARNING])[0]
+        run = self.paired(self.bytes_of(os.path.join(TICKETS_FOLDER, name)))
+        for reached in (None, validate.PAIRING, validate.GRAMMAR, validate.RANGES):
+            run.reached = reached
+            for place in (DATE_WARNING, BREAKING_WARNING):
+                self.assertEqual([], check_at(validate.WARNINGS, place)(run), reached)
+        run.reached = validate.COVERAGE
+        self.assertEqual(1, len(check_at(validate.WARNINGS, DATE_WARNING)(run)))
+
+    # --- what warns -------------------------------------------------------------------------------
+
+    def test_a_warning_stands_beside_a_coverage_failure_and_does_not_move_the_exit(self):
+        name = fixtures_for(keys_of(validate.WARNINGS)[DATE_WARNING])[0]
+        data = self.bytes_of(os.path.join(TICKETS_FOLDER, name))
+        kept = self.entries_of(data)
+        kept[1] = kept[1]._replace(text=kept[1].text + " and more")
+        path = self.write("w.tickets.md", self.listing(data, kept))
+        code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual(1, code, lines)
+        self.assertEqual(set([code_at(validate.COVERAGE, TEXT), code_at(validate.WARNINGS, DATE_WARNING)]),
+                         self.codes(lines), lines)
+
+    def test_a_range_entry_inside_one_ticket_warns_once_per_kind_at_the_entry(self):
+        base = self.warns_base()
+        data = self.without_ticket(self.without_ticket(self.with_row_of(base, 0, "2-4"), 1), 1)
+        data = self.listing(data, [entry(3, last=4)] + self.entries_of(data))
+        run = self.run_over(data)
+        self.assertEqual({}, self.fired(run))
+        found = self.both(run)
+        self.assertEqual(sorted([DATE_WARNING, BREAKING_WARNING]), sorted(found), found)
+        for place in found:
+            self.assertEqual([self.entry_at(data, 3)], [item.line for item in found[place]])
+        self.assertIn("3", found[DATE_WARNING][0].message)
+        self.assertIn("4", found[BREAKING_WARNING][0].message)
+
+    def test_a_line_holding_both_gets_two_lines_one_per_kind(self):
+        lines = ["### Heading", "- one", "- two, a breaking change on 2026-01-02", "- three"]
+        data = self.built([("2-4", {0: 2, 3: 1})], lines=lines, body_range="1-4")
+        data = self.listing(data, [entry(3, lines[2]), entry(4, lines[3])])
+        run = self.run_over(data, lines)
+        self.assertEqual({}, self.fired(run))
+        found = self.both(run)
+        self.assertEqual(2, len(found))
+        for place in found:
+            self.assertEqual(1, len(found[place]))
+            self.assertEqual(self.entry_at(data, 3), found[place][0].line)
+
+    def test_an_entry_inside_two_identical_ranges_names_the_first_ticket(self):
+        lines = ["### Heading", "- one", "- two on 2026-01-02", "- three"]
+        data = self.built([("2-4", {0: 2, 3: 1}), ("2-4", {0: 4})], lines=lines, body_range="1-4")
+        data = self.listing(data, [entry(3, lines[2])])
+        run = self.run_over(data, lines)
+        self.assertEqual({}, self.fired(run))
+        found = self.warned(run, DATE_WARNING)
+        self.assertEqual(1, len(found))
+        self.assertIn("ticket 1", found[0].message)
+
+    def test_the_warning_rule_is_any_phrase_anywhere_in_the_folded_line(self):
+        """Not the routine that fills the field: no scan, no left edge, no disagreement. So the
+        negated forms fire, the phrase buried in a word fires, and the case is folded."""
+        for text in ("- an unbreaking change", "- non-breaking", "- Breaking Change"):
+            lines = ["### Heading", "- one", text, "- three"]
+            data = self.built([("2-4", {0: 2, 3: 1})], lines=lines, body_range="1-4")
+            data = self.listing(data, [entry(3, text), entry(4, lines[3])])
+            run = self.run_over(data, lines)
+            found = self.warned(run, BREAKING_WARNING)
+            self.assertEqual(1, len(found), text)
+            self.assertEqual([], self.warned(run, DATE_WARNING), text)
+
+    def test_the_date_rule_is_the_pattern_searched_and_the_boundaries_are_its_own(self):
+        for text, warns in (("- 1234-56-789", False), ("- next quarter", False),
+                            ("- 2026-13-45", True), ("- on 2026-01-02.", True)):
+            lines = ["### Heading", "- one", text, "- three"]
+            data = self.built([("2-4", {0: 2, 3: 1})], lines=lines, body_range="1-4")
+            data = self.listing(data, [entry(3, text), entry(4, lines[3])])
+            run = self.run_over(data, lines)
+            self.assertEqual(warns, bool(self.warned(run, DATE_WARNING)), text)
+            self.assertEqual([], self.warned(run, BREAKING_WARNING), text)
+
+    def test_a_listed_line_outside_every_range_never_warns(self):
+        lines = ["### Heading", "- one", "- two", "- three, a breaking change on 2026-01-02"]
+        data = self.built([("2-3", {0: 2, 3: 1})], lines=lines, body_range="1-4")
+        data = self.listing(data, [entry(3, lines[2]), entry(4, lines[3])])
+        run = self.run_over(data, lines)
+        self.assertEqual({}, self.fired(run))
+        self.assertEqual({}, self.both(run))
+        #: and the clean file, whatever its lines hold
+        self.assertEqual({}, self.both(self.run_over(self.clean())))
+
+    def test_the_zero_ticket_shape_has_no_range_and_never_warns(self):
+        run = self.run_over(self.zero_tickets())
+        self.assertEqual([], validate._ranges(run))
+        self.assertEqual({}, self.both(run))
+        data = self.warns()
+        lines = data.lines
+        zero = self.zero_tickets().decode("utf-8").split("\n")
+        zero = with_item(zero, validate.SNAPSHOT_ITEM, manifest_row(
+            fixtures_for(keys_of(validate.WARNINGS)[DATE_WARNING])[0]).cells[SNAPSHOT])
+        zero = with_item(zero, validate.DIGEST_ITEM, data.header[validate.DIGEST_ITEM])
+        kept = self.entries_of(("\n".join(zero)).encode("utf-8"))
+        kept = [item._replace(text=lines[item.number - 1]) for item in kept]
+        moved = self.listing(("\n".join(zero)).encode("utf-8"), kept)
+        path = self.write("z.tickets.md", moved)
+        code, printed = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual([], printed)
+        self.assertEqual(0, code)
+
+    def test_a_range_reaching_past_the_body_is_read_up_to_the_last_body_line(self):
+        """Decision 10 for the warnings: the members of a range are built only up to the last body
+        line, so a range of any length is read once and the lines it does hold still warn."""
+        base = self.warns_base()
+        data = self.with_range(self.with_row_of(self.without_ticket(self.without_ticket(base, 1), 1),
+                                                0, "2-201"), "1-250")
+        data = self.listing(data, [entry(3, last=201)] + self.entries_of(data)[2:])
+        run = self.run_over(data)
+        self.assertIn(PHANTOM, self.fired(run))
+        found = self.both(run)
+        self.assertEqual(sorted([DATE_WARNING, BREAKING_WARNING]), sorted(found))
+
+    def test_the_phrase_list_and_the_pattern_are_read_from_the_runs_tables(self):
+        tables = dict(SHIPPED)
+        rows = dict()
+        table = tables[validate.TERMS_TABLE]
+        tables[validate.TERMS_TABLE] = table._replace(rows=rows)
+        name = fixtures_for(keys_of(validate.WARNINGS)[BREAKING_WARNING])[0]
+        data = self.bytes_of(os.path.join(TICKETS_FOLDER, name))
+        run = validate.Run("a.tickets.md", data, tickets.parse(data), SNAPSHOTS_FOLDER, tables)
+        for key in keys_of(validate.PAIRING):
+            registry()[key](run)
+        run.reached = validate.COVERAGE
+        self.assertEqual([], check_at(validate.WARNINGS, BREAKING_WARNING)(run))
+        run.tables = SHIPPED
+        self.assertEqual(1, len(check_at(validate.WARNINGS, BREAKING_WARNING)(run)))
+
+
 class TestSuppression(ValidatorCase):
     """The first phase that fails is the only one that speaks (AD-6), and these two cases are where
     that matters to a fixture."""
@@ -2875,12 +3687,11 @@ class TestSuppression(ValidatorCase):
         self.assertEqual(set([code_at(validate.STATES, FILLED_ROW)]), self.codes(lines), lines)
 
     def test_a_quote_failure_suppresses_every_phase_under_it(self):
-        """The coverage phase is registered and empty, so a fixture of the quotes phase could raise
-        one code today whatever else is wrong with the file. That is not a promise the emptiness
-        makes: it is AD-6, and it holds when that phase is written. The proof is a check put into
-        it for the length of this test - a file whose unmapped list is also wrong for coverage still
-        raises the one code, and the injected check is never called. The row cited is outside its
-        own ticket's range as well, so the written phase between the two would speak if it ran.
+        """A file whose unmapped list is wrong for coverage as well - an entry's text altered, and
+        line 2 left uncited by the row moved off it - raises the one quote code: the real coverage
+        checks fire on the paired run, and the run prints none of them (AD-6). The row cited is
+        outside its own ticket's range as well, so the written phase between the two would speak
+        if it ran.
         """
         model = self.model_of(self.clean())
         model = with_row_in(model, field_at(0), 0, line="3")
@@ -2888,14 +3699,13 @@ class TestSuppression(ValidatorCase):
         entries[0] = entries[0]._replace(text=entries[0].text + " and something else")
         data = tickets.serialise(model._replace(
             unmapped=model.unmapped._replace(entries=entries)))
-        checks = registry()
-        heard = []
-        key = phase_keys(validate.COVERAGE)[0]
-        self.assertIs(validate.pending, checks[key])
-        checks[key] = self.loud(validate.COVERAGE, key, heard)
-        lines, failed = validate.run_phases(self.a_run(data), checks, table())
-        self.assertTrue(failed)
-        self.assertEqual([], heard)
+        run = self.paired(data)
+        fired = [place for place in range(len(keys_of(validate.COVERAGE)))
+                 if check_at(validate.COVERAGE, place)(run)]
+        self.assertEqual([MISSING, TEXT], fired)
+        path = self.write("q.tickets.md", data)
+        code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual(1, code, lines)
         self.assertEqual(set([code_at(validate.QUOTES, QUOTE_ON_LINE)]),
                          self.codes(lines), lines)
 
@@ -2917,40 +3727,32 @@ class TestSuppression(ValidatorCase):
         self.assertEqual(set([code_at(validate.QUOTES, QUOTE_ON_LINE)]), self.codes(lines), lines)
 
     def test_a_range_failure_suppresses_the_coverage_phase(self):
-        """Now that the ranges phase is written, the proof the quotes case gave moves one phase
-        down: a committed fixture of this phase in a file whose unmapped list is also wrong for
-        coverage raises its one code, and a check injected under the first key of coverage is never
-        called."""
+        """The first citation fixture cites line 5, which its list still carries, so the real
+        coverage checks say the line is both cited and listed - and with an entry's text altered
+        as well they say two things. The run prints the one ranges code and none of them (AD-6),
+        which is what makes the two citation fixtures single-code files."""
         name = fixtures_for(keys_of(validate.RANGES)[CITE])[0]
-        model = self.model_of(self.bytes_of(os.path.join(TICKETS_FOLDER, name)))
+        committed = self.bytes_of(os.path.join(TICKETS_FOLDER, name))
+        fired = [place for place in range(len(keys_of(validate.COVERAGE)))
+                 if check_at(validate.COVERAGE, place)(self.paired(committed))]
+        self.assertEqual([CITED], fired)
+        model = self.model_of(committed)
         entries = list(model.unmapped.entries)
         entries[0] = entries[0]._replace(text=entries[0].text + " and something else")
         data = tickets.serialise(model._replace(
             unmapped=model.unmapped._replace(entries=entries)))
-        checks = registry()
-        heard = []
-        key = phase_keys(validate.COVERAGE)[0]
-        self.assertIs(validate.pending, checks[key])
-        checks[key] = self.loud(validate.COVERAGE, key, heard)
-        lines, failed = validate.run_phases(self.a_run(data), checks, table())
-        self.assertTrue(failed)
-        self.assertEqual([], heard)
+        fired = [place for place in range(len(keys_of(validate.COVERAGE)))
+                 if check_at(validate.COVERAGE, place)(self.paired(data))]
+        self.assertEqual([CITED, TEXT], fired)
+        path = self.write("r.tickets.md", data)
+        code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual(1, code, lines)
         self.assertEqual(set([code_at(validate.RANGES, CITE)]), self.codes(lines), lines)
 
     def plaid_lines(self):
         header = tickets.parse(self.clean()).header
         name = [item.value for item in header if item.name == validate.SNAPSHOT_ITEM][0]
         return snapshot.read(self.bytes_of(os.path.join(SNAPSHOTS_FOLDER, name))).lines
-
-    def loud(self, phase, key, heard):
-        """A check that speaks whenever it is called, registered under a row nothing is behind."""
-
-        def watch(run):
-            heard.append(key)
-            return [validate.Failure(1, "this phase was not suppressed")]
-
-        watch.phase = phase
-        return watch
 
     def test_no_pairing_fixture_ever_reports_what_its_source_rows_say(self):
         """Every pairing mutation leaves its source rows naming the snapshot the clean file names,
@@ -2978,8 +3780,13 @@ class TestTheLineForm(ValidatorCase):
             _code, lines = self.fixture(name)
             for line in lines:
                 found += 1
-                self.assertTrue(FAILURE_RE.match(line), line)
-                where = line.split(contract.TAB)[1].rsplit(":", 1)
+                fields = line.split(contract.TAB)
+                if fields[0] == validate.WARNING_FIELD:
+                    self.assertTrue(WARNING_RE.match(line), line)
+                    fields = fields[1:]
+                else:
+                    self.assertTrue(FAILURE_RE.match(line), line)
+                where = fields[1].rsplit(":", 1)
                 self.assertEqual("02_validate/00_fixtures/01_tickets/" + name, where[0])
                 self.assertTrue(int(where[1]) >= 1, line)
         self.assertTrue(found)

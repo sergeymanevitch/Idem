@@ -3,10 +3,10 @@
 
     python3 02_validate/validate.py [--snapshots DIR] <tickets>
 
-This is the frame every check drops into, and part of the frame is still empty. Every row of the
-checks table is registered here under its key; the thirty-seven that are written report something,
-and the rest are registered as a callable that reads nothing and finds nothing. That is deliberate
-and it is the order the whole folder is built in: the list of what can be wrong was written before
+This is the frame every check drops into, and one row of the frame is still empty. Every row of
+the checks table is registered here under its key; the forty-five that are written report
+something, and the one that is not is registered as a callable that reads nothing and finds
+nothing. That is deliberate and it is the order the whole folder is built in: the list of what can be wrong was written before
 any tool could find one of them, so that no check is ever invented to describe code already
 written.
 
@@ -16,10 +16,9 @@ The contract is loaded and the registry is built and reconciled with the table b
 is opened once and read once, by the one reader of the format. Then nine phases run in the fixed
 order (AD-6): the tool's own failures, reading the file, pairing it with its snapshot, canonical
 form and grammar, row states, quotes and values, ranges and ancestors, coverage, and the warnings.
-Reading, pairing, canonical form and grammar, the row states, the quotes and values and the ranges
-and ancestors are written, but for the one row of quotes and values which searches a quote in a
-supplied input text and has no argument to read one from yet. The coverage phase after them is not,
-and the story that fills it writes its checks into this file and nowhere else.
+Reading, pairing, canonical form and grammar, the row states, the quotes and values, the ranges
+and ancestors, coverage and the three warnings are written, but for the one row of quotes and
+values which searches a quote in a supplied input text and has no argument to read one from yet.
 
 HOW A PHASE RUNS
 
@@ -49,7 +48,8 @@ becomes one line naming this file and the line in it, and never a traceback.
 WHAT IS WRITTEN HERE AS A LITERAL
 
 Addresses and forms, never a key and never a code. The ids of the tables it reads and the positions
-or names of the columns it reads by; the names of the four header items it asks a tickets file for
+or names of the columns it reads by, the name of the one row of the pattern table a warning asks
+for among them; the names of the four header items it asks a tickets file for
 - the snapshot, the digest, the URL and the mode - two of which are also the names of the snapshot
 header fields they are compared against; the three schema constants it asks for beyond the ones the
 format module already names; the folder a snapshot is looked for in when none is named;
@@ -62,7 +62,9 @@ one reading of the `ancestor` column that a check of the ranges and ancestors ph
 the one that says a field may cite no line outside its own ticket's range. All three are written
 out because a check is selected *by* them and a column of the contract is not a place to put a
 condition (Sergey, 2026-09-22 and 2026-09-23; the fifth and sixth exceptions to AD-1, both granted
-in the schema file beside the columns themselves). The third of them is also a value of the phrase
+in the schema file beside the columns themselves). No phrase of the phrase list and no pattern of
+the pattern table is written here: both are read from the loaded contract on every run, and the one
+pattern is compiled at that moment. The third of them is also a value of the phrase
 list, and it is never used to read that list. **No class name of the snapshot's lines is written
 here either**: a check that asks what class a body line is asks by the format module's own
 constants, as it asks for the fields table by the format module's own address. The one table id it would
@@ -79,6 +81,7 @@ library only, and it writes nothing: not a snapshot, not a report, not a cached 
 """
 import collections
 import os
+import re
 import string
 import sys
 
@@ -134,6 +137,12 @@ REASONS_TABLE = "refusal-reasons"
 #: keyed on the phrase, so the phrase column needs no name, and the value column is asked for by the
 #: name the format module already holds.
 TERMS_TABLE = "breaking-terms"
+#: The one pattern a warning looks for, by table id and by the name of its one row. Both are
+#: addresses and neither is a value: the cell they reach is read from the loaded contract on every
+#: run and compiled here, with no flags, as the format module compiles a value pattern; nothing
+#: holds a compiled object and the pattern itself is written nowhere but in the checks file (AD-1).
+PATTERNS_TABLE = "warn-patterns"
+DATE_ROW = "date"
 #: The column of the fields table that says how a value relates to its quote, and the two readings
 #: of it a check asks a row by. These two words are the one value of any contract table written in
 #: this file, granted by Sergey on 2026-09-22 and recorded in the schema file: a check is chosen by
@@ -220,8 +229,7 @@ class Run(object):
     prints them only on a run that **reaches coverage**: a file that failed at grammar gets
     neither, and that is a warning with nothing to read rather than a warning suppressed. The
     warnings themselves never move it, or every warning would read the phase it is standing in.
-    Neither of those two warnings is written yet, so nothing reads this today - it is here so that
-    the story that writes them has the one thing the frame would otherwise have no way of saying.
+    Both of those two warnings read it, and nothing else does.
     """
 
     def __init__(self, path, data, parsed, directory, tables):
@@ -1732,36 +1740,328 @@ def check_range_body(run):
 
     Any line of it: its first below the header's first number, or its last above the header's
     second. A body range reading the sentinel, or written with its first number not below its
-    second, is the header's own defect and gives this row nothing to read; the value has passed the
-    pattern of its item in the reading stage, so splitting it at the hyphen is safe. The numbers
-    alone are compared, so a range past the body is read here as any other.
+    second, is the header's own defect and gives this row nothing to read; the split of the value
+    is the one helper the coverage phase reads the body range by as well. The numbers alone are
+    compared, so a range past the body is read here as any other.
 
     Nothing to read where there is no model, no ticket, no snapshot or no classified line on the
     run: it returns an empty list.
     """
     if _count(run) is None:
         return []
-    item = _item(run, tickets.RANGE_ITEM)
-    if item is None or item.value == _constant(run, tickets.SENTINEL):
+    bounds = _body_bounds(run)
+    if bounds is None:
         return []
-    parts = item.value.split(tickets.HYPHEN)
-    if len(parts) > 2 or not _is_number(parts[0]) or not _is_number(parts[-1]):
-        return []
-    if len(parts) == 2 and not _above(parts[1], parts[0]):
-        return []
-    low = _number(parts[0])
-    high = _number(parts[-1])
+    low, high = bounds
+    value = _item(run, tickets.RANGE_ITEM).value
     found = []
     for _ticket, row, first, last in _ranges(run):
         if low <= first and last <= high:
             continue
         found.append(Failure(row.at, "this ticket's range '" + _range_text(first, last) + "' "
-                                     "reaches outside the body lines '" + item.value + "' this "
+                                     "reaches outside the body lines '" + value + "' this "
                                      "file says it translated"))
     return found
 
 
 check_range_body.phase = RANGES
+
+
+# --- coverage: the lines no row cites are the lines the unmapped list stands for (FR-34) ---------------
+#
+# "The cited set" is the line numbers of the cited rows above - rows of fields 1 to 7, filled, with
+# a quote and a line that is a number; a source row carries a range and not a citation, so it is
+# not in it and does not count. "The listed set" is every number an entry of the unmapped list
+# stands for: a line entry its one number, a range entry every number from its first to its last.
+# "The body" is the classified lines the pairing phase left on the run, body line n at index n - 1
+# (AD-8); a line is blank when its class is the format module's blank, and its text is compared
+# raw - no trim, no fold, no escape. "The body range" is the header's own, split at the hyphen as
+# the last check of the phase above splits it, and a value that is the sentinel, or is not two
+# rising numbers, gives the two checks that read it nothing to read.
+#
+# Every check of the phase asks one helper once, and that helper gives None where the run has no
+# model, no unmapped block, no snapshot or no classified lines - a refusal has no unmapped block and
+# is never read; the zero-ticket shape has one and **is** read, because that shape is all coverage
+# (`05_checks.md`, "What each mode skips"). Under the mode with no line numbers every entry is text
+# alone and carries no number, and there is no snapshot on the run, so no check here has a line to
+# read without asking the mode (Sergey, 2026-09-23).
+#
+# Six readings keep one code on one entry, each a reading of a cell that names none of them
+# (Sergey, 2026-09-23). A missing line is one failure per line, at the heading of the list, because
+# there is no entry to point at; every other failure points at the entry, and a range entry fails a
+# check once, naming the first line it fails for. A repeated line is the later entry's. A line both
+# cited and invented raises two codes, two facts about one entry, because the two checks compare
+# numbers alone. A phantom line does not end the phase, and an entry the phantom check refused is
+# not read for a blank line or for its text - the pattern of the quote check after the line check.
+# A range whose last line is past the body is compared as an interval, so the listed set is built
+# only up to the last body line and no file can hang the run. And a range that runs backwards is
+# the row states' and stands for nothing here.
+
+
+def _listed(run):
+    """The entries of the unmapped list this phase can read, or None where there is nothing to read.
+
+    None where there is no snapshot, no classified line, no model or no unmapped block - the four
+    ways this phase has no material - so that each check of it asks once and says nothing for any
+    of them. An empty list is a list that reads the one word, and it is read: a body of lines that
+    the list stands for nothing of. What is left out of the list returned is an entry with no
+    number - text alone, the form the mode with no line numbers writes - and a range whose first
+    number is not below its second, which the row states refused.
+    """
+    model = run.parsed.model
+    if run.snapshot is None or run.classified is None:
+        return None
+    if model is None or model.unmapped is None:
+        return None
+    found = []
+    for entry in model.unmapped.entries:
+        if entry.number is None:
+            continue
+        if entry.last is not None and entry.last <= entry.number:
+            continue
+        found.append(entry)
+    return found
+
+
+def _span(entry):
+    """The interval an entry stands for, as (first, last): a line entry's one number twice."""
+    if entry.last is None:
+        return entry.number, entry.number
+    return entry.number, entry.last
+
+
+def _members(entry, count):
+    """The body lines an entry stands for that exist, in order: never past the last body line."""
+    first, last = _span(entry)
+    return range(first, min(last, count) + 1)
+
+
+def _cited_lines(run):
+    """The cited set: the line number of every cited row, as numbers."""
+    return set([_number(row.line) for row in _cited(run)])
+
+
+def _body_bounds(run):
+    """The body range the header gives, as (first, last), or None where it gives nothing to read.
+
+    A value reading the sentinel, one that is not a number or two of them, and two numbers of which
+    the first is not below the second, are each the header's own defect and give nothing here; the
+    value has passed the pattern of its item in the reading stage, so splitting it at the hyphen
+    is safe. A bare number is a range of one line.
+    """
+    item = _item(run, tickets.RANGE_ITEM)
+    if item is None or item.value == _constant(run, tickets.SENTINEL):
+        return None
+    parts = item.value.split(tickets.HYPHEN)
+    if len(parts) > 2 or not _is_number(parts[0]) or not _is_number(parts[-1]):
+        return None
+    if len(parts) == 2 and not _above(parts[1], parts[0]):
+        return None
+    return _number(parts[0]), _number(parts[-1])
+
+
+def _phantoms(run, listed):
+    """Every entry standing for a line that is not in the snapshot or outside the body range.
+
+    As [(entry, message)], in file order, one per entry: an entry reaching past the body is named
+    for that and not read against the body range as well. The body range half reads nothing where
+    the header gives no range to read.
+    """
+    count = len(run.classified)
+    bounds = _body_bounds(run)
+    found = []
+    for entry in listed:
+        first, last = _span(entry)
+        if last > count:
+            found.append((entry, "this entry stands for body line " +
+                          _as_digits(max(first, count + 1)) + ", and the snapshot's body ends at "
+                          "line " + _as_digits(count)))
+            continue
+        if bounds is None:
+            continue
+        low, high = bounds
+        if first < low or last > high:
+            outside = first if first < low else max(first, high + 1)
+            found.append((entry, "this entry stands for body line " + _as_digits(outside) +
+                          ", which lies outside the body lines '" +
+                          _item(run, tickets.RANGE_ITEM).value + "' this file says it "
+                          "translated"))
+    return found
+
+
+def check_unmapped_missing(run):
+    """A non-blank body line inside the body range that no row cites is not listed (FR-34).
+
+    One failure per such line, at the heading of the list: there is no entry to point at, and a
+    list reading the one word lists nothing, so every such line fires. A line outside the body
+    range was not translated and is not read, and a body range the header cannot give leaves
+    nothing to read.
+
+    Nothing to read where there is no model, no unmapped block, no snapshot or no classified line
+    on the run: it returns an empty list.
+    """
+    listed = _listed(run)
+    if listed is None:
+        return []
+    bounds = _body_bounds(run)
+    if bounds is None:
+        return []
+    count = len(run.classified)
+    cited = _cited_lines(run)
+    covered = set()
+    for entry in listed:
+        covered.update(_members(entry, count))
+    low, high = bounds
+    found = []
+    for number in range(low, min(high, count) + 1):
+        line = run.classified[number - 1]
+        if line.cls == snapshot.BLANK or number in cited or number in covered:
+            continue
+        found.append(Failure(run.parsed.model.unmapped.at,
+                             "body line " + _as_digits(number) + ", '" + line.text + "', is cited "
+                             "by no row and does not stand in this list"))
+    return found
+
+
+check_unmapped_missing.phase = COVERAGE
+
+
+def check_unmapped_cited(run):
+    """A line is both cited by a row and listed (FR-34).
+
+    One failure at the entry, naming the line; a range entry fails once, naming the first cited
+    line inside it. Numbers alone are compared - intervals, never members - so a line past the
+    body is read here as any other and a range of any length is read at once.
+
+    Nothing to read where there is no model, no unmapped block, no snapshot or no classified line
+    on the run: it returns an empty list.
+    """
+    listed = _listed(run)
+    if listed is None:
+        return []
+    cited = sorted(_cited_lines(run))
+    found = []
+    for entry in listed:
+        first, last = _span(entry)
+        for number in cited:
+            if first <= number <= last:
+                found.append(Failure(entry.at, "body line " + _as_digits(number) + " is cited by "
+                                               "a row and stands in this list as well; a line is "
+                                               "one or the other"))
+                break
+    return found
+
+
+check_unmapped_cited.phase = COVERAGE
+
+
+def check_unmapped_twice(run):
+    """A line is listed twice, on its own or inside a range (FR-34).
+
+    One failure at the **later** of the two entries, naming the first line it repeats; an entry
+    repeating lines of two earlier entries is still one failure, because it is one entry. Intervals
+    are compared, never members.
+
+    Nothing to read where there is no model, no unmapped block, no snapshot or no classified line
+    on the run: it returns an empty list.
+    """
+    listed = _listed(run)
+    if listed is None:
+        return []
+    found = []
+    for later in range(len(listed)):
+        first, last = _span(listed[later])
+        repeated = None
+        for earlier in range(later):
+            other_first, other_last = _span(listed[earlier])
+            if other_last < first or last < other_first:
+                continue
+            lowest = max(first, other_first)
+            if repeated is None or lowest < repeated:
+                repeated = lowest
+        if repeated is not None:
+            found.append(Failure(listed[later].at, "body line " + _as_digits(repeated) + " already "
+                                                   "stands in this list under an earlier entry"))
+    return found
+
+
+check_unmapped_twice.phase = COVERAGE
+
+
+def check_unmapped_phantom(run):
+    """A listed line does not exist in the snapshot, or lies outside the body range (FR-34).
+
+    One failure at the entry, naming which: the first line past the body, or the first line outside
+    the range. It does not end the phase; the two checks after it pass over an entry it refused.
+    The body range is read literally, so a line past the body but inside it is named for the body.
+
+    Nothing to read where there is no model, no unmapped block, no snapshot or no classified line
+    on the run: it returns an empty list.
+    """
+    listed = _listed(run)
+    if listed is None:
+        return []
+    return [Failure(entry.at, message) for entry, message in _phantoms(run, listed)]
+
+
+check_unmapped_phantom.phase = COVERAGE
+
+
+def check_unmapped_blank(run):
+    """A blank body line is listed, on its own or inside a range (FR-34).
+
+    One failure at the entry, naming the line; a range entry fails once, naming the first blank
+    line inside it. An entry the phantom check refused is not read.
+
+    Nothing to read where there is no model, no unmapped block, no snapshot or no classified line
+    on the run: it returns an empty list.
+    """
+    listed = _listed(run)
+    if listed is None:
+        return []
+    refused = set([entry.at for entry, _message in _phantoms(run, listed)])
+    count = len(run.classified)
+    found = []
+    for entry in listed:
+        if entry.at in refused:
+            continue
+        for number in _members(entry, count):
+            if run.classified[number - 1].cls == snapshot.BLANK:
+                found.append(Failure(entry.at, "body line " + _as_digits(number) + " is blank, and "
+                                               "a blank line is never listed"))
+                break
+    return found
+
+
+check_unmapped_blank.phase = COVERAGE
+
+
+def check_unmapped_text(run):
+    """The text an entry carries is not that body line verbatim (FR-34).
+
+    Character for character: nothing is trimmed, folded or unescaped on either side. One failure at
+    the entry, naming what the body line reads. A range entry carries no text and is not read, and
+    neither is an entry the phantom check refused.
+
+    Nothing to read where there is no model, no unmapped block, no snapshot or no classified line
+    on the run: it returns an empty list.
+    """
+    listed = _listed(run)
+    if listed is None:
+        return []
+    refused = set([entry.at for entry, _message in _phantoms(run, listed)])
+    found = []
+    for entry in listed:
+        if entry.at in refused or entry.last is not None:
+            continue
+        text = run.classified[entry.number - 1].text
+        if entry.text != text:
+            found.append(Failure(entry.at, "body line " + _as_digits(entry.number) + " reads '" +
+                                           text + "', and this entry carries something else"))
+    return found
+
+
+check_unmapped_text.phase = COVERAGE
 
 
 # --- the warnings, which are never suppressed and never a failure -------------------------------------
@@ -1782,6 +2082,86 @@ def check_warn_unbound(run):
 
 
 check_warn_unbound.phase = WARNINGS
+
+
+def _inside_a_range(run, holds, saying):
+    """Every listed entry with a line inside some ticket's range whose text `holds`, as warnings.
+
+    One warning per entry at most, at the entry, naming the first ticket in file order whose range
+    holds such a line of the entry, and the first such line of that ticket - the tickets are walked
+    before the lines, so a range entry spanning two tickets is named for the earlier ticket's line. Nothing to read unless the run reached coverage - a file that
+    failed at grammar gets no warning of this kind, and that is nothing to read rather than a
+    warning suppressed - and unless the coverage phase itself had material.
+    """
+    if run.reached != COVERAGE:
+        return []
+    listed = _listed(run)
+    if listed is None:
+        return []
+    count = len(run.classified)
+    ranges = _ranges(run)
+    found = []
+    for entry in listed:
+        hit = None
+        for ticket, _row, first, last in ranges:
+            for number in _members(entry, count):
+                if first <= number <= last and holds(run.classified[number - 1].text):
+                    hit = (number, ticket)
+                    break
+            if hit is not None:
+                break
+        if hit is not None:
+            found.append(Failure(entry.at, "body line " + _as_digits(hit[0]) + " lies inside the "
+                                           "range of ticket " + _as_digits(hit[1].number) +
+                                           " and was left uncited; " + saying))
+    return found
+
+
+def check_warn_date(run):
+    """Warning: an uncited line inside a change's range holds the date pattern (FR-37).
+
+    The one pattern of the warn-patterns table, read by the table's id and its one row's name,
+    compiled here with no flags and **searched** anywhere in the line, never matched from its
+    start: a warning is looking for a date in a sentence. The digit boundary, the unbounded month
+    and day, and everything else about what counts are the pattern's and are stated beside it.
+    """
+    cell = run.tables[PATTERNS_TABLE].rows[DATE_ROW][contract.PATTERN_COLUMN]
+    pattern = re.compile(cell)
+
+    def holds(text):
+        return pattern.search(text) is not None
+
+    return _inside_a_range(run, holds, "it holds a date, and a date the ticket says the source "
+                                       "does not give is worth a reader's eye")
+
+
+check_warn_date.phase = WARNINGS
+
+
+def check_warn_breaking(run):
+    """Warning: an uncited line inside a change's range holds a phrase of the list (FR-37).
+
+    The phrase list read by the warning's own rule, which is not the routine that fills the field:
+    any phrase of the table occurring anywhere in the folded line, with no scan, no left edge and
+    no disagreement (`03_breaking-terms.md`). So a phrase carrying the other value fires, and a
+    phrase buried inside a longer word fires: a line saying a change is not of that kind is still
+    a line worth a reader's eye when it was left uncited inside a change.
+    """
+    phrases = list(run.tables[TERMS_TABLE].rows)
+
+    def holds(text):
+        folded = _fold(text)
+        for phrase in phrases:
+            if phrase in folded:
+                return True
+        return False
+
+    return _inside_a_range(run, holds, "it holds a phrase of the list that decides whether a "
+                                       "change breaks, and a line saying so that the ticket left "
+                                       "uncited is worth a reader's eye")
+
+
+check_warn_breaking.phase = WARNINGS
 
 
 # --- running the phases --------------------------------------------------------------------------------
@@ -1811,8 +2191,9 @@ def _has_material(phase, run):
     inside the two checks that read a body line, and inside every check of ranges and ancestors:
     under that mode every filled line cell reads the unnumbered word, which is no number, and the
     source row's line cell reads the sentinel, which is no range, so none of them has a row or a
-    range to read. The coverage phase is registered with nothing behind it and cannot be seen at
-    all.
+    range to read. What stands in for it in the coverage phase is the same rule: under that mode
+    every entry of the unmapped list is text alone with no number, and there is no snapshot on the
+    run, so no check of that phase has a line to read.
 
     A phase this returns False for does not run at all: its checks are not called, so the run
     records nothing for them and `run.reached` does not move past the phase before it - which is
@@ -1849,8 +2230,8 @@ def run_phases(run, checks, table):
     **How far the run got is recorded** on the run, as each phase finishes, so that a warning can
     read it. Two of the three warnings read a line of the unmapped list against a ticket's range,
     and the contract prints them only on a run that reaches coverage; a file that failed at grammar
-    gets neither, and that is a warning with nothing to read rather than one suppressed. Neither of
-    those two is written yet, and `run.reached` is what the story that writes them asks.
+    gets neither, and that is a warning with nothing to read rather than one suppressed. Both of
+    them ask `run.reached` and nothing else does.
     """
     lines = []
     failed = False

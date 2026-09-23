@@ -330,9 +330,11 @@ findings of the reader, and a file that breaks one of them has no model. Most of
 the two row states, the refusal reason, `unnumbered` under one mode only, the first number of a
 range lying below the second in an `Unmapped` range and in a `source` row's line cell, and the
 substring rule of a `copied` field, which is read against the row's own quote and in every mode.
-Two are still enforced by nothing: that the first number of `body_range` lies below its second, and
-that an `Unmapped` range stands for a run of consecutive lines. Every one of them is listed as debt
-in `reference/CONTEXT.md`, where the key it was given is named beside it.
+One is still enforced by nothing: that the first number of `body_range` lies below its second.
+That an `Unmapped` range stands for a run of consecutive, non-blank, uncited lines is held by the
+coverage phase — `unmapped_missing`, `unmapped_cited`, `unmapped_blank` and `unmapped_phantom`
+between them read the snapshot beside the tickets file — and is enforced. What is left is listed as
+debt in `reference/CONTEXT.md`, where the key it was given is named beside it.
 
 ## The `source` row
 
@@ -363,6 +365,12 @@ line character for character.
 
 With nothing to list, the block reads `none` on one line. A file with tickets and nothing unmapped
 is normal, and so is a file where `Unmapped` is longer than the tickets.
+
+Every clause of this is a check of the coverage phase in `05_checks.md`, and `02_validate/validate.py`
+runs all six: a line no row cites that is not listed, a line both cited and listed, a line listed
+twice, a listed line the body does not have or outside `body_range`, a blank line listed, and an
+entry whose text is not its line verbatim. The list is read as the model gives it, against the
+classified snapshot, and no tool trims or folds either side.
 
 ## When the input has no line numbers
 

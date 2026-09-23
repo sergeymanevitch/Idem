@@ -19,13 +19,13 @@ for the reason the next-but-one section gives. `warn-patterns` holds the one pat
 for. All three are in the catalogue, so a tool loads them; none of them is copied into any tool
 (AD-1), with the one exception named under **The two codes that cannot come from a table**.
 
-**Keyed is not the same as enforced.** `validate.py` and `run_fixtures.py` are written, and much of
-what is below is still a row and no more. Every row is registered under its key as a callable: the
-checks of the reading stage, of the pairing phase, of canonical form and grammar, of the row
-states, of quotes and values and of ranges and ancestors are written — all of those but
-`quote_input`, which waits for the argument that supplies an input text to search — the two rows
-the frame itself raises are raised by the frame, and every other row is registered with nothing
-behind it. A row
+**Keyed is not the same as enforced.** `validate.py` and `run_fixtures.py` are written, and one row
+below is still a row and no more. Every row is registered under its key as a callable: the checks
+of the reading stage, of the pairing phase, of canonical form and grammar, of the row states, of
+quotes and values, of ranges and ancestors and of coverage are written, and so are the three
+warnings — all of those but `quote_input`, which waits for the argument that supplies an input text
+to search — the two rows the frame itself raises are raised by the frame, and that one row is
+registered with nothing behind it. A row
 here says what the validator will check and under what code, never that anything checks it today —
 and `run_fixtures.py` prints, on every run, how many rows nothing exercises yet, so the distance
 between this list and what is enforced is a number a reader gets for free rather than a claim
@@ -182,6 +182,34 @@ line is an ancestor, so `cite_range` still holds every row to its own ticket's r
 accepts any line at all. With no headings and no lists these checks constrain little — where one
 change ends and the next begins is then held by nothing but the translator's rule — and a reader of
 such a changelog has the quotes and `Unmapped` to go on.
+
+**Six readings inside coverage, and what the phase compares** (Sergey, 2026-09-23). The cited set is
+the line numbers of the rows of fields 1 to 7 that are filled and cite a number; a `source` row
+carries a range and no citation, and is not in it. The listed set is every number an entry of
+`Unmapped` stands for — a line entry its one number, a range entry every number from its first to
+its last — and a range that runs backwards is `range_reversed`'s and is dropped from the listed set
+here, so the lines it was meant to cover come back as missing lines, under `unmapped_missing`, and
+no line names the reversed range itself. The
+body is the classified snapshot, and an entry's text is compared with its line character for
+character, nothing trimmed and nothing folded. Each reading is a reading of a cell that names none
+of them. `unmapped_missing` is one failure per missing line, at the `Unmapped` heading, because
+there is no entry to point at, and a list reading `none` lists nothing, so every uncited non-blank
+line inside `body_range` fires under it; every other check of the phase points at the entry, a range
+entry fails a check once and names the first line it fails for, and `unmapped_twice` points at the
+**later** of the two entries. `unmapped_cited` and `unmapped_twice` compare numbers alone, so a line
+both invented and cited raises `unmapped_phantom` and `unmapped_cited` — two facts about one entry. `unmapped_phantom` does not
+end its phase, and `unmapped_blank` and `unmapped_text` pass over an entry it refused, on the
+pattern of `quote_line` after `line_range`. A range whose last line is past the body is compared as
+an interval, so the listed set is built only up to the last body line and no file can hang the
+run. Two readings follow from the header: `body_range` is read literally, so a listed line past
+the body but inside it is `unmapped_phantom`'s today and stays so once the `header_value` sub-rule
+that holds `body_range` to the body fails the header first; and a `body_range` reading the sentinel
+or running backwards gives `unmapped_missing` and the `body_range` half of `unmapped_phantom`
+nothing to read, as it gives `range_body` nothing. Under `line_numbers: none` every entry is text
+alone with no number and there is no snapshot on the run, so no check of the phase has a line to
+read, and the phase asks the mode nothing; the AD-10 skip that will own this is not built. The
+zero-ticket shape **is** read: every non-blank body line stands in its `Unmapped`, and a run over it
+reaches coverage.
 
 ### What each mode skips
 
@@ -480,7 +508,7 @@ The rows and their expected codes were all written before any of the files they 
 being written one row at a time, as the checks that read them are built, and `run_fixtures.py`
 counts the rows still waiting.
 
-## Two of these tables are read
+## All three of these tables are read
 
 Today `contract.py` loads all three with the rest of the contract and lints the one pattern cell;
 `00_fetch/fetch.py` reads `fetch-failures`, asking for a row by its key and printing the code that
@@ -489,9 +517,11 @@ validator registers a check under every key of it and prints the code each row c
 suite counts the rows no fixture exercises. The validator also reads `breaking-terms`, for the two
 checks of the quotes-and-values phase that decide what a quote supports; and, outside this file,
 the `ancestor` column of `fields` for the one check that asks what a field may cite, and the class
-of every body line through `snapshot.classify`, which reads `line-classes`. `warn-patterns` waits for
-the two warnings that read a line of `Unmapped`, and so does the other reading of `breaking-terms`,
-the one those warnings use.
+of every body line through `snapshot.classify`, which reads `line-classes`. `warn-patterns` is read
+by `warn_date`, which asks for its one row by the table's id and the row's name and compiles the
+cell on every run, and `warn_breaking` reads `breaking-terms` the other way, by the warning's own
+rule; both warnings read an `Unmapped` line inside a ticket's range, and print only on a run that
+reached coverage.
 Every tool takes every code and that pattern from here and keeps no copy: a code
 that appears in a tool's source as well as in this file is a defect and not a convenience (AD-1) —
 excepting `CONTRACT_TABLE` and `INTERNAL`, for the reason stated above.
