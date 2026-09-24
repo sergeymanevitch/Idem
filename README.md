@@ -318,6 +318,12 @@ are not in this repository.
   `00_Snapshots`, `x.INPUT.TXT` or `x.TICKETS.md` — is not recognised, so the deny does not fire
   and the file is not validated; on a case-insensitive volume, the default on macOS, such a path
   still reaches the real file (`.claude/CONTEXT.md`, **Limits**).
+- **Nothing forbids writing a tickets file with a script.** The translation is Claude's, not a
+  script's (`01_translate/CONTEXT.md`), but no rule of `rules.md` says so to the translator. Each
+  Claude Code session that wrote the shipped tickets files first tried to generate its file with a
+  script of its own, and what stopped it was the headless session's permissions and the hook's
+  guess at the shell, not a rule; in an interactive session, decline the prompt to run such a
+  script.
 - **Nothing runs in a claude.ai Project.** There, `rules.md` and the reference files carry the
   contract alone, and nothing is checked until the answer is validated in a clone.
 
