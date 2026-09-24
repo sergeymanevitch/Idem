@@ -172,7 +172,10 @@ used twice** of `01_schema.md`.
 
 Write the entries in the order the lines stand in the body, the earliest first, and write each one
 in the form the mode allows: with no line numbers to write, the section **When the input has no line
-numbers** of `01_schema.md` gives the form an entry takes (FR-25).
+numbers** of `01_schema.md` gives the form an entry takes (FR-25). An entry that carries a line's
+text carries the whole line from its first character: the leading spaces and tabs of an indented line
+are part of it, and nothing is trimmed, escaped or put into other words — character for character,
+as the section **`Unmapped`** of `01_schema.md` says.
 
 A refusal carries no such block at all. A file announcing no change is its header, its one line and
 this block, which is why step 2 sends such a file here directly.
@@ -184,6 +187,8 @@ and each value against its own quote (FR-27). This is a step and not advice, and
 until it has been done. A quote is read again as the section **What a quote is** of `01_schema.md`
 says one is taken, and a value as the section of its own field says it is taken.
 
+Read every `Unmapped` entry again as well, against its line: an entry whose text is not that line
+whole, leading spaces included, is copied again off the line, as step 4 says an entry is written.
 Read every range again against the section **What the validator checks of this, and what nothing
 checks** of `02_segmentation.md`. What that section lists as checked by nothing is checked here or
 it is checked nowhere at all. Read every `breaking` row again by the section **How a quote is read**

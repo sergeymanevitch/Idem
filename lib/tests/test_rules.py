@@ -760,5 +760,28 @@ class TestTheSelfCheck(unittest.TestCase):
             self.assertIn(word, folded, word)
 
 
+class TestTheUnmappedEntryText(unittest.TestCase):
+    """An entry's text is its body line whole. A translator that trims an indented line's leading
+    spaces writes an entry every row check passes and coverage refuses; the procedure has to say
+    so where the entries are written and read them again where the rows are read again."""
+
+    def test_step_4_says_an_entry_is_the_whole_line_leading_spaces_included(self):
+        """The mutation: the sentence dropped, or left without the indent it is about, or without
+        the section that owns the rule."""
+        body = re.sub(r"\s+", " ", steps()[4][1])
+        for words in ("from its first character", "leading spaces", "character for character",
+                      "the section **`Unmapped`** of `01_schema.md`"):
+            self.assertIn(words, body, words)
+
+    def test_step_5_reads_every_unmapped_entry_again_against_its_line(self):
+        """The mutation: the self-check left reading rows alone, as it did when an entry of two
+        leading spaces was written with none and only the validator saw it."""
+        body = re.sub(r"\s+", " ", steps()[5][1])
+        held = [sentence for sentence in SENTENCE.split(body)
+                if "`Unmapped` entry" in sentence and "again" in sentence]
+        self.assertTrue(held, body)
+        self.assertIn("its line", held[0])
+
+
 if __name__ == "__main__":
     unittest.main()
