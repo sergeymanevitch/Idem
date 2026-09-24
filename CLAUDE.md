@@ -100,6 +100,9 @@ what it will hold.
 
 ## To translate a snapshot
 
+A message that names a snapshot of `00_fetch/00_snapshots/` and says nothing else is a request to
+translate it: do so, from step 1, without asking what is wanted.
+
 1. `identity.md` — what Idem is and what it refuses.
 2. `rules.md` — the procedure, step by step. Each step names the reference file or files it needs,
    and the section of each that owns what the step points at.
