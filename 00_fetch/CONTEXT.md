@@ -44,7 +44,7 @@ that supplies a value for each field cannot ask without naming them.
 ## Tests
 `python3 -m unittest discover -s 00_fetch -t 00_fetch`, from the Idem root. No network: every
 request goes to a stub server on 127.0.0.1 and every snapshot into a temporary directory. One of
-the three commands the repository's tests are made of; `../CLAUDE.md` lists all three.
+the four commands the repository's tests are made of; `../CLAUDE.md` lists all four.
 
 ## A note on the interpreter
 A `python3` installed from python.org on macOS ships without root certificates, and every fetch

@@ -16,9 +16,10 @@ opened beside the snapshot:
 The Plaid snapshot is the one the validator's first hand-written tickets file is built on: the
 shortest, every unit one line. The `source_url` in each header is the exact URL fetched.
 
-A snapshot never changes after it is written: it is the evidence every ticket cites. **Editing one
-falsifies every ticket that cites it** — a quote is checked against the line it names in this file,
-so moving a line renumbers every citation below it, and changing a character makes a true quote
+A snapshot never changes after it is written: it is the evidence every ticket cites. In Claude Code
+a hook of `../../.claude/` denies the file tools this folder; a shell command is not seen. **Editing
+one falsifies every ticket that cites it** — a quote is checked against the line it names in this
+file, so moving a line renumbers every citation below it, and changing a character makes a true quote
 read as a false one while the `sha256` in the file's own header stops matching its body. Nothing
 downstream can tell an edited snapshot from a page that was served that way; git is the only
 tamper record there is.

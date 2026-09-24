@@ -22,11 +22,12 @@ imports `idemlib`. Python 3.9 or later, standard library only, no install step.
 
 ## Running the tests
 
-There are **three** commands, and "the tests" means all three. From the Idem root:
+There are **four** commands, and "the tests" means all four. From the Idem root:
 
     python3 -m unittest discover -s lib/tests -t lib
     python3 -m unittest discover -s 02_validate -t 02_validate
     python3 -m unittest discover -s 00_fetch -t 00_fetch
+    python3 -m unittest discover -s .claude/hooks -t .claude/hooks
 
 The first is this folder's suite: `idemlib`, one module per written file of `reference/`, and one
 holding `identity.md` and `rules.md` at the Idem root. The second is four files under
@@ -36,12 +37,14 @@ fixture, every code a fixture expects defined as a check (AD-7) — `test_valida
 `test_run_fixtures.py` and `test_compare_runs.py`, one per step script of that folder;
 `02_validate/CONTEXT.md` says what each holds. The third is one file, `00_fetch/test_fetch.py`,
 and it holds `fetch.py` against a stub server on 127.0.0.1 and a temporary directory — no
-network, and nothing written into the snapshot folder. Nothing under `lib/tests/` runs either of
-the last two, so a person who runs only the first command has run neither.
+network, and nothing written into the snapshot folder. The fourth is
+`.claude/hooks/test_idem_hook.py`, the negative test of the Claude Code hook wrapper;
+`.claude/CONTEXT.md` says what it holds. Nothing under `lib/tests/` runs any of the last three, so
+a person who runs only the first command has run none of them.
 
 `-t lib` puts `lib/` on the path, so a test imports `idemlib` the way a step script does; each of
-the other two files puts `lib/` on the path itself, for the same reason. All three suites are stdlib
-`unittest` — there is nothing to install and no runner to configure. Run them on the oldest
+the other three files puts `lib/` on the path itself, for the same reason. All four suites are
+stdlib `unittest` — there is nothing to install and no runner to configure. Run them on the oldest
 interpreter you have as well as the newest: 3.9 is the floor (NFR-1), and on macOS
 `/usr/bin/python3` is usually it.
 

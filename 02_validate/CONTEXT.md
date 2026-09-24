@@ -104,10 +104,11 @@ function name, which `../reference/05_checks.md` records under Sergey's name.
 
     python3 -m unittest discover -s 02_validate -t 02_validate
 
-This is the second of Idem's three test commands; neither of the other two —
-`python3 -m unittest discover -s lib/tests -t lib` and
-`python3 -m unittest discover -s 00_fetch -t 00_fetch` — reaches these files. Four modules run
-under it, and like a step script each puts `../lib/` on `sys.path` itself:
+This is the second of Idem's four test commands; none of the other three —
+`python3 -m unittest discover -s lib/tests -t lib`,
+`python3 -m unittest discover -s 00_fetch -t 00_fetch` and
+`python3 -m unittest discover -s .claude/hooks -t .claude/hooks` — reaches these files. Four
+modules run under it, and like a step script each puts `../lib/` on `sys.path` itself:
 
 - `test_manifest.py` reconciles `00_fixtures/manifest.md` with the `checks` table both ways — every
   check named by a fixture, every code a fixture expects defined as a check — and refuses a

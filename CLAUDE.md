@@ -82,6 +82,14 @@ of FR-27 before the emit step, and the prohibitions under them — and it says w
 draft and that Epic 5 finishes it. `README.md` is written: every root entry, every command that
 exists, each run once from a fresh clone before it was written down, the claude.ai Project set-up
 of the one recorded run, the limits with their sources, and one line for each thing not built.
+`.claude/` is built: `settings.json` registers one POSIX `sh` wrapper, `.claude/hooks/idem-hook.sh`,
+for three events of Claude Code — `PreToolUse` denies the file tools any path under
+`00_fetch/00_snapshots/` and any saved input text `*.input.txt` under `01_translate/00_tickets/`;
+`PostToolUse` runs `02_validate/validate.py` on a `*.tickets.md` written directly in that folder
+and hands its lines back; `Stop` runs it over every such file and a failing one sends the turn back,
+once per turn, with its lines. The wrapper exits 0 or 2 and holds no check.
+`.claude/hooks/test_idem_hook.py` is its negative test; no hook has fired in a Claude Code session
+yet.
 Nothing else below is built — each folder's `CONTEXT.md` says
 what it will hold.
 
@@ -91,9 +99,13 @@ what it will hold.
 2. `rules.md` — the procedure, step by step. Each step names the reference file or files it needs,
    and the section of each that owns what the step points at.
 3. `reference/` — only the files a step names, never the folder end to end. `reference/CONTEXT.md` routes.
-4. Write the result to `01_translate/00_tickets/<snapshot-stem>.tickets.md` and nowhere else.
+4. Write the result to `01_translate/00_tickets/<snapshot-stem>.tickets.md` and nowhere else. In
+   Claude Code a hook validates it after every write; fix what it prints; before the turn ends it
+   checks every tickets file there once more.
 
-Never write or edit anything under `00_fetch/00_snapshots/`: a snapshot is evidence.
+Never write or edit anything under `00_fetch/00_snapshots/`: a snapshot is evidence. In Claude
+Code a hook denies the file tools that folder, and every `*.input.txt` under
+`01_translate/00_tickets/`, which is saved by hand; `.claude/CONTEXT.md` says what the hooks do.
 
 ## Where things live
 
@@ -105,17 +117,18 @@ Never write or edit anything under `00_fetch/00_snapshots/`: a snapshot is evide
 | `02_validate/` | step 02 — tickets plus snapshot to pass or coded failures | `02_validate/CONTEXT.md` |
 | `03_examples/` | step 03 — assemble `examples.md` from validated files | `03_examples/CONTEXT.md` |
 | `lib/` | the one parser per format and the contract loader | `lib/CONTEXT.md` |
-| `.claude/` | hooks that run the validator and protect snapshots | `.claude/CONTEXT.md` |
+| `.claude/` | Claude Code hooks: deny writes to snapshots, run the validator on tickets files | `.claude/CONTEXT.md` |
 
 The pipeline on one screen: `CONTEXT.md`.
 
 ## Running the tests
 
-Three commands, and "the tests" means all three. From this folder:
+Four commands, and "the tests" means all four. From this folder:
 
     python3 -m unittest discover -s lib/tests -t lib
     python3 -m unittest discover -s 02_validate -t 02_validate
     python3 -m unittest discover -s 00_fetch -t 00_fetch
+    python3 -m unittest discover -s .claude/hooks -t .claude/hooks
 
 The first covers `lib/idemlib/`, every written file of `reference/`, and `identity.md` and
 `rules.md` together. The second is four files — `02_validate/test_manifest.py`, which holds the
@@ -125,8 +138,10 @@ the committed corpus; `02_validate/test_run_fixtures.py`, which runs that corpus
 suite and proves each way the suite has to fail; and `02_validate/test_compare_runs.py`, which
 holds the run comparer to every case of what it compares, on pairs built in a temporary directory.
 The third is `00_fetch/test_fetch.py` alone, and it holds `fetch.py` against a stub server on
-127.0.0.1 — no network, and every snapshot in a temporary directory. Discovery under `lib/tests/`
-reaches neither of the last two. `lib/CONTEXT.md` says more.
+127.0.0.1 — no network, and every snapshot in a temporary directory. The fourth is
+`.claude/hooks/test_idem_hook.py` alone, the negative test of the hook wrapper, run under `sh` and
+under `dash` when it is on PATH, every case in a temporary root. Discovery under `lib/tests/`
+reaches none of the last three. `lib/CONTEXT.md` says more.
 
 ## If you have no shell
 

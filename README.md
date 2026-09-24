@@ -27,7 +27,7 @@ run it, what a passing check does and does not prove, and what is not built. An 
 | `02_validate/` | step 02: `validate.py`, one tickets file to pass or coded failures; `compare_runs.py`, whether two tickets files of one input have one shape; `run_fixtures.py`, the suite; the fixture corpus in `00_fixtures/` |
 | `03_examples/` | step 03: not built; the folder holds only its `CONTEXT.md` |
 | `lib/` | shared code: the contract loader, one reader and writer per file format, and the tests |
-| `.claude/` | Claude Code hooks: not built; the folder holds only its `CONTEXT.md` |
+| `.claude/` | Claude Code hooks: `settings.json` and one `sh` wrapper, `hooks/idem-hook.sh`, that denies writes to the snapshots and runs the validator on tickets files, with its negative test |
 | `CLAUDE.md` | the route for an agent working in this folder |
 | `CONTEXT.md` | the pipeline on one screen |
 | `README.md` | this file |
@@ -42,7 +42,9 @@ root of the clone. Everything below was run on macOS with the system `/usr/bin/p
     git clone https://github.com/sergeymanevitch/Idem.git
     cd Idem
 
-On Windows, write `py -3` wherever this file writes `python3`; nobody has run Idem on Windows.
+On Windows, write `py -3` wherever this file writes `python3`; nobody has run Idem on Windows. The
+Claude Code hooks need a POSIX `sh`; without one on PATH they do not run, the snapshots are not
+guarded, and the validator is run by hand.
 
 ### 1. Fetch a changelog
 
@@ -93,6 +95,32 @@ the answer is
 `01_translate/00_tickets/raw-githubusercontent-com-pagerduty-api-schema-f2c09c0df6b3c4bd9d5df8a9940014785-20260922T032148Z.tickets.md`. No translation has been recorded this way yet, and `rules.md`
 says where it is still a draft.
 
+In Claude Code, `.claude/settings.json` registers three hooks, all through one POSIX `sh` wrapper,
+`.claude/hooks/idem-hook.sh`:
+
+- **Before** a `Write`, `Edit`, `MultiEdit` or `NotebookEdit`, a path under
+  `00_fetch/00_snapshots/` is denied with one line saying why, and so is any `*.input.txt` under
+  `01_translate/00_tickets/`.
+- **After** one of those tools writes a `*.tickets.md` directly in `01_translate/00_tickets/`, the
+  validator of step 3 runs on it, and its failure lines are handed back to Claude. The write is
+  not undone.
+- **When the turn would end**, the validator runs over every `*.tickets.md` directly in that
+  folder, never its `CONTEXT.md`, and while one fails the turn is sent back with that file's lines.
+  It is sent back once: when Claude Code reports that the turn is already continuing because of a
+  stop hook, the wrapper lets it end. Claude Code ends the turn after 8 consecutive stop-hook
+  blocks, per its hooks reference (https://code.claude.com/docs/en/hooks, read 2026-09-24); beyond
+  that the failing file is still there and `validate.py` still fails on it. This wrapper never
+  reaches that cap: it stands down on the second stop, so it never blocks twice in a row.
+
+The wrapper exits 0 or 2, never the validator's own code; no Python 3 on PATH is exit 2 with one
+line saying so, and the deny needs no Python. On exit 0 whatever the validator printed, its
+warnings included, goes to Claude Code's debug log and Claude never sees it; every run on a file
+written from pasted text prints one such warning. A tickets file written from pasted text, whose
+header reads `line_numbers: none`, is validated against that text only if you save it by hand as
+`<stem>.input.txt` beside `<stem>.tickets.md`; the hook hands it to the validator as `--input`,
+and without it the validator prints its usage line. All three hooks are proved by the negative test
+alone, `.claude/hooks/test_idem_hook.py`; none has fired in a Claude Code session yet.
+
 In claude.ai, follow [In a claude.ai Project](#in-a-claudeai-project) below and save the answer
 under the same name.
 
@@ -112,10 +140,11 @@ The validator reads the snapshot the file's header names from `00_fetch/00_snaps
 `DIR` when `--snapshots` names another folder, except for a refusal, which is paired with nothing.
 The header alone decides the mode. A file whose header reads `line_numbers: none` was written from
 pasted text with no line numbers, and it needs `--input` naming that text: what was pasted, saved
-by you to a file. A file whose header reads `line_numbers: snapshot` refuses the flag. Owed and
-missing, or given and refused, prints the usage line and exits 2; `--snapshots`, if given, must
-still name a directory that exists, in either mode. Every run in the mode
-with no line numbers prints one warning saying the binding of quotes to lines was not checked.
+by you to a file. Saved as `01_translate/00_tickets/<stem>.input.txt`, beside the tickets file,
+it is the text the Claude Code hooks hand over. A file whose header reads `line_numbers: snapshot`
+refuses the flag. Owed and missing, or given and refused, prints the usage line and exits 2;
+`--snapshots`, if given, must still name a directory that exists, in either mode. Every run in the
+mode with no line numbers prints one warning saying the binding of quotes to lines was not checked.
 
 Exit 0 means no failure was printed; warnings may have been. Exit 1 means at least one failure was
 printed; exit 2 means the tool could not run. A failure (exit 1) is one line,
@@ -174,17 +203,20 @@ reads `not in source` too, so no range is compared. Two files of the committed c
 prints one line, `file`, the second path and `tickets in the first file, no change in the second`,
 and exits 1; the first file given twice prints nothing and exits 0.
 
-The tests are three commands, and "the tests" means all three:
+The tests are four commands, and "the tests" means all four:
 
     python3 -m unittest discover -s lib/tests -t lib
     python3 -m unittest discover -s 02_validate -t 02_validate
     python3 -m unittest discover -s 00_fetch -t 00_fetch
+    python3 -m unittest discover -s .claude/hooks -t .claude/hooks
 
 Run on 2026-09-24 from a fresh clone: on 3.9.6 and on 3.14.4 alike, 645 tests OK with 2 skipped,
-452 OK and 134 OK. The second command takes about two minutes. The two skipped tests need 3.11 or
-later and skip below it. Nobody has run 3.10 to 3.13. The third needs no network: it runs `fetch.py`
-against a stub server on 127.0.0.1. `python3 lib/idemlib/contract.py` loads the contract on its own
-and prints `15 tables, 174 rows, named by reference/00_catalogue.md` last, with exit 0.
+452 OK, 134 OK and 40 OK. The second command takes about two minutes. The two skipped tests need
+3.11 or later and skip below it. Nobody has run 3.10 to 3.13. The third needs no network: it runs
+`fetch.py` against a stub server on 127.0.0.1. The fourth is the negative test of the hook wrapper:
+it feeds the wrapper hook input in a temporary folder, under `/bin/sh` and under `dash` when it is
+on PATH. `python3 lib/idemlib/contract.py` loads the contract on its own and prints
+`15 tables, 174 rows, named by reference/00_catalogue.md` last, with exit 0.
 
 ## In a claude.ai Project
 
@@ -238,8 +270,8 @@ its input and both answers are not in this repository.
 
 ## What is not built
 
-- The Claude Code hooks: nothing validates a tickets file or guards the snapshots automatically, so
-  the validator is run by hand everywhere, Claude Code included.
+- A hook run in a Claude Code session: the three hooks are built and proved by their negative test,
+  and none has fired in a session yet.
 - The examples: `examples.md` is a placeholder, and the script in `03_examples/` that would assemble
   it from validated answers is not written.
 - A shipped tickets file: `01_translate/00_tickets/` is empty, and the first one is yours.
@@ -267,6 +299,14 @@ its input and both answers are not in this repository.
 - **A refusal's header is verified by nothing.** A refusal under `line_numbers: snapshot` names the
   snapshot it refused, and no check reads that name, its digest or its URL, because a refusal is
   paired with nothing (`reference/05_checks.md`, **What each mode skips**).
+- **The hooks guard the file tools, not the shell.** A `Bash` command in Claude Code that writes
+  into `00_fetch/00_snapshots/`, or writes a `*.input.txt` under `01_translate/00_tickets/`, is not
+  seen. A path is compared with the root as text: one that is not absolute, or holds `//`, `/./`,
+  `/../` or a backslash, is denied as not plain, and any part of the path spelled differently from
+  what the wrapper compares — the root through a symlink, or any part in another case, such as
+  `00_Snapshots`, `x.INPUT.TXT` or `x.TICKETS.md` — is not recognised, so the deny does not fire
+  and the file is not validated; on a case-insensitive volume, the default on macOS, such a path
+  still reaches the real file (`.claude/CONTEXT.md`, **Limits**).
 - **Nothing runs in a claude.ai Project.** There, `rules.md` and the reference files carry the
   contract alone, and nothing is checked until the answer is validated in a clone.
 
@@ -301,4 +341,5 @@ validator.
 **Evidence is never edited.** Only `fetch.py` writes into `00_fetch/00_snapshots/`, and a snapshot
 never changes; the suite's fixture snapshots are built by hand on purpose, and
 `02_validate/00_fixtures/CONTEXT.md` says which. A tickets file names its snapshot and copies that
-snapshot's digest; the validator recomputes the digest of the body and compares.
+snapshot's digest; the validator recomputes the digest of the body and compares. In Claude Code the
+deny hook of `.claude/` refuses the file tools that folder.

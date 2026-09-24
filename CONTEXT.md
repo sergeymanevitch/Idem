@@ -14,10 +14,14 @@ Three filters that never call each other. Each reads files the previous one wrot
 
 **Factory and product.** `identity.md`, `rules.md`, `reference/`, `lib/` and the step scripts are the
 factory: stable across runs. `00_fetch/00_snapshots/` and `01_translate/00_tickets/` are the product:
-new every run, written once, never edited.
+new every run, written once, never edited. In Claude Code a hook of `.claude/` denies the file
+tools every path under `00_fetch/00_snapshots/`; nothing guards it against a shell command.
 
 **Status is files.** A snapshot with no `<snapshot-stem>.tickets.md` beside it in
 `01_translate/00_tickets/` has not been translated. A tickets file is good when `02_validate/` exits 0 on it.
+In Claude Code the hooks of `.claude/` run that check after every write of a tickets file there and
+again before a turn ends, and a failing file sends the turn back once with its lines; elsewhere it
+is run by hand.
 
 Numbering is order: steps from `00`, sub-folders from `00` inside each step, reference files in
 reading order.
