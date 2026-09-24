@@ -23,8 +23,8 @@ and every example is read under the mode its own header gives.
 
 Two things are checked that no single table can state on its own. Every literal a serialiser writes
 is reconciled with the pattern that will have to match it, so that a change to one and not the other
-is caught here rather than in a tickets file. And the provisional mark on the size limit is read as
-optional, because removing it is a deletion of the row that carries it.
+is caught here rather than in a tickets file. And the size limit carries no provisional mark: a run
+has held it, and a test holds that the row which carried the mark stays deleted.
 
 THE FIELD RULES
 
@@ -95,9 +95,11 @@ LINES = ["header_item", "ticket_heading", "table_header", "table_delimiter", "ta
 #: much as a range - so the header decides, and a class outside its mode is not tried at all.
 BY_MODE = {NUMBERED: ["unmapped_line", "unmapped_range"], UNNUMBERED: ["unmapped_text"]}
 
-#: The row of `schema-constants` that carries the provisional mark. The row is deleted when a run
-#: confirms the limit, so every test that touches it tolerates its absence.
+#: The row of `schema-constants` that carried the provisional mark, deleted once a run held the
+#: limit; a test holds that it stays gone.
 PROVISIONAL = "max_body_lines_status"
+#: The section that states the size limit and how it was set.
+SIZE_LIMIT = "The size limit"
 
 #: Every constant whose value is a count, whatever its name ends in. A count is written as a bare
 #: number, so that no cell has to hold a character a reader cannot see or count.
@@ -697,20 +699,17 @@ class TestTheConstants(unittest.TestCase):
         self.assertNotEqual(SHIPPED["fetch-limits"].rows["max_bytes"]["value"],
                             values["max_body_lines"])
 
-    def test_the_limit_is_marked_provisional_while_the_mark_is_there(self):
-        """Story 2.3 measures and Story 5.5 confirms; the mark is removed by deleting this row, so
-        a reader of the table works whether it is there or not."""
-        values = constants()
-        if PROVISIONAL in values:
-            self.assertEqual("provisional", values[PROVISIONAL])
-            self.assertIn("max_body_lines", values)
+    def test_the_limit_carries_no_provisional_mark(self):
+        """A run has held the number, so the mark that said none had is deleted. The mutation: the
+        row back, which would tell a reader the limit is still a guess."""
+        self.assertNotIn(PROVISIONAL, constants())
 
-    def test_the_limit_is_readable_with_the_mark_gone(self):
-        """The same reading, on a copy of the table with the provisional row deleted: the limit is
-        still found under its own name, because the mark never carried it."""
-        values = constants()
-        values.pop(PROVISIONAL, None)
-        self.assertTrue(values["max_body_lines"].isdigit())
+    def test_the_size_limit_section_states_the_number_a_run_held_and_names_no_plan(self):
+        body = re.sub(r"\s+", " ", " ".join(section(SIZE_LIMIT)))
+        self.assertIn("`max_body_lines` is " + constants()["max_body_lines"] + ",", body)
+        self.assertIn("a recorded run has held", body)
+        self.assertNotIn("provisional", body)
+        self.assertIsNone(ADDRESS.search(body), body)
 
 
 # --- the header items ----------------------------------------------------------------------------
@@ -1219,7 +1218,8 @@ class TestTheFieldRulesAreWritten(unittest.TestCase):
         held = [sentence for sentence in re.split(r"(?<=[.;]) ", body)
                 if "**version-bound phrase**" in sentence]
         self.assertEqual(1, len(held), body)
-        for words in ("names a version or release", "past or future", "no date",
+        for words in ("places the change at a version or release", "past or future", "no date",
+                      "`/v1/widgets`",
                       '"starting from this API version"', '"in the next release"'):
             self.assertIn(words, held[0], words)
 

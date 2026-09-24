@@ -1,7 +1,7 @@
 # 01_translate — snapshot to tickets
 
 One job: turn one snapshot into one tickets file. Done by Claude, not by a script. The procedure it
-runs on is written — `../rules.md`, as a first draft — and nothing in this folder is built yet.
+runs on is `../rules.md`, and `00_tickets/` holds the tickets files of the three shipped snapshots.
 
 ## Inputs
 - Working: one file from `../00_fetch/00_snapshots/`, or pasted text.

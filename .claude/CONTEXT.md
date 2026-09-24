@@ -75,12 +75,17 @@ or moved.
   `PreToolUse` the backslash makes it not plain, and it is denied.
 - On Windows without a POSIX `sh` on PATH the hooks do not run and the deny is off; the validator is
   run by hand.
-- Shown live in a Claude Code session on 2026-09-24 (`comp_13/test-cases/2026-09-24-hook-live-run/log.md`):
+- Shown live in a Claude Code session on 2026-09-24 (the record of that session is kept outside this repository):
   the file-tool deny on `Edit` against a snapshot, `PostToolUse` on a tickets file written with
   `Write`, `Stop` blocking once and standing down on the next stop, and, later that evening, the
   `Bash` deny on `echo … >>` against the same snapshot (its hash unchanged before and after). The
   deny on `Write`, `MultiEdit` and `NotebookEdit` and the `*.input.txt` deny are proved by the
-  negative test only.
+  negative test only. In the translations that wrote the three shipped tickets files the `Bash` deny
+  fired six times, five on a command that read a snapshot and wrote somewhere else — a tickets file,
+  a draft outside the repository, `/dev/null` — the wrong denial named above, and one on a command
+  that wrote nothing, whose Python source held `>` and `>=`; `PostToolUse` handed back
+  three failures on a tickets file written in parts, which then passed; `Stop` never sent a turn
+  back, because every file passed before its session ended.
 
 **The test.** `hooks/test_idem_hook.py`, the fourth test command, from the Idem root:
 

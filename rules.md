@@ -10,18 +10,21 @@ Idem is, and what it will not do at all, is `identity.md`.
 Where a step cites a requirement in parentheses, the requirement is where the rule came from. The
 section named beside it is the rule, and the section is what is read.
 
-## This draft is unfinished
+## What is not settled
 
-This procedure and the field rules it points at have been run on a real changelog: two translations
-of one vendor's changelog body — one from that body pasted as text with no line numbers, one inside
-a body line range of a snapshot built by hand from the same body twice — and a refusal for each of
-the four reasons and the zero-ticket shape besides, every answer passing the validator in the mode
-its header selects. A few things it depends on are still not settled. Two readings are left to the translator: whether a sentence's time belongs to the
-change taking effect or to old behaviour ending, and which sentence states an action. The section
-**What this file does not hold yet** of `01_schema.md` names both, and two honest runs may differ on
-either. Whether a run of uncited lines is written as one entry apiece or as a single run is a choice
-of form that the section **`Unmapped`** of `01_schema.md` allows either way. What is to be done with
-several inputs in one message is answered in step 1 by this draft alone and by no file at all.
+This procedure and the field rules it points at have been run on real changelogs. The three
+snapshots shipped with Idem, the largest of them as long as the size limit allows, were each
+translated in Claude Code and in claude.ai Project chats, every answer passing the validator once
+what the Copy button adds was removed, and the last three Project answers of each input gave one
+shape. Before them, one vendor's body was translated twice more — pasted as text with no line
+numbers, and inside a body line range — and a refusal for each of the four reasons and the
+zero-ticket shape passed the validator too. A few things it depends on are still not settled. Two
+readings are left to the translator: whether a sentence's time belongs to the change taking effect
+or to old behaviour ending, and which sentence states an action. The section **What this file does
+not hold yet** of `01_schema.md` names both, and two honest runs may differ on either. Whether a run
+of uncited lines is written as one entry apiece or as a single run is a choice of form that the
+section **`Unmapped`** of `01_schema.md` allows either way. What is to be done with several inputs
+in one message is answered in step 1 by this file alone and by no reference file.
 
 None of these is settled until more runs on real changelogs have recorded what was actually done
 with each of them. This notice is written for the person building Idem. It is never part of an
@@ -35,7 +38,7 @@ asked beside the input is not the input. One thing said beside the input is read
 part of the body: a range of body lines the user gives for the translation to run within. It is
 never quoted and never cited — what it does is go into the header and bind every step below.
 Several inputs supplied at once are translated one at a time, in the order they were given, each
-into a file of its own with nothing written between them. Both of those are this draft's answer to
+into a file of its own with nothing written between them. Both of those are this file's answer to
 a case no file settles yet.
 
 Settle the mode first, because every step after this one turns on it. The mode turns on one thing

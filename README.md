@@ -19,11 +19,11 @@ run it, what a passing check does and does not prove, and what is not built. An 
 | Entry | What it is |
 | --- | --- |
 | `identity.md` | what Idem converts, from what, to what, and what it refuses |
-| `rules.md` | the procedure the translator follows, step by step; a first draft, and it says where |
+| `rules.md` | the procedure the translator follows, step by step, and what it has not settled |
 | `examples.md` | a placeholder: no example is generated yet, and the script that assembles it is not built |
 | `reference/` | the contract, in six files: the catalogue that names every table, the schema of a tickets file, what one change is, the list that decides `breaking`, the snapshot format and every check the validator runs, in tables the tools load |
 | `00_fetch/` | step 00: `fetch.py`, one URL to one numbered, hashed snapshot; three shipped snapshots in `00_snapshots/` |
-| `01_translate/` | step 01: the translation, done by Claude; its answers go in `00_tickets/`, which holds no tickets file yet |
+| `01_translate/` | step 01: the translation, done by Claude; its answers go in `00_tickets/`, which holds the tickets files of the three shipped snapshots |
 | `02_validate/` | step 02: `validate.py`, one tickets file to pass or coded failures; `compare_runs.py`, whether two tickets files of one input have one shape; `run_fixtures.py`, the suite; the fixture corpus in `00_fixtures/` |
 | `03_examples/` | step 03: not built; the folder holds only its `CONTEXT.md` |
 | `lib/` | shared code: the contract loader, one reader and writer per file format, and the tests |
@@ -79,7 +79,7 @@ text yet. Point it at a raw Markdown or plain-text file, as the three shipped sn
 | Vendor | File | Body lines | What it is for |
 | --- | --- | --- | --- |
 | PagerDuty | `api-schema/docs/CHANGELOG.md`, at a pinned commit | 166 | tidy |
-| Docker Engine API | `docs/api/version-history.md`, at a pinned commit | 250 | messy: a long `Unmapped` |
+| Docker Engine API | `docs/api/version-history.md`, at a pinned commit | 250 | messy: items wrapped onto unindented lines, and 56 lines in `Unmapped` |
 | Plaid | `plaid-openapi/CHANGELOG.md`, at a pinned commit | 200 | near-empty: mostly `not in source` |
 
 `00_fetch/00_snapshots/CONTEXT.md` names each file and the commit or tag it was read at; the URL
@@ -92,8 +92,12 @@ and the answer belongs in `01_translate/00_tickets/<stem>.tickets.md`, where `<s
 snapshot's file name without `.txt`. For the shipped PagerDuty snapshot,
 `raw-githubusercontent-com-pagerduty-api-schema-f2c09c0df6b3c4bd9d5df8a9940014785-20260922T032148Z.txt`,
 the answer is
-`01_translate/00_tickets/raw-githubusercontent-com-pagerduty-api-schema-f2c09c0df6b3c4bd9d5df8a9940014785-20260922T032148Z.tickets.md`. No translation has been recorded this way yet, and `rules.md`
-says where it is still a draft.
+`01_translate/00_tickets/raw-githubusercontent-com-pagerduty-api-schema-f2c09c0df6b3c4bd9d5df8a9940014785-20260922T032148Z.tickets.md`.
+The three shipped snapshots were translated this way, each in a headless session (`claude -p`)
+started with the snapshot's file name and nothing else, run from the author's working copy, so the
+author's own instruction files were loaded beside this one; their tickets files stand in
+`01_translate/00_tickets/`, never edited after the model wrote them. `rules.md` says what it has not
+settled.
 
 In Claude Code, `.claude/settings.json` registers hooks on three events, all through one POSIX
 `sh` wrapper, `.claude/hooks/idem-hook.sh`:
@@ -216,13 +220,13 @@ The tests are four commands, and "the tests" means all four:
     python3 -m unittest discover -s 00_fetch -t 00_fetch
     python3 -m unittest discover -s .claude/hooks -t .claude/hooks
 
-Run on 2026-09-24 from a fresh clone: on 3.9.6 and on 3.14.4 alike, 645 tests OK with 2 skipped,
-452 OK, 134 OK and 46 OK. The second command takes about two minutes. The two skipped tests need
-3.11 or later and skip below it. Nobody has run 3.10 to 3.13. The third needs no network: it runs
+Run on 2026-09-25 from a fresh clone, on 3.9.6 and on 3.14.4: 720 tests OK, 452 OK, 134 OK and 46
+OK. The second command takes about two minutes. Two of the first command's tests need 3.11 or later
+and are skipped below it. Nobody has run 3.10 to 3.13. The third needs no network: it runs
 `fetch.py` against a stub server on 127.0.0.1. The fourth is the negative test of the hook wrapper:
 it feeds the wrapper hook input in a temporary folder, under `/bin/sh` and under `dash` when it is
 on PATH. `python3 lib/idemlib/contract.py` loads the contract on its own and prints
-`15 tables, 174 rows, named by reference/00_catalogue.md` last, with exit 0.
+`15 tables, 173 rows, named by reference/00_catalogue.md` last, with exit 0.
 
 ## In a claude.ai Project
 
@@ -233,7 +237,7 @@ alone, and the answer is validated afterwards, in a clone.
    `identity.md`, `rules.md`, `examples.md`, `00_catalogue.md`, `01_schema.md`,
    `02_segmentation.md`, `03_breaking-terms.md`, `04_snapshot-format.md`, `05_checks.md`. The last
    six are the files of `reference/`. `examples.md` is a placeholder and is uploaded too, because
-   `rules.md` names it. Together they are 183,999 bytes, measured on 2026-09-24; it changes when
+   `rules.md` names it. Together they are 215,269 bytes, measured on 2026-09-25; it changes when
    those files change.
 2. **Leave out everything else**: `00_fetch/`, `01_translate/`, `02_validate/`, `03_examples/`,
    `lib/`, `.claude/`, `CLAUDE.md`, `README.md`, `.gitignore`, and every `CONTEXT.md`, the one at
@@ -249,30 +253,28 @@ alone, and the answer is validated afterwards, in a clone.
    what the range checks read.
 5. **Type the snapshot's bare file name on the line above the pasted text**, so that the answer can
    name its snapshot; the answer's header should then carry `snapshot: <the snapshot's file name>`.
-   This was not done in the recorded run below and is untested; without it, both of that run's
-   answers gave their snapshot as `not in source`, and the validator stops both at line 1 with
-   `HEADER_VALUE`.
-6. **Keep to the size limit**: the contract is written for inputs of up to 300 body lines, a number
-   `01_schema.md` marks provisional because no run has confirmed it; that file says what happens
-   over it. The one recorded run was 166 body lines.
+   Every answer of the Project runs below carried it. The earlier run of 2026-09-21, which did not
+   do this, gave its snapshot as `not in source` in both answers, and the validator stops both at
+   line 1 with `HEADER_VALUE`.
+6. **Keep to the size limit**: the contract is written for inputs of up to 250 body lines, the
+   largest body a recorded run has held; `01_schema.md` says what happens over it.
 7. **Save the answer** in a clone as `01_translate/00_tickets/<stem>.tickets.md`, ending in one line
-   feed, and validate it with the command of step 3 above. The recorded answers, copied with the
-   Copy button, end without a line feed, and the validator reads that as a departure from canonical
-   form, `NONCANONICAL`.
+   feed, and validate it with the command of step 3 above. An answer copied with the Copy button may
+   end without a line feed, which the validator reads as a departure from canonical form,
+   `NONCANONICAL`, and may bring the chat's opening sentence glued to the header's first line, which
+   stops it at line 1; the answer is the text from `snapshot: ` on.
 
-**The one recorded run**, on 2026-09-21, uploaded nine files of the same names with earlier
-contents, 151,237 bytes; the Project showed 2 % of project knowledge used and no retrieval
-indicator. It ran on Opus 5 at medium effort; that is what was used, not a recommendation. The input
-was the PagerDuty changelog shipped here, 166 body lines, pasted as text: the same body and the same
-digest as the shipped snapshot, under a header built by hand rather than the one fetch writes. Two
-runs, in separate chats, each gave a complete answer of 64 tickets, with the same 64 ranges and the
-same `Unmapped` list; 46 tickets differed between the two in a value only, in the span of a value
-inside its quote and in whether a noun phrase is an `affected_surface`. Neither answer was
-validated, because the validator did not exist yet; run through today's validator, both stop at
-line 1 with `HEADER_VALUE`, because their snapshot reads `not in source`. Compared on 2026-09-24
-by `02_validate/compare_runs.py`, the two answers have the same 64 ranges, and five tickets differ
-in the state or the row count of `affected_surface`. The record of that run,
-its input and both answers are not in this repository.
+**The recorded Project runs**, on 2026-09-24 (New York time), were made in a claude.ai Project in
+the Claude desktop app, with no connectors, on Opus 5.5 at medium effort; that is what was used, not
+a recommendation. Each shipped snapshot was pasted as steps 4 and 5 say, in three chats of its own.
+Every answer was complete and passed the validator once what the Copy button brings was removed, and
+for PagerDuty (64 tickets) and Plaid (102) the three answers gave one shape by
+`02_validate/compare_runs.py`. Docker's first three did not: one answer read two wrapped items and
+one version-bound sentence differently from the other two, the contract gained the two sentences
+that decide them, and three new chats on the new files gave one shape, 155 tickets. An earlier run,
+on 2026-09-21, gave the PagerDuty body twice with earlier files and no snapshot name typed; both
+answers stop at line 1 with `HEADER_VALUE`. The records of these runs, their inputs and every answer
+are not in this repository.
 
 ## What is not built
 
@@ -281,7 +283,6 @@ its input and both answers are not in this repository.
   `NotebookEdit` and the `*.input.txt` deny are proved by the negative test alone.
 - The examples: `examples.md` is a placeholder, and the script in `03_examples/` that would assemble
   it from validated answers is not written.
-- A shipped tickets file: `01_translate/00_tickets/` is empty, and the first one is yours.
 - The routine that reduces an HTML page to text: fetch stores HTML as served.
 - A file of many URLs for fetch: it takes one URL per run.
 

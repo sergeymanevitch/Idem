@@ -1,7 +1,8 @@
 # 00_tickets — translator output
 
-Written only by the translator, one `<snapshot-stem>.tickets.md` per snapshot. Empty until the
-first translation.
+Written only by the translator, one `<snapshot-stem>.tickets.md` per snapshot. It holds the
+tickets files of the three shipped snapshots, each written by the translator in Claude Code with the
+hooks live and never edited after; `02_validate/validate.py` exits 0 on each.
 
 In Claude Code the hooks of `../../.claude/` validate a `*.tickets.md` here: after every write of
 one directly in this folder, `02_validate/validate.py` runs on it and its failure lines come back,

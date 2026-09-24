@@ -130,8 +130,8 @@ for every field that carries a quote. `breaking` narrows it in one case, a line 
 disagree, and `03_breaking-terms.md` states that case under **Scoped and conditional wording**.
 
 The examples in this section and the four after it are invented on `example.com`, or they are lines
-of the PagerDuty snapshot shipped in `00_fetch/00_snapshots/` — the changelog of the one recorded
-cold run — each quoted whole and numbered the way `04_snapshot-format.md` numbers a body line. Body
+of the PagerDuty snapshot shipped in `00_fetch/00_snapshots/` — the changelog shipped as the tidy
+example — each quoted whole and numbered the way `04_snapshot-format.md` numbers a body line. Body
 line 136, with the one space it carries before its marker:
 
 ```text
@@ -271,14 +271,15 @@ reading, and **What this file does not hold yet** names it as one.
 the `date` pattern of the `warn-patterns` table in `05_checks.md` matches, or words that place the
 change in time — "next quarter", "in 30 days", "Q1 2027", "starting with v3". Where the sentence
 holds exactly one span the `date` pattern matches, the value is that span; otherwise it is the whole
-sentence, as written. A **version-bound phrase** names a version or release, past or future, and
-holds no date — "in v4", "in the next release", "starting from this API version" (Sergey,
-2026-09-25). A version-bound phrase with no date is a temporal expression as "starting with
-v3" is, and "in a future version" is one (Sergey, 2026-09-24): where such a sentence holds no span
-the `date` pattern matches, the field the tying test gives it takes the whole sentence. `now`,
-`immediately` and words like them are never a temporal expression: they place nothing in time that
-the entry's own date does not. Which of the two fields a sentence fills is the tying test, stated
-with the table below.
+sentence, as written. A **version-bound phrase** places the change at a version or release, past or
+future, and holds no date — "in v4", "in the next release", "starting from this API version"
+(Sergey, 2026-09-24), and a version named only inside a path or a name, as in `/v1/widgets`, is
+none. A version-bound phrase with no date is a temporal expression as "starting with v3" is, and "in
+a future version" is one (Sergey, 2026-09-24): where such a sentence holds no span the `date`
+pattern matches, the field the tying test gives it takes the whole sentence. `now`, `immediately`
+and words like them are never a temporal expression: they place nothing in time that the entry's own
+date does not. Which of the two fields a sentence fills is the tying test, stated with the table
+below.
 
 ## The date decision table — translator prose, not a strict table
 
@@ -343,8 +344,7 @@ The texts a serialiser writes are written out in full, so that no tool has to ho
 | --- | --- | --- |
 | sentinel | not in source | what a field, a header item or a part of the source value reads when the input does not state it. It is the one filler there is |
 | unnumbered_cell | unnumbered | what every filled line cell of fields 1 to 7 reads when the header says line_numbers: none (FR-25) |
-| max_body_lines | 300 | the largest input this contract is written for, counted in body lines. Over it the answer is a refusal, and the user supplies a body line range (FR-26) |
-| max_body_lines_status | provisional | that the number above is provisional: no run has confirmed it. This row is deleted when one has, and nothing else about the table changes |
+| max_body_lines | 250 | the largest input this contract is written for, counted in body lines. Over it the answer is a refusal, and the user supplies a body line range (FR-26) |
 | cell_padding_spaces | 1 | how many spaces stand between a pipe and the text of a cell, on each side. An empty cell is therefore two spaces between two pipes |
 | delimiter_dashes | 3 | how many hyphens each cell of a delimiter row holds. Exactly this many: a longer run is a departure from canonical form |
 | blank_lines_between_blocks | 1 | how many blank lines stand between a heading and what follows it, and between one block and the next. A blank line stands nowhere else |
@@ -605,11 +605,12 @@ which is the one thing this format is built to prevent.
 
 ## The size limit
 
-`max_body_lines` is 300, and `max_body_lines_status` reads `provisional` beside it: **no run has
-confirmed that number.** It is a working ceiling, not a measurement. Story 2.3 records the largest
-input that ran clean in a claude.ai Project, Story 5.5 confirms the number or changes it, and the
-mark is removed by deleting the `max_body_lines_status` row — so a tool that reads this table works
-whether the row is there or not, and finds the limit itself in `max_body_lines` either way.
+`max_body_lines` is 250, the largest body a recorded run has held. A changelog of 250 body lines was
+translated whole in six chats with no tools, and every answer was complete and passed the validator;
+nothing was changed in any answer of the recorded runs but what the Copy button brings — a chat line
+before the header, a final line feed left off. No body of more than 250 lines has been translated
+whole, so the number is no larger, and nothing shows where the ceiling lies above it. A tool that
+reads this table finds the limit in `max_body_lines` and nowhere else.
 
 It is counted in body lines and in nothing else. It is not `max_bytes` of
 `04_snapshot-format.md`, which caps the bytes fetch reads from a server: a body well inside that cap

@@ -659,29 +659,39 @@ class TestNeitherFileHoldsAContractValue(unittest.TestCase):
 
 
 class TestTheDraftIsMarked(unittest.TestCase):
-    def test_rules_marks_itself_a_draft_above_the_first_step(self):
-        """The story asks for a draft said to be one where a reader meets it, not in a closing note
-        under six steps of confident procedure. The mutation: the notice moved to the foot."""
+    def test_rules_states_what_is_not_settled_above_the_first_step(self):
+        """What is still open is said where a reader meets it, not in a closing note under six
+        steps of confident procedure, and the procedure no longer calls itself unfinished once
+        the shipped snapshots have been translated on it. The mutation: the notice moved to the
+        foot, or the old heading back."""
         body = text(RULES)
         first_step = body.index("## Step 1 ")
-        self.assertIn(DRAFT, body[:first_step].lower())
+        self.assertIn("## What is not settled\n", body[:first_step])
+        self.assertNotIn("unfinished", body[:first_step].lower())
+        self.assertNotIn("this draft", body.lower())
 
     def test_the_notice_says_what_is_not_settled_and_what_would_settle_it(self):
         """The mutation: a notice that says it is a draft and never says what is still open, or
         what would end that."""
         body = text(RULES)
-        notice = re.sub(r"\s+", " ", body[:body.index("## Step 1 ")])
+        heading = "## What is not settled\n"
+        start = body.index(heading) + len(heading)
+        notice = re.sub(r"\s+", " ", body[start:body.index("## Step 1 ")])
         self.assertIn(OPEN, notice)
         self.assertIn("changelog", notice.lower())
+        for words in ("Two readings are left to the translator", "the section **`Unmapped`**",
+                      "several inputs in one message", "None of these is settled until"):
+            self.assertIn(words, notice, words)
 
-    def test_the_notice_says_the_field_rules_have_been_run_on_a_real_changelog(self):
+    def test_the_notice_says_the_field_rules_have_been_run_on_real_changelogs(self):
         """Six recorded runs after the field rules were written - two of them translations of a
         real changelog body - made the notice's first claim false: it said the rules had not yet
         been run against one. The mutation: the old claim back. The phrase pinned is the claim
         itself; what the runs were is prose the record outside the repository holds."""
         body = text(RULES)
         notice = re.sub(r"\s+", " ", body[:body.index("## Step 1 ")]).lower()
-        self.assertIn("have been run on a real changelog", notice)
+        self.assertIn("have been run on real changelogs", notice)
+        self.assertIn("three snapshots shipped with idem", notice)
         self.assertNotIn("not yet been run", notice)
         self.assertNotIn("before the field rules", notice)
 

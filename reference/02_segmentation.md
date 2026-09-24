@@ -83,7 +83,7 @@ and stated.
 The item line is judged as a unit by itself, by what it says before it breaks. Line 216 says what
 changed before its break, so it is a ticket. An item line that breaks before its change is said
 states no change on its own: it gives no ticket, and it is listed under `Unmapped` with the lines
-that carry the rest of it (Sergey, 2026-09-25). Body lines 227 and 228 of the Docker snapshot, with
+that carry the rest of it (Sergey, 2026-09-24). Body lines 227 and 228 of the Docker snapshot, with
 229 after them, are one such entry, and body lines 232 to 235 are another:
 
 ```text
@@ -128,7 +128,7 @@ Line 90 states a change and is a ticket. Line 91 qualifies it — the old name g
 states no change of its own, so it is cited by nothing, lands in `Unmapped`, and the qualification
 is lost to the ticket. Reading the second leaf as part of the first would be a judgment about what
 two sentences mean to each other, made while translating, which is what this file exists to
-refuse. The two recorded runs on that snapshot both left line 91 unmapped.
+refuse. Every recorded run on that snapshot left line 91 unmapped.
 
 ## Paragraphs
 

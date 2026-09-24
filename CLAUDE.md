@@ -6,7 +6,7 @@ written for the person using or judging the folder: how to run it, what a passin
 what is not built; this file is the route for an agent about to work in it. It routes and holds no rule.
 
 **State: `reference/` is written whole and can be read, `identity.md` is written and `rules.md` is
-written as a first draft, `lib/idemlib/` holds the contract loader and the two format modules — the
+written, `lib/idemlib/` holds the contract loader and the two format modules — the
 snapshot and the tickets file — the first step script is built — `00_fetch/fetch.py`, for one
 URL — and `00_fetch/00_snapshots/` holds the three example snapshots it wrote, one vendor each.
 `02_validate/validate.py` is built: every check of `reference/05_checks.md` is registered under
@@ -43,8 +43,9 @@ every limit read from `fetch-limits` and every failed URL coded from `fetch-fail
 URL and no file of URLs, classifies no content — whatever decodes is stored as served — and reduces
 no HTML; `00_fetch/CONTEXT.md` says what it does and what it holds. `00_fetch/00_snapshots/` holds
 three snapshots of public changelogs — PagerDuty, Docker Engine API, Plaid — tidy, messy and
-near-empty; `00_fetch/00_snapshots/CONTEXT.md` names each. No tickets file exists for any of them
-yet.
+near-empty; `00_fetch/00_snapshots/CONTEXT.md` names each. Each has its tickets file in
+`01_translate/00_tickets/`, written by the translator in Claude Code with the hooks live, and
+`02_validate/validate.py` exits 0 on each.
 `lib/idemlib/tickets.py` is the third module and the second format: `parse` reads bytes into a
 data model of a tickets file and a list of findings, `serialise` writes a model back in canonical
 form, and the two agree byte for byte on every canonical file. It reads the eight fields, the
@@ -79,13 +80,13 @@ tickets files it names exist — three clean files, one of each shape, over the 
 file in the mode with no line numbers, and at least one mutation per row of every phase and of the
 three warnings — beside eight snapshots, of which one is the fetched Plaid file and seven were
 built by hand from it, and one input text, the Plaid body as pasted.
-`identity.md` says what Idem is, takes, returns and refuses; `rules.md` is the first-draft
+`identity.md` says what Idem is, takes, returns and refuses; `rules.md` is the
 procedure — six numbered steps, each naming the file and the section it depends on, the self-check
-of FR-27 before the emit step, and the prohibitions under them — and it says where it is still a
-draft, with no address; step 3 points at the field rules, which are written in `01_schema.md` and
+of FR-27 before the emit step, and the prohibitions under them — and it says what is not
+settled, with no address; step 3 points at the field rules, which are written in `01_schema.md` and
 `03_breaking-terms.md`. `README.md` is written: every root entry, every command that exists, each
-run once from a fresh clone before it was written down, the claude.ai Project set-up of the one
-recorded run, the limits with their sources, and one line for each thing not built.
+run once from a fresh clone before it was written down, the claude.ai Project set-up of the
+recorded runs, the limits with their sources, and one line for each thing not built.
 `.claude/` is built: `settings.json` registers one POSIX `sh` wrapper, `.claude/hooks/idem-hook.sh`,
 for three events of Claude Code — `PreToolUse` denies the file tools any path under
 `00_fetch/00_snapshots/` and any saved input text `*.input.txt` under `01_translate/00_tickets/`,
@@ -100,8 +101,8 @@ what it will hold.
 
 ## To translate a snapshot
 
-A message that names a snapshot of `00_fetch/00_snapshots/` and says nothing else is a request to
-translate it: do so, from step 1, without asking what is wanted.
+A message that names a snapshot of `00_fetch/00_snapshots/` and says nothing else is routed here,
+to step 1: it asks for that snapshot's translation.
 
 1. `identity.md` — what Idem is and what it refuses.
 2. `rules.md` — the procedure, step by step. Each step names the reference file or files it needs,
