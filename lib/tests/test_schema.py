@@ -26,6 +26,18 @@ is reconciled with the pattern that will have to match it, so that a change to o
 is caught here rather than in a tickets file. And the provisional mark on the size limit is read as
 optional, because removing it is a deletion of the row that carries it.
 
+THE FIELD RULES
+
+The prose that says which line each field reads and which span of it a value takes is held here as
+far as text can hold it: the five sections are found by their headings, the date decision table is
+read as rows under its own heading and each row is held to the rule it illustrates, and every row of
+the published examples is held to the rules - every quote the trimmed line, every `change` value its
+quote after the cut, every `entry_date` value the first date of its heading, every `affected_surface`
+value what the scan finds. The scan and the cut below are readings of that prose, written from the
+file and handed every pattern they use from the contract; they are not a second home for the rule.
+What no test here holds is the tying test of the date table and which sentence states an action:
+the file names both as readings.
+
 No test pins the catalogue's row set: a story that adds a table must not have to edit this file.
 """
 import io
@@ -35,6 +47,8 @@ import unicodedata
 import unittest
 
 from idemlib import contract
+from tests import test_breaking_terms as breaking_terms
+from tests import test_segmentation as segmentation
 from tests.test_contract import _run_shipped
 
 FILE = "reference/01_schema.md"
@@ -145,11 +159,63 @@ MUST_NOT_MATCH = {
     "blank": [" ", "\t", " \t ", "x"],
 }
 
+#: The field rules, by the headings they stand under, in the order they stand in the file: between
+#: the two states of a row and the constants.
+FIELD_RULES = ["What a quote is", "The change span", "What an affected surface is",
+               "The other copied spans",
+               "The date decision table \u2014 translator prose, not a strict table"]
+AFTER_RULES, BEFORE_RULES = "The two states of a row", "The constants"
+DATE_TABLE = FIELD_RULES[4]
+#: The closing section, which now names the one reading the rules leave and no address.
+NOT_HELD = "What this file does not hold yet"
+#: An address of the plan this file must not carry in the prose this story wrote.
+ADDRESS = re.compile(r"Epic [0-9]|Story [0-9]|comp_[01][0-9]")
+
+#: The line class whose match is the cut, and the pattern a date is found by. Both are rows of
+#: tables the file names; neither is copied here.
+ITEM_START, HEADING, WARN_TABLE, DATE_ROW = "item_start", "heading", "warn-patterns", "date"
+#: The four shapes of an affected surface. The words of shape (iv) and the methods of shape (iii)
+#: are written in the section's own prose and nowhere in a table, so they are typed here, and a test
+#: below holds every one of them to that prose.
+SURFACE_WORDS = ("header", "parameter", "field", "method")
+METHODS = ("GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH")
+#: The marks a token ends before, and the marks a sentence ends on when a space follows.
+TRAILING = ".,;:)"
+SENTENCE_END = re.compile(r"(?<=[.;:]) +")
+BACKTICK = "`"
+
+#: The cases of the date decision table, each by the words of its first cell, in the table's order:
+#: every case FR-15 and FR-16 name, and the ones the rule needs beside them.
+DATE_CASES = [
+    "a dated heading",
+    "no dated heading",
+    "a version heading with no date",
+    "a version heading holding a date",
+    "a date in the item, no dated heading",
+    "a date in the item and a dated heading",
+    "several dates in one heading",
+    "nested headings, one dated",
+    "nested headings, both dated",
+    "a relative expression",
+    "a count of time",
+    "a named period",
+    "a version from which",
+    "a date in the sentence",
+    "deprecated on a date, alone",
+    "one date tied to both",
+    "now",
+]
+DATE_COLUMNS = ["case", "example", "entry_date", "effective_date", "sunset_date"]
+#: How the table writes the lines of one example: code spans joined by this, top line first.
+EXAMPLE_SEPARATOR = " / "
+
 SHIPPED = {}
 
 
 def setUpModule():
     SHIPPED.update(contract.load(root=contract.idem_root()))
+    segmentation.SHIPPED.update(SHIPPED)
+    breaking_terms.SHIPPED.update(SHIPPED)
 
 
 def table(table_id):
@@ -311,6 +377,150 @@ def unmapped_of(block):
         elif seen_heading and found is not None and found != "blank":
             entries.append((line, found))
     return entries
+
+
+# --- the field rules, read back out of the prose ------------------------------------------------------
+
+
+def section(heading):
+    """The lines under one `## ` heading of the file, outside any fence, down to the next `## `.
+
+    Fenced lines are kept, because an example of the prose stands in a fence; a heading inside a
+    fence ends nothing.
+    """
+    lines, fenced = file_lines()
+    found = None
+    for index in range(len(lines)):
+        line = lines[index]
+        if not fenced[index] and line.startswith("## "):
+            if found is not None:
+                break
+            if line[3:].strip() == heading:
+                found = []
+            continue
+        if found is not None:
+            found.append(line)
+    if found is None:
+        raise AssertionError(FILE + " has no section " + repr(heading))
+    return found
+
+
+def level_two_headings():
+    """Every `## ` heading of the file outside a fence, in file order."""
+    lines, fenced = file_lines()
+    return [lines[index][3:].strip() for index in range(len(lines))
+            if not fenced[index] and lines[index].startswith("## ")]
+
+
+def trimmed(line):
+    """What the section on quotes says a quote is: the line with its leading and trailing spaces
+    and tabs removed, and nothing else."""
+    return line.strip(" \t")
+
+
+def cut(text):
+    """The cut of the section on the `change` span: on an item's first line, what the `item_start`
+    pattern matches is taken off; on any other line nothing is. What is left is trimmed."""
+    match = re.match(SHIPPED["line-classes"].rows[ITEM_START]["pattern"], text)
+    if match is not None:
+        text = text[match.end():]
+    return trimmed(text)
+
+
+def date_spans(text):
+    """Every span of `text` the `date` pattern of `warn-patterns` matches, left to right."""
+    pattern = SHIPPED[WARN_TABLE].rows[DATE_ROW]["pattern"]
+    return [match.group(0) for match in re.finditer(pattern, text)]
+
+
+def is_heading(text):
+    return re.match(SHIPPED["line-classes"].rows[HEADING]["pattern"], text) is not None
+
+
+def token_at(text, index):
+    """The token that starts at `index`: to the next space, less any run of the trailing marks."""
+    end = text.find(" ", index)
+    token = text[index:] if end == -1 else text[index:end]
+    return token.rstrip(TRAILING)
+
+
+def surfaces(text):
+    """The spans the scan of the section on affected surfaces keeps in one line, left to right.
+
+    At each position the four shapes are tried: a code span at any character, the other three only
+    at the start of a token. The longest standing there is kept, the scan goes on after it, and a
+    kept span is never read again; where none stands the scan moves on one character.
+    """
+    found = []
+    index = 0
+    while index < len(text):
+        standing = []
+        if text[index] == BACKTICK:
+            close = text.find(BACKTICK, index + 1)
+            if close != -1:
+                standing.append(text[index:close + 1])
+        if index == 0 or text[index - 1] == " ":
+            token = token_at(text, index)
+            after = index + len(token)
+            following = None
+            if text[after:after + 1] == " " and text[after + 1:after + 2] not in ("", " "):
+                following = token_at(text, after + 1)
+            if token in METHODS and following is not None and following.startswith("/"):
+                standing.append(token + " " + following)
+            if token.startswith("/"):
+                standing.append(token)
+            if token and following is not None and following.lower() in SURFACE_WORDS:
+                standing.append(token)
+        standing = [span for span in standing if span]
+        if standing:
+            longest = max(standing, key=len)
+            found.append(longest)
+            index += len(longest)
+            continue
+        index += 1
+    return found
+
+
+def sentences(text):
+    """The sentences of one line after the cut: cut after every `.`, `;` or `:` a space follows,
+    each piece trimmed and its closing mark kept."""
+    return [trimmed(piece) for piece in SENTENCE_END.split(cut(text)) if trimmed(piece)]
+
+
+def date_table():
+    """The rows of the date decision table, as {column: cell}, read with the loader's own cell
+    reader. It is unmarked, so no tool loads it; reading stops at the first line after its rows
+    that is not a table row."""
+    rows = []
+    columns = None
+    seen = 0
+    for line in section(DATE_TABLE):
+        cells = contract.split_cells(line)
+        if cells is None:
+            if seen:
+                break
+            continue
+        seen += 1
+        if columns is None:
+            columns = cells
+            continue
+        if seen == 2:
+            continue
+        rows.append(dict(zip(columns, cells)))
+    return columns, rows
+
+
+def spans_of(cell):
+    """The code spans of a cell, their backticks taken off."""
+    return re.findall(r"`([^`]*)`", cell)
+
+
+def value_of(cell):
+    """A value cell of the date table: the sentinel as written, or one code span."""
+    if cell == constants()["sentinel"]:
+        return cell
+    found = spans_of(cell)
+    return found[0] if len(found) == 1 and cell == BACKTICK + found[0] + BACKTICK else None
 
 
 # --- the five tables are in the contract ---------------------------------------------------------
@@ -924,6 +1134,397 @@ class TestTheRowsOfTheExamples(unittest.TestCase):
         example means here exactly what it will mean to `tickets.py`."""
         cells = contract.split_cells("| change | a \\| b | 7 | a \\| b |")
         self.assertEqual(["change", "a | b", "7", "a | b"], cells)
+
+
+# --- the field rules --------------------------------------------------------------------------------
+
+
+class TestTheFieldRulesAreWritten(unittest.TestCase):
+    """The prose of the field rules, found by heading and held by what text can hold."""
+
+    def test_the_five_sections_stand_between_the_row_states_and_the_constants(self):
+        """The mutation: a section renamed, dropped, or moved away from the rules it sits among."""
+        found = level_two_headings()
+        for heading in FIELD_RULES:
+            self.assertEqual(1, found.count(heading), heading)
+        start = found.index(AFTER_RULES)
+        self.assertEqual(FIELD_RULES, found[start + 1:start + 1 + len(FIELD_RULES)])
+        self.assertEqual(BEFORE_RULES, found[start + 1 + len(FIELD_RULES)])
+
+    def test_no_heading_of_the_rules_holds_a_field_name_in_a_code_span(self):
+        for heading in FIELD_RULES:
+            for field in table("fields").rows:
+                self.assertNotIn(BACKTICK + field + BACKTICK, heading, heading)
+
+    def test_a_quote_is_the_trimmed_line(self):
+        body = " ".join(section(FIELD_RULES[0]))
+        self.assertIn("leading and trailing spaces and tabs removed", body)
+
+    def test_the_change_span_names_the_line_by_class_and_position_and_the_value_by_the_cut(self):
+        """The acceptance block in its own words: which line, by class and position, which span, by
+        the cut, and that the value is a substring of one line."""
+        body = re.sub(r"\s+", " ", " ".join(section(FIELD_RULES[1])))
+        for words in ("one row", "first line of the unit", "`item_start`", "`plain`",
+                      "`continuation`", "substring of one line"):
+            self.assertIn(words, body, words)
+
+    def test_the_change_span_states_its_limit_and_points_at_segmentation(self):
+        body = re.sub(r"\s+", " ", " ".join(section(FIELD_RULES[1])))
+        self.assertIn("**Leaf items and parents**", body)
+        self.assertIn("`02_segmentation.md`", body)
+
+    def test_the_affected_surface_section_names_the_words_and_the_methods_this_test_uses(self):
+        """The two short lists of the scan are typed in this module; this is what holds them to the
+        prose that owns them, so a word dropped there is dropped here or the test fails."""
+        body = " ".join(section(FIELD_RULES[2]))
+        for word in SURFACE_WORDS + METHODS:
+            self.assertIn(BACKTICK + word + BACKTICK, body, word)
+
+    def test_the_change_cell_points_at_the_rule_and_names_no_address(self):
+        holds = table("fields").rows["change"]["holds"]
+        self.assertIn(FIELD_RULES[1], holds)
+        self.assertIsNone(ADDRESS.search(holds), holds)
+
+    def test_the_closing_section_names_what_is_left_and_no_address(self):
+        body = " ".join(section(NOT_HELD))
+        self.assertIn("tying test", body)
+        self.assertIsNone(ADDRESS.search(body), body)
+        for heading in FIELD_RULES:
+            self.assertIsNone(ADDRESS.search(" ".join(section(heading))), heading)
+
+
+class TestTheDateDecisionTable(unittest.TestCase):
+    """Read as rows under its heading. Every row is held to the rule the prose above it states, so
+    a row that illustrates something else fails here rather than teaching it."""
+
+    def rows(self):
+        columns, rows = date_table()
+        self.assertEqual(DATE_COLUMNS, columns)
+        return rows
+
+    def lines_of(self, row):
+        """The example's lines, each one code span of the cell, backticks kept."""
+        return [BACKTICK + span + BACKTICK for span in spans_of(row["example"])]
+
+    def test_the_heading_says_it_is_translator_prose_and_not_a_strict_table(self):
+        self.assertIn("translator prose", DATE_TABLE)
+        self.assertIn("not a strict table", DATE_TABLE)
+
+    def test_nothing_marks_it_and_the_loader_does_not_load_it(self):
+        for line in section(DATE_TABLE):
+            self.assertIsNone(contract.MARKER_RE.match(line), line)
+        for name in SHIPPED:
+            self.assertNotEqual(DATE_COLUMNS, SHIPPED[name].columns, name)
+
+    def test_one_row_for_every_case_in_order(self):
+        self.assertEqual(DATE_CASES, [row["case"] for row in self.rows()])
+
+    def test_every_example_is_lines_in_code_spans_and_every_value_a_code_span_or_the_sentinel(self):
+        for row in self.rows():
+            parts = self.lines_of(row)
+            self.assertTrue(parts, row["case"])
+            self.assertEqual(row["example"], EXAMPLE_SEPARATOR.join(parts), row["case"])
+            for part in parts:
+                self.assertTrue(part.startswith(BACKTICK) and part.endswith(BACKTICK), part)
+                self.assertEqual(1, len(spans_of(part)), part)
+            for column in DATE_COLUMNS[2:]:
+                self.assertIsNotNone(value_of(row[column]), row["case"] + " " + column)
+
+    def test_the_entry_date_is_the_first_date_of_the_nearest_dated_heading(self):
+        """Headings are read nearest first, which in an example written top line first is from the
+        bottom up; the first heading holding a date gives its first date, and no heading holding
+        one gives the sentinel."""
+        sentinel = constants()["sentinel"]
+        for row in self.rows():
+            lines = [spans_of(part)[0] for part in self.lines_of(row)]
+            expected = sentinel
+            for line in reversed(lines):
+                if is_heading(line) and date_spans(line):
+                    expected = date_spans(line)[0]
+                    break
+            self.assertEqual(expected, value_of(row["entry_date"]), row["case"])
+
+    def test_no_row_sends_a_heading_s_date_to_the_two_other_date_fields(self):
+        """FR-15 and FR-40: a heading's date cited as the date a change takes effect is a failure.
+        So is one cited as the date old behaviour ends. Each of the two values is the sentinel, or
+        is read off a line of the example that is not a heading."""
+        sentinel = constants()["sentinel"]
+        checked = 0
+        for row in self.rows():
+            lines = [spans_of(part)[0] for part in self.lines_of(row)]
+            items = [line for line in lines if not is_heading(line)]
+            for column in DATE_COLUMNS[3:]:
+                value = value_of(row[column])
+                if value == sentinel:
+                    continue
+                checked += 1
+                self.assertTrue([line for line in items if value in line],
+                                row["case"] + " " + column + " " + repr(value))
+        self.assertTrue(checked)
+
+    def test_a_filled_value_is_the_one_date_of_its_sentence_or_the_whole_sentence(self):
+        """The span rule of the other copied spans, row by row."""
+        sentinel = constants()["sentinel"]
+        for row in self.rows():
+            lines = [spans_of(part)[0] for part in self.lines_of(row)]
+            allowed = []
+            for line in lines:
+                if is_heading(line):
+                    continue
+                for sentence in sentences(line):
+                    spans = date_spans(sentence)
+                    allowed.append(spans[0] if len(spans) == 1 else sentence)
+            for column in DATE_COLUMNS[3:]:
+                value = value_of(row[column])
+                if value != sentinel:
+                    self.assertIn(value, allowed, row["case"] + " " + column)
+
+    def test_deprecated_alone_fills_neither_and_one_date_fills_both_only_when_tied_to_both(self):
+        sentinel = constants()["sentinel"]
+        by_case = dict([(row["case"], row) for row in self.rows()])
+        alone = by_case["deprecated on a date, alone"]
+        self.assertEqual(sentinel, value_of(alone["effective_date"]))
+        self.assertEqual(sentinel, value_of(alone["sunset_date"]))
+        both = by_case["one date tied to both"]
+        self.assertNotEqual(sentinel, value_of(both["effective_date"]))
+        self.assertEqual(value_of(both["effective_date"]), value_of(both["sunset_date"]))
+        filled_both = [row["case"] for row in self.rows()
+                       if value_of(row["effective_date"]) != sentinel and
+                       value_of(row["sunset_date"]) != sentinel]
+        self.assertEqual(["one date tied to both"], filled_both)
+
+    def test_now_is_never_a_temporal_expression(self):
+        sentinel = constants()["sentinel"]
+        row = dict([(row["case"], row) for row in self.rows()])["now"]
+        for column in DATE_COLUMNS[2:]:
+            self.assertEqual(sentinel, value_of(row[column]), column)
+
+
+class TestTheExamplesKeepTheFieldRules(unittest.TestCase):
+    """Every row of every published example, held to the rule of its field as far as a row can be
+    read without the body it cites."""
+
+    def rows_named(self, field):
+        found = []
+        for index, block in enumerate(examples()):
+            for number, group in enumerate(rows_of(block), 1):
+                for cells in group:
+                    if cells[0] == field and cells[1] != constants()["sentinel"]:
+                        found.append(("example " + str(index + 1) + " ticket " + str(number),
+                                      cells))
+        return found
+
+    def test_change_is_one_row_and_its_value_is_its_quote_after_the_cut(self):
+        checked = 0
+        for block in examples():
+            for group in rows_of(block):
+                rows = [cells for cells in group if cells[0] == "change"]
+                self.assertEqual(1, len(rows), rows)
+        for where, (_field, value, _line, quote) in self.rows_named("change"):
+            self.assertEqual(cut(quote), value, where)
+            checked += 1
+        self.assertTrue(checked)
+
+    def test_every_quote_neither_begins_nor_ends_with_a_space_or_a_tab(self):
+        for block in examples():
+            for group in rows_of(block):
+                for cells in group:
+                    self.assertEqual(trimmed(cells[3]), cells[3], repr(cells))
+
+    def test_the_sentence_fields_take_the_span_the_other_copied_spans_give(self):
+        """`effective_date` and `sunset_date` take the one date span of a sentence of the quote
+        after the cut, or that whole sentence when it holds none or several; `required_action` is a
+        whole sentence of it."""
+        checked = 0
+        for field in ("effective_date", "sunset_date"):
+            for where, (_field, value, _line, quote) in self.rows_named(field):
+                taken = []
+                for sentence in sentences(quote):
+                    spans = date_spans(sentence)
+                    taken.append(spans[0] if len(spans) == 1 else sentence)
+                self.assertIn(value, taken, where + " " + field)
+                checked += 1
+        for where, (_field, value, _line, quote) in self.rows_named("required_action"):
+            self.assertIn(value, sentences(quote), where)
+            checked += 1
+        self.assertTrue(checked)
+
+    def test_every_entry_date_is_the_first_date_of_a_heading_it_quotes(self):
+        checked = 0
+        for where, (_field, value, _line, quote) in self.rows_named("entry_date"):
+            self.assertTrue(is_heading(quote), where + " " + repr(quote))
+            self.assertTrue(date_spans(quote), where)
+            self.assertEqual(date_spans(quote)[0], value, where)
+            checked += 1
+        self.assertTrue(checked)
+
+    def test_every_affected_surface_is_what_the_scan_keeps_on_its_quote(self):
+        """Per ticket and per quote: the rows citing one quote are exactly the spans the scan keeps
+        on that quote after the cut, less any span the ticket already took on an earlier quote, in
+        the order they stand."""
+        checked = 0
+        for index, block in enumerate(examples()):
+            for number, group in enumerate(rows_of(block), 1):
+                where = "example " + str(index + 1) + " ticket " + str(number)
+                by_quote = []
+                for cells in group:
+                    if cells[0] != "affected_surface" or cells[1] == constants()["sentinel"]:
+                        continue
+                    if not by_quote or by_quote[-1][0] != cells[3]:
+                        by_quote.append((cells[3], []))
+                    by_quote[-1][1].append(cells[1])
+                taken = []
+                for quote, values in by_quote:
+                    expected = []
+                    for span in surfaces(cut(quote)):
+                        if span not in taken and span not in expected:
+                            expected.append(span)
+                    self.assertEqual(expected, values, where + " " + repr(quote))
+                    taken.extend(values)
+                    checked += len(values)
+        self.assertTrue(checked)
+
+
+class TestTheFirstExampleOverItsBody(unittest.TestCase):
+    """The first example cites a body `02_segmentation.md` reconstructs. Over that body the rules
+    can be applied whole - which line of each unit `change` takes, every line the scan reads for an
+    affected surface, which line `breaking` and `entry_date` cite - and the published rows have to
+    be what they give."""
+
+    def setUp(self):
+        self.body, self.tickets, self.ancestors = segmentation.example(segmentation.RECONSTRUCTED)
+        self.classes = segmentation.classify(self.body)
+        self.block = examples()[0]
+        self.groups = rows_of(self.block)
+        self.assertEqual(len(self.tickets), len(self.groups))
+
+    def unit_lines(self, number):
+        first, last = self.tickets[number]
+        return [line for line in range(first, last + 1)
+                if self.classes[line] != segmentation.BLANK]
+
+    def nearest_first(self, number, klass):
+        return sorted([line for line in self.ancestors.get(number, [])
+                       if self.classes[line] == klass], reverse=True)
+
+    def rows(self, number, field):
+        return [(value, int(line) - 1, quote) for name, value, line, quote in self.groups[number - 1]
+                if name == field and value != constants()["sentinel"]]
+
+    def test_every_quote_is_its_body_line_trimmed(self):
+        checked = 0
+        for group in self.groups:
+            for field, _value, line, quote in group:
+                if quote == "":
+                    continue
+                self.assertEqual(trimmed(self.body[int(line) - 1]), quote, field + " " + line)
+                checked += 1
+        self.assertTrue(checked)
+
+    def test_change_takes_the_first_line_of_its_unit_that_is_not_empty_after_the_cut(self):
+        for number in sorted(self.tickets):
+            line = [index for index in self.unit_lines(number)
+                    if cut(trimmed(self.body[index]))][0]
+            expected = [(cut(trimmed(self.body[line])), line, trimmed(self.body[line]))]
+            self.assertEqual(expected, self.rows(number, "change"), number)
+
+    def test_affected_surface_is_every_span_the_scan_keeps_on_the_lines_it_reads(self):
+        for number in sorted(self.tickets):
+            read = self.unit_lines(number) + self.nearest_first(number, segmentation.ITEM_START)
+            kept = {}
+            for line in read:
+                text = cut(trimmed(self.body[line]))
+                for span in surfaces(text):
+                    place = (line, text.find(span))
+                    if span not in kept or place < kept[span]:
+                        kept[span] = place
+            expected = sorted([(kept[span], span) for span in kept])
+            found = [((line, cut(quote).find(value)), value)
+                     for value, line, quote in self.rows(number, "affected_surface")]
+            self.assertEqual(expected, found, number)
+
+    def test_breaking_cites_the_unit_first_and_then_the_nearest_heading(self):
+        listed = breaking_terms.terms()
+        for number in sorted(self.tickets):
+            read = self.unit_lines(number) + self.nearest_first(number, segmentation.HEADING)
+            expected = []
+            for line in read:
+                outcome = breaking_terms.lookup(trimmed(self.body[line]), listed)
+                if outcome is not breaking_terms.NOTHING:
+                    expected = [(outcome, line, trimmed(self.body[line]))]
+                    break
+            self.assertEqual(expected, self.rows(number, "breaking"), number)
+
+    def test_entry_date_is_the_first_date_of_the_nearest_dated_heading(self):
+        for number in sorted(self.tickets):
+            expected = []
+            for line in self.nearest_first(number, segmentation.HEADING):
+                spans = date_spans(self.body[line])
+                if spans:
+                    expected = [(spans[0], line, trimmed(self.body[line]))]
+                    break
+            self.assertEqual(expected, self.rows(number, "entry_date"), number)
+
+
+class TestTheRulesOnTheLinesTheProseQuotes(unittest.TestCase):
+    """The lines the sections quote - body lines of the shipped PagerDuty snapshot and invented
+    ones - run through the cut and the scan as the prose states them, so that the value each
+    section says a line gives is the value its rule gives."""
+
+    #: (line as the body carries it, the `change` value the cut gives it).
+    CUT = [
+        (" - *BREAKING* `POST /service_dependencies/associate` was changed from 204 to 200 for "
+         "successful changes.",
+         "*BREAKING* `POST /service_dependencies/associate` was changed from 204 to 200 for "
+         "successful changes."),
+        ("   - `GET /services/{id}/audit/records`", "`GET /services/{id}/audit/records`"),
+        ("- Storage API now signs every response.", "Storage API now signs every response."),
+        ("  Verify each signature with the published key.",
+         "Verify each signature with the published key."),
+        ("- ", ""),
+    ]
+    #: (line after the cut, every span the scan keeps on it, in order).
+    SCAN = [
+        ("Clarified Content-Type header for all endpoints.", ["Content-Type"]),
+        ("Clarified Notification Subscription endpoints current under the Early Access.", []),
+        ("Added documentation on `config` and `headers` options for webhooks v2.",
+         ["`config`", "`headers`"]),
+        ("Added Early-Access endpoint for audit trail records", []),
+        ("GET /v1/widgets now requires the tenant parameter.", ["GET /v1/widgets", "tenant"]),
+        ("Removed /v1/legacy.", ["/v1/legacy"]),
+        ("Added a new header", ["new"]),
+        ("The sort parameter of GET /v1/gadgets is removed.", ["sort", "GET /v1/gadgets"]),
+    ]
+
+    def test_the_cut_gives_each_quoted_line_the_value_the_prose_says(self):
+        for line, value in self.CUT:
+            self.assertEqual(value, cut(trimmed(line)), repr(line))
+            self.assertIn(value, trimmed(line), repr(line))
+
+    def test_the_scan_keeps_on_each_quoted_line_what_the_prose_says(self):
+        for line, spans in self.SCAN:
+            self.assertEqual(spans, surfaces(line), repr(line))
+
+    def test_the_lines_the_prose_quotes_from_the_snapshot_are_its_lines(self):
+        """Body lines 14, 15, 27, 34, 58 and 136 of the PagerDuty snapshot, as the sections quote
+        them: the snapshot is read through the loader's own reader and nothing is typed twice."""
+        from idemlib import snapshot
+        path = os.path.join(contract.idem_root(), "00_fetch", "00_snapshots")
+        names = [name for name in os.listdir(path) if "pagerduty" in name]
+        self.assertEqual(1, len(names), names)
+        name = names[0]
+        with open(os.path.join(path, name), "rb") as handle:
+            body = snapshot.read(handle.read()).lines
+        quoted = {
+            14: "- Added Early-Access endpoint for audit trail records",
+            15: "- `GET /services/{id}/audit/records`",
+            27: "- Clarified Notification Subscription endpoints current under the Early Access.",
+            34: "- Added documentation on `config` and `headers` options for webhooks v2.",
+            58: "- Clarified Content-Type header for all endpoints.",
+            136: self.CUT[0][0].strip(" \t"),
+        }
+        for number, text in quoted.items():
+            self.assertEqual(text, trimmed(body[number - 1]), number)
 
 
 # --- the input can be read back out of the output ----------------------------------------------------

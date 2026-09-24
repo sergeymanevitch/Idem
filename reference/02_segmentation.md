@@ -104,12 +104,13 @@ other class — a `blank` line, a `heading`, an `item_start`, a `continuation`, 
 separator line, which the next section defines.
 
 A paragraph is **one unit** however many sentences it holds. Two changes stated in one paragraph
-are one ticket carrying as many rows as they need: a field with two values is two rows, which the
-schema already allows. FR-9's "a change mentioned twice is two tickets" holds when the two mentions
-fall in **different** units — a summary item and a detail paragraph, which is the fourth worked
-example below. Two mentions inside one unit are one ticket, because the unit is the boundary, and a
-rule that split a paragraph on a repeated mention would be deciding at run time exactly what FR-9
-says must be decided in advance.
+are one ticket. Its `change` is one row, on the paragraph's first line, by the section **The change
+span** of `01_schema.md`; the rows the second change needs belong to the other fields, which give as
+many as the paragraph's lines hold values for, as the schema allows. FR-9's "a change mentioned
+twice is two tickets" holds when the two mentions fall in **different** units — a summary item and
+a detail paragraph, which is the fourth worked example below. Two mentions inside one unit are one
+ticket, because the unit is the boundary, and a rule that split a paragraph on a repeated mention
+would be deciding at run time exactly what FR-9 says must be decided in advance.
 
 **A lead-in is never a change.** A paragraph whose next non-blank line is an `item_start` — "The
 following endpoints change on 1 July:" — introduces the list rather than stating a change of its
@@ -304,8 +305,9 @@ ancestor of 2: 5
 ### A prose paragraph
 
 No list at all. Lines 5 and 6 are one run of `plain` lines and so one unit, and the two sentences
-are one change with rows enough for both. Line 8 is a paragraph too, and it states no change, so
-nothing cites it and it is unmapped.
+are one change: its `change` row is line 5, and line 6 is cited only by another field that finds its
+value there. Line 8 is a paragraph too, and it states no change, so nothing cites it and it is
+unmapped.
 
 ```text
       1: # Example API changelog

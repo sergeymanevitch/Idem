@@ -657,8 +657,8 @@ class TestTheEscapes(unittest.TestCase):
 
     def test_no_other_backslash_sequence_is_an_escape(self):
         block = example(0)
-        at = line_of(block, contract.PIPE + " " + list(table(FIELDS).rows)[0])
-        cells = [list(table(FIELDS).rows)[0], "a \\d b", "7", "a \\d b quoted"]
+        at = line_of(block, contract.PIPE + " " + repeated_field())
+        cells = [repeated_field(), "a \\d b", "7", "a \\d b quoted"]
         parsed = tickets.parse(as_bytes(changed(block, at, row_line(cells))))
         finding = only(self, parsed.findings, tickets.UnclaimedFinding)
         self.assertEqual(at, finding.line)
@@ -666,8 +666,8 @@ class TestTheEscapes(unittest.TestCase):
 
     def test_a_backslash_ending_a_cell_is_no_escape(self):
         block = example(0)
-        at = line_of(block, contract.PIPE + " " + list(table(FIELDS).rows)[0])
-        cells = [list(table(FIELDS).rows)[0], "a b \\", "7", "a b quoted"]
+        at = line_of(block, contract.PIPE + " " + repeated_field())
+        cells = [repeated_field(), "a b \\", "7", "a b quoted"]
         parsed = tickets.parse(as_bytes(changed(block, at, row_line(cells))))
         only(self, parsed.findings, tickets.UnclaimedFinding)
 
@@ -692,6 +692,20 @@ class TestTheEscapes(unittest.TestCase):
 
 
 # --- the grammar findings -------------------------------------------------------------------------
+
+
+def repeated_field():
+    """The first field that Ticket 1 of the first example gives in two consecutive rows.
+
+    A test that breaks one row of that ticket breaks a row of this field, so that the field is still
+    present in the row beside it and the one finding the test expects is the only one there is. The
+    field is read off the example and never named here.
+    """
+    names = [row.field for row in tickets.parse(as_bytes(example(0))).model.tickets[0].rows]
+    for index in range(len(names) - 1):
+        if names[index] == names[index + 1]:
+            return names[index]
+    raise AssertionError("Ticket 1 of the first example gives no field two rows")
 
 
 class TestTheUnclaimedLines(unittest.TestCase):
@@ -738,22 +752,22 @@ class TestTheUnclaimedLines(unittest.TestCase):
 
     def test_a_tab_at_a_cell_edge(self):
         block = example(0)
-        at = line_of(block, contract.PIPE + " " + list(table(FIELDS).rows)[0])
-        cells = [list(table(FIELDS).rows)[0], "\ta value", "7", "a quote"]
+        at = line_of(block, contract.PIPE + " " + repeated_field())
+        cells = [repeated_field(), "\ta value", "7", "a quote"]
         self.unclaimed(changed(block, at, row_line(cells)), at)
 
     def test_a_tab_behind_two_spaces_of_padding(self):
         """The padding comes off first and the tab is looked for after, so a tab hidden behind the
         spaces a reader forgives is still at the edge of the value."""
         block = example(0)
-        at = line_of(block, contract.PIPE + " " + list(table(FIELDS).rows)[0])
-        line = row_line([list(table(FIELDS).rows)[0], " \ta value", "7", "a quote"])
+        at = line_of(block, contract.PIPE + " " + repeated_field())
+        line = row_line([repeated_field(), " \ta value", "7", "a quote"])
         self.unclaimed(changed(block, at, line), at)
 
     def test_a_tab_behind_the_padding_at_the_end_of_a_cell(self):
         block = example(0)
-        at = line_of(block, contract.PIPE + " " + list(table(FIELDS).rows)[0])
-        line = row_line([list(table(FIELDS).rows)[0], "a value\t ", "7", "a quote"])
+        at = line_of(block, contract.PIPE + " " + repeated_field())
+        line = row_line([repeated_field(), "a value\t ", "7", "a quote"])
         self.unclaimed(changed(block, at, line), at)
 
     def test_a_delimiter_row_of_the_wrong_width(self):
@@ -766,18 +780,18 @@ class TestTheUnclaimedLines(unittest.TestCase):
 
     def test_a_table_row_of_five_cells(self):
         block = example(0)
-        at = line_of(block, contract.PIPE + " " + list(table(FIELDS).rows)[0])
-        cells = [list(table(FIELDS).rows)[0], "a value", "7", "a quote", "one too many"]
+        at = line_of(block, contract.PIPE + " " + repeated_field())
+        cells = [repeated_field(), "a value", "7", "a quote", "one too many"]
         self.unclaimed(changed(block, at, row_line(cells)), at)
 
     def test_a_table_line_that_does_not_end_with_its_pipe(self):
         block = example(0)
-        at = line_of(block, contract.PIPE + " " + list(table(FIELDS).rows)[0])
+        at = line_of(block, contract.PIPE + " " + repeated_field())
         self.unclaimed(changed(block, at, block[at - 1] + " "), at)
 
     def test_a_line_that_opens_with_a_pipe_and_closes_with_none(self):
         block = example(0)
-        at = line_of(block, contract.PIPE + " " + list(table(FIELDS).rows)[0])
+        at = line_of(block, contract.PIPE + " " + repeated_field())
         self.unclaimed(changed(block, at, contract.PIPE + " field value"), at)
 
     def test_every_unclaimed_line_is_named_in_file_order(self):
@@ -942,7 +956,9 @@ class TestTheFieldFindings(unittest.TestCase):
 
     def test_a_missing_field(self):
         block = example(3)
-        at = self.row_of(block, list(table(FIELDS).rows)[1])
+        names = [row.field for row in tickets.parse(as_bytes(block)).model.tickets[0].rows]
+        single = [name for name in names if names.count(name) == 1][0]
+        at = self.row_of(block, single)
         self.fields(dropped(block, at), at)
 
     def test_two_fields_out_of_order(self):
@@ -972,7 +988,8 @@ class TestTheFieldFindings(unittest.TestCase):
         parsed = tickets.parse(as_bytes(example(0)))
         self.assertEqual([], kinds(parsed.findings))
         names = [row.field for row in parsed.model.tickets[0].rows]
-        self.assertEqual(names[0], names[1])
+        self.assertTrue([index for index in range(len(names) - 1)
+                         if names[index] == names[index + 1]], names)
 
     def test_a_ticket_of_one_row_is_a_field_finding_and_not_a_shape_one(self):
         block = example(3)

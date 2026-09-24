@@ -97,6 +97,31 @@ LIMITS = [
     ("The field is not deprecated.", NOTHING),
     ("This is an incompatible change.", NOTHING),
     ("This requires action before July.", NOTHING),
+    ("This is a breaking change for v1 clients only.", YES),
+    ("- *BREAKING* `POST /service_dependencies/associate` was changed from 204 to 200 for "
+     "successful changes.", NOTHING),
+]
+
+#: The section that states what scoped and conditional wording yields and which line the field
+#: cites. The heading it replaced carried an address of the plan, and no heading may again.
+SCOPED_HEADING = "## Scoped and conditional wording"
+ADDRESS = re.compile(r"Epic [0-9]|Story [0-9]|comp_[01][0-9]")
+LIMITS_HEADING = "## What this list does not decide"
+#: A sentence ends on one of these marks when a space follows it, as `01_schema.md` cuts one.
+SENTENCE_END = re.compile(r"(?<=[.;:]) +")
+
+#: Which line the field cites, case by case: the unit's own lines, then its ancestor headings
+#: nearest first, and the quote the row carries. A case is (unit lines, headings nearest first,
+#: expected value, expected quote); the value None is the sentinel and has no quote.
+PRECEDENCE = [
+    (["- Renamed the field; not a breaking change."], ["## Breaking changes"],
+     NO, "- Renamed the field; not a breaking change."),
+    (["- Renamed the field."], ["### Fixed", "## Breaking changes"], YES, "## Breaking changes"),
+    (["- Renamed the field."], ["## Removals"], NOTHING, None),
+    (["X is a breaking change. Y is non-breaking."], [], YES, "X is a breaking change."),
+    (["X is a breaking change, and Y is non-breaking"], ["## Breaking changes"], NOTHING, None),
+    (["- The old form will stop working."], [], NOTHING, None),
+    (["- X is a breaking change. Y is non-breaking."], [], YES, "X is a breaking change."),
 ]
 
 #: The cases the file's worked illustration does not hold. The ones it does hold are read out of it
@@ -190,6 +215,56 @@ def lookup(quote, listed):
     if len(values) == 1:
         return values[0]
     return DISAGREEMENT
+
+
+def sentences(line):
+    """The sentences of one line, read after the cut of `01_schema.md`: on an item's first line what
+    the `item_start` pattern of `line-classes` matches is taken off, then the rest is cut after every
+    `.`, `;` or `:` a space follows, each piece trimmed."""
+    match = re.match(table("line-classes").rows["item_start"]["pattern"], line)
+    if match is not None:
+        line = line[match.end():]
+    return [piece.strip(" \t") for piece in SENTENCE_END.split(line) if piece.strip(" \t")]
+
+
+def cited(unit_lines, headings, listed):
+    """The row the file says `breaking` gives: (value, quote), or (NOTHING, None).
+
+    The unit's own lines are read first, in order; only when none keeps a phrase are the ancestor
+    headings read, the nearest first. The first line that keeps one is the row's. On a line whose
+    kept phrases disagree the row quotes the first sentence that keeps a phrase, and a sentence that
+    itself supports neither value leaves the sentinel.
+    """
+    for line in list(unit_lines) + list(headings):
+        outcome = lookup(line, listed)
+        if outcome is NOTHING:
+            continue
+        if outcome != DISAGREEMENT:
+            return outcome, line
+        for sentence in sentences(line):
+            narrow = lookup(sentence, listed)
+            if narrow is NOTHING:
+                continue
+            if narrow == DISAGREEMENT:
+                return NOTHING, None
+            return narrow, sentence
+        return NOTHING, None
+    return NOTHING, None
+
+
+def section_text(heading):
+    """The prose under one `## ` heading of the file, down to the next `## `, as one line."""
+    body = []
+    inside = False
+    for line in _lines(PATH):
+        if line.startswith("## "):
+            if inside:
+                break
+            inside = line.strip() == heading
+            continue
+        if inside:
+            body.append(line)
+    return re.sub(r"\s+", " ", " ".join(body))
 
 
 # --- the worked illustration of the file under test -------------------------------------------------
@@ -535,6 +610,42 @@ class TestTheLookup(unittest.TestCase):
         for phrase in listed:
             self.assertNotIn(phrase, kept("x" + phrase, listed), repr(phrase))
             self.assertEqual(listed[phrase], lookup("-" + phrase, listed), repr(phrase))
+
+
+# --- which line the field cites -------------------------------------------------------------------------
+
+
+class TestScopedAndConditionalWording(unittest.TestCase):
+    def test_the_section_stands_under_a_heading_with_no_address(self):
+        lines = [line.strip() for line in _lines(PATH)]
+        self.assertEqual(1, lines.count(SCOPED_HEADING))
+        for line in lines:
+            if line.startswith("#"):
+                self.assertIsNone(ADDRESS.search(line), line)
+        self.assertIsNone(ADDRESS.search(section_text(SCOPED_HEADING)))
+
+    def test_each_of_the_four_answers_is_stated_in_it(self):
+        """The scoped case, the precedence, the heading citation and the unlisted phrase, in the
+        words a reader would look for."""
+        body = section_text(SCOPED_HEADING)
+        for words in ("for v1 clients only", "unit's own lines", "nearest first",
+                      "Breaking changes", "stop working"):
+            self.assertIn(words, body, words)
+
+    def test_scoped_wording_yields_its_phrase_s_value(self):
+        self.assertEqual(YES, lookup("This is a breaking change for v1 clients only.", terms()))
+
+    def test_which_line_the_field_cites(self):
+        listed = terms()
+        for unit_lines, headings, value, quote in PRECEDENCE:
+            self.assertEqual((value, quote), cited(unit_lines, headings, listed),
+                             repr(unit_lines) + " " + repr(headings))
+
+    def test_the_vendor_mark_is_a_stated_limit(self):
+        self.assertIn("*BREAKING*", section_text(LIMITS_HEADING))
+
+    def test_the_file_no_longer_says_the_warning_is_not_built(self):
+        self.assertNotIn("is not built", " ".join(_lines(PATH)))
 
 
 # --- the example the list has to make true -----------------------------------------------------------

@@ -9,9 +9,9 @@ the validator checks the shape of what that prose produces without ever re-decid
 | File | What it is |
 | --- | --- |
 | `00_catalogue.md` | written — the strict-table grammar, and the name, file, columns and key of every contract table |
-| `01_schema.md` | written — the eight fields, the sentinel, the grammar, the canonical form, the header, the refusal and zero-ticket shapes, the size limit, in five tables; the `change` span and the date decision table come in Epic 5 |
+| `01_schema.md` | written — the eight fields, the sentinel, the grammar, the canonical form, the header, the refusal and zero-ticket shapes, the size limit, in five tables; and the field rules in prose — what a quote is, the one row `change` takes, the four shapes of an affected surface, the spans of the other copied fields, and the date decision table, an unmarked table no tool reads. The tying test of that table is the one reading it leaves |
 | `02_segmentation.md` | written — what one change is: the unit, leaf items and parents, paragraphs, the one narrowing, ancestor lines, five worked examples, and a first-draft test for "is a changelog". Prose only, no table. The changelog test and two fence limits are marked draft; Epic 5 finishes them |
-| `03_breaking-terms.md` | written — the closed list of phrases that decide `breaking`, each mapped to `yes` or `no`, in one table; the rule for reading a quote against it, and what the list deliberately does not decide; scoped and conditional wording comes in Epic 5 |
+| `03_breaking-terms.md` | written — the closed list of phrases that decide `breaking`, each mapped to `yes` or `no`, in one table; the rule for reading a quote against it, and what the list deliberately does not decide; what scoped and conditional wording yields, which line the field cites — the unit before its headings — and how a "Breaking changes" heading is cited |
 | `04_snapshot-format.md` | written — snapshot header, separator, line prefix, line classes, HTML element lists, fetch limits, in five tables |
 | `05_checks.md` | written — every validator check as key, code, what it checks and which requirement, in one table; the fetch failures in a second; the pattern the FR-37 warning looks for in a third; the phases, the warnings, the exit-2 family and the rules that get no check |
 

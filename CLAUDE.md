@@ -20,10 +20,12 @@ ticket's range, each row's state — and compares no value.**
 `reference/00_catalogue.md` states the strict-table grammar and names every contract table;
 `reference/01_schema.md` holds the five tables of the ticket schema — the eight fields, the
 constants and the canonical form, the header items, the refusal reasons, the classes of line — with
-the grammar of a tickets file and four complete examples of its three shapes;
-`reference/03_breaking-terms.md` holds the closed list of phrases that decide `breaking` and the
-rule for reading a quote against it; `reference/04_snapshot-format.md` holds the five tables of the
-snapshot format — header fields, format constants, line classes, HTML elements, fetch limits;
+the grammar of a tickets file, the field rules in prose — what a quote is, the `change` span, what
+an affected surface is, the other copied spans and the date decision table — and four complete
+examples of its three shapes; `reference/03_breaking-terms.md` holds the closed list of phrases that
+decide `breaking`, the rule for reading a quote against it, and which line the field cites;
+`reference/04_snapshot-format.md` holds the five tables of the snapshot format — header fields,
+format constants, line classes, HTML elements, fetch limits;
 `reference/05_checks.md` holds every validator check with its key and code, the fetch failures in a
 table of their own, and the pattern a warning looks for; `reference/02_segmentation.md` holds what
 one change is — the unit, leaf items and parents, paragraphs, the one narrowing, ancestor lines,
@@ -79,9 +81,10 @@ built by hand from it, and one input text, the Plaid body as pasted.
 `identity.md` says what Idem is, takes, returns and refuses; `rules.md` is the first-draft
 procedure — six numbered steps, each naming the file and the section it depends on, the self-check
 of FR-27 before the emit step, and the prohibitions under them — and it says where it is still a
-draft and that Epic 5 finishes it. `README.md` is written: every root entry, every command that
-exists, each run once from a fresh clone before it was written down, the claude.ai Project set-up
-of the one recorded run, the limits with their sources, and one line for each thing not built.
+draft, with no address; step 3 points at the field rules, which are written in `01_schema.md` and
+`03_breaking-terms.md`. `README.md` is written: every root entry, every command that exists, each
+run once from a fresh clone before it was written down, the claude.ai Project set-up of the one
+recorded run, the limits with their sources, and one line for each thing not built.
 `.claude/` is built: `settings.json` registers one POSIX `sh` wrapper, `.claude/hooks/idem-hook.sh`,
 for three events of Claude Code — `PreToolUse` denies the file tools any path under
 `00_fetch/00_snapshots/` and any saved input text `*.input.txt` under `01_translate/00_tickets/`;

@@ -79,7 +79,7 @@ its code, and the negative suite fails.
 <!-- table: fields -->
 | field | kind | rows | ancestor | holds |
 | --- | --- | --- | --- | --- |
-| change | copied | 1+ | no | what changed: a verbatim span of the source. Which span a long entry yields is a rule Epic 5 adds to this file (FR-12) |
+| change | copied | 1+ | no | what changed: a verbatim span of the source, the one the section The change span of this file states (FR-12) |
 | affected_surface | copied | 1+ | yes | the endpoint, parameter, method or version the change is about, spelled as it appears |
 | breaking | listed | 1+ | yes | yes, no, or the sentinel. Filled only when the quote holds a phrase of 03_breaking-terms.md, which maps each phrase to its value, read by the routine that file states (FR-14) |
 | entry_date | copied | 1+ | yes | the date in the dated heading the change sits under (FR-15). It is never copied into effective_date |
@@ -116,6 +116,213 @@ table, and the validator reads the raw file and removes them before comparing, n
 Markdown. Unlike a contract table, a tickets file allows no third use of a backslash: one spelling
 per value is what lets `serialise(parse(x))` give back the same bytes (AD-3), so a backslash that
 stands for itself is written `\\`.
+
+## What a quote is
+
+A quote is copied off the body line its row cites, and it is **the whole of that line, with its
+leading and trailing spaces and tabs removed**. Nothing else is taken off: a list marker stays, a
+heading's hashes stay, a vendor's own mark stays, and so does every other character of markup. So
+nothing is cut, and nothing can be cut differently by a second run; and what is left neither begins
+nor ends with a space or a tab, so the rule of the section above is met by construction. This holds
+for every field that carries a quote. `breaking` narrows it in one case, a line whose phrases
+disagree, and `03_breaking-terms.md` states that case under **Scoped and conditional wording**.
+
+The examples in this section and the four after it are invented on `example.com`, or they are lines
+of the PagerDuty snapshot shipped in `00_fetch/00_snapshots/` — the changelog of the one recorded
+cold run — each quoted whole and numbered the way `04_snapshot-format.md` numbers a body line. Body
+line 136, with the one space it carries before its marker:
+
+```text
+    136:  - *BREAKING* `POST /service_dependencies/associate` was changed from 204 to 200 for successful changes.
+```
+
+Every row citing it quotes this:
+
+```text
+- *BREAKING* `POST /service_dependencies/associate` was changed from 204 to 200 for successful changes.
+```
+
+## The change span
+
+`change` takes **one row**, on the **first line of the unit** — the unit `02_segmentation.md` cuts,
+a leaf item or a paragraph — whose text is not empty after the **cut**. The cut is made on the
+quote. On an item's own first line, an `item_start` line, it takes off what the `item_start`
+pattern of `04_snapshot-format.md` matches: the indent, the marker, and the space or tab after it.
+On any other line of a unit, `plain` or `continuation`, it takes off nothing. What is left is
+trimmed of spaces and tabs at both ends, and that is the value. Nothing else is taken off: a closing
+full stop stays, a code span keeps its backticks, and a vendor's mark stays where the vendor put
+it. So the value is a substring of its quote by construction, and always a substring of one line.
+
+Body line 136 above gives `change` the value
+
+```text
+*BREAKING* `POST /service_dependencies/associate` was changed from 204 to 200 for successful changes.
+```
+
+and an invented item of three lines gives it one row, on its first:
+
+```text
+      7: - Storage API now signs every response.
+      8:   Verify each signature with the published key.
+      9:   Unsigned responses end on 2026-09-01.
+```
+
+`change` reads `Storage API now signs every response.`, line 7, quote `- Storage API now signs every
+response.`. Lines 8 and 9 are cited only where another field finds its value on them — here
+`required_action` on line 8 and `sunset_date` on line 9, by **The other copied spans** — and a line
+of the unit that no row cites is listed under `Unmapped` like any other, where the warnings of
+`05_checks.md` read it for a date or a listed phrase. A unit whose every line is empty after the cut
+has nothing to give `change`, and it states no change: `02_segmentation.md` says so of an item whose
+text after the marker is empty.
+
+**A leaf whose verb stands on its parent.** The unit is the leaf, so `change` is the leaf's own line
+and the verb is lost to it. Body lines 14 and 15 of the PagerDuty snapshot:
+
+```text
+     14: - Added Early-Access endpoint for audit trail records
+     15:    - `GET /services/{id}/audit/records`
+```
+
+Line 14 is a parent and line 15 its leaf, so the ticket is line 15 and `change` reads
+`` `GET /services/{id}/audit/records` `` — the code span and nothing else. The `ancestor` column
+keeps `change` inside the ticket's range, so line 14 is cited only by a field that column allows,
+and is listed under `Unmapped` when none of them finds a value on it.
+
+**A limit, stated rather than solved: a change stated only on a parent line gives no ticket.** Body
+lines 21 to 23 of the PagerDuty snapshot:
+
+```text
+     21: ### 2020-08-27
+     22: - Documented [Events V2 integration](https://developer.pagerduty.com/docs/events-api-v2/overview/) type on `/services/{id}/integrations` endpoints.
+     23:     - Note: This existed previously and was missing from this documentation.
+```
+
+Line 22 is a parent, because its extent holds the `item_start` of line 23, and a parent is never a
+change: the section **Leaf items and parents** of `02_segmentation.md`. Line 23, its one leaf, is a
+note and states no change. So the entry gives no ticket at all, and lines 21, 22 and 23 are all
+listed under `Unmapped`. Nothing in this file changes that; what a parent with no changing leaf is
+belongs to `02_segmentation.md`, and that file does not settle it.
+
+## What an affected surface is
+
+An `affected_surface` value is one of **four shapes**, and nothing that is not one of them is an
+affected surface — a noun phrase such as "Notification Subscription endpoints" or "webhooks v2" is
+none, however plainly it names a part of an API.
+
+- **(i) a code span**: a backtick, what follows it up to the next backtick, and that backtick. The
+  value keeps both backticks;
+- **(ii) a path**: a token that begins with `/`;
+- **(iii) a method and a path**: one of the upper-case HTTP methods `GET`, `HEAD`, `POST`, `PUT`,
+  `DELETE`, `CONNECT`, `OPTIONS`, `TRACE` or `PATCH`, one space, and a token that begins with `/`;
+- **(iv) a named thing**: a token directly followed by one space and a token that is one of the
+  words `header`, `parameter`, `field` or `method` — compared in lower case, singular, exactly. The
+  value is the first token alone.
+
+A **token** is a run of characters with no space in it, and it ends before any run of `.`, `,`,
+`;`, `:` and `)` at its end: `Removed /v1/legacy.` gives `/v1/legacy`.
+
+**The lines read** are the unit's own lines, in order, then each ancestor `item_start` line of its
+range, the nearest first. A heading is never read for this field. Each line is read after the cut
+of **The change span**, so a list marker is never a token.
+
+**The scan** runs over one line left to right, the way `03_breaking-terms.md` scans a quote for a
+phrase. At each position it tries the four shapes — a code span at any character, the other three
+only at the start of a token, that is at the start of the text or after a space — and keeps the
+**longest** that stands there; two of one length are the same text. It then goes on after the last
+character of what it kept, so a kept span is never read again: the `/v1/widgets` inside
+`GET /v1/widgets` is no second row. Where no shape stands it moves on one character.
+
+Every span the scan keeps is one row. A span kept more than once — on two lines, or twice on one —
+is one row, cited where it first stands in the input, and the rows stand in the order `rules.md`
+gives rows of one field.
+
+```text
+     27: - Clarified Notification Subscription endpoints current under the Early Access.
+     34: - Added documentation on `config` and `headers` options for webhooks v2.
+     58: - Clarified Content-Type header for all endpoints.
+```
+
+Line 27 gives nothing, and the field reads the sentinel. Line 34 gives two rows, `` `config` `` and
+`` `headers` ``, by shape (i), and never `webhooks v2`. Line 58 gives `Content-Type` by shape (iv).
+The invented line `GET /v1/widgets now requires the tenant parameter.` gives `GET /v1/widgets` by
+shape (iii) and `tenant` by shape (iv). The ticket on body line 15 above takes its code span from
+line 15 and nothing from line 14, whose "endpoint" is none of the four words.
+
+**The cost, stated.** Shape (iv) reads a word's position and not its meaning, so "Added a new
+header" gives `new`. That row is wrong the same way on every run, which is what this section is
+for: a rule two runs can follow without choosing, and a cost anyone can see.
+
+## The other copied spans
+
+A **sentence** is read on one line, after the cut of **The change span**. The line is cut after
+every `.`, `;` or `:` that a space follows, and each piece, trimmed of spaces and tabs, is one
+sentence with its closing mark kept; the last runs to the end of the line. A sentence never runs
+across two lines. These three fields read the unit's own lines and no other, because the `ancestor`
+column allows none of them an ancestor; every sentence that gives a value is one row, in the order
+the sentences stand.
+
+`required_action` is a whole sentence that tells the reader to do something: `- Send tenant on every
+call.` gives `Send tenant on every call.`, full stop kept. Which sentence states an action is a
+reading, and **What this file does not hold yet** names it as one.
+
+`effective_date` and `sunset_date` read only a sentence that holds a **temporal expression**: a span
+the `date` pattern of the `warn-patterns` table in `05_checks.md` matches, or words that place the
+change in time — "next quarter", "in 30 days", "Q1 2027", "starting with v3". Where the sentence
+holds exactly one span the `date` pattern matches, the value is that span; otherwise it is the whole
+sentence, as written. `now`, `immediately` and words like them are never a temporal expression: they
+place nothing in time that the entry's own date does not. Which of the two fields a sentence fills
+is the tying test, stated with the table below.
+
+## The date decision table — translator prose, not a strict table
+
+`entry_date` reads the ancestor headings of the unit's range, the nearest first — the chain
+`02_segmentation.md` defines under **Ancestor lines** — and stops at the first heading holding a
+span the `date` pattern of `warn-patterns` matches. Its value is the first such span of that
+heading, left to right, and its quote is that heading's line, as **What a quote is** states. A
+heading holding no such span is not dated, whatever else it holds: `## 27 August 2020` is not a
+dated heading, and neither is a version heading, `## v1.26 API changes`. `entry_date` reads a
+heading and nothing else, so a date inside an item is never an `entry_date`, and a heading's date is
+never an `effective_date` or a `sunset_date` (FR-15).
+
+Body line 13 of the PagerDuty snapshot, `### 2020-08-28`, is the dated heading of lines 14 and 15:
+the ticket on line 15 gives `entry_date` the value `2020-08-28`, line 13, quote `### 2020-08-28`.
+
+`effective_date` and `sunset_date` read the unit's own sentences by **The other copied spans**, and
+the **tying test** says which of the two a sentence fills (FR-16). A sentence whose verb says the
+change begins, applies or is required fills `effective_date`; one whose verb says old behaviour ends
+— stops working, is removed, is shut off — fills `sunset_date`. "Deprecated" says neither, so a
+sentence saying only that a thing is deprecated on a date fills neither field. One sentence fills
+both only when it says both, and then both rows carry the same value and the same quote. **The
+tying test is a reading of what a verb says, and it is the one place in this table where two runs
+may still differ.**
+
+The table below is illustration, and no tool reads it: it carries no marker and the catalogue does
+not name it. An example is its lines top to bottom, joined by ` / `; a value is what the row reads.
+
+| case | example | entry_date | effective_date | sunset_date |
+| --- | --- | --- | --- | --- |
+| a dated heading | `## 2026-04-02` / `- Removed the sort parameter.` | `2026-04-02` | not in source | not in source |
+| no dated heading | `## Removals` / `- Removed the sort parameter.` | not in source | not in source | not in source |
+| a version heading with no date | `## v1.26 API changes` / `- Added the sort parameter.` | not in source | not in source | not in source |
+| a version heading holding a date | `### 2026-04-02_1.20.6` / `- Added the sort parameter.` | `2026-04-02` | not in source | not in source |
+| a date in the item, no dated heading | `## Removals` / `- Removed on 2026-07-01.` | not in source | not in source | `2026-07-01` |
+| a date in the item and a dated heading | `## 2026-04-02` / `- Removed on 2026-07-01.` | `2026-04-02` | not in source | `2026-07-01` |
+| several dates in one heading | `## 2026-04-02 (revised 2026-04-09)` / `- Added the sort parameter.` | `2026-04-02` | not in source | not in source |
+| nested headings, one dated | `## 2026-04-02` / `### Fixed` / `- Fixed the sort parameter.` | `2026-04-02` | not in source | not in source |
+| nested headings, both dated | `## 2026-04-02` / `### 2026-04-09 hotfix` / `- Fixed the sort parameter.` | `2026-04-09` | not in source | not in source |
+| a relative expression | `- Starting next quarter the field is required.` | not in source | `Starting next quarter the field is required.` | not in source |
+| a count of time | `- In 30 days the field is required.` | not in source | `In 30 days the field is required.` | not in source |
+| a named period | `- From Q1 2027 the field is required.` | not in source | `From Q1 2027 the field is required.` | not in source |
+| a version from which | `- Starting with v3 the field is required.` | not in source | `Starting with v3 the field is required.` | not in source |
+| a date in the sentence | `- From 2026-07-01 the field is required.` | not in source | `2026-07-01` | not in source |
+| deprecated on a date, alone | `- Deprecated on 2026-06-01.` | not in source | not in source | not in source |
+| one date tied to both | `- On 2026-07-01 the new form becomes required and the old one stops working.` | not in source | `2026-07-01` | `2026-07-01` |
+| now | `- GET /v1/widgets now requires the tenant parameter.` | not in source | not in source | not in source |
+
+Under several nested headings the nearest dated one decides, so a hotfix heading's date wins over
+the release heading above it; under one heading holding several dates, the first of them does. A
+relative, vague or version-bound expression is copied as written and never resolved or computed:
+the value is the whole sentence because the sentence holds no span the `date` pattern matches.
 
 ## The constants
 
@@ -449,9 +656,9 @@ The snapshot's name is written as a plain bare name. FR-5 leaves the exact form 
 in angle brackets for the same reason `04_snapshot-format.md` writes four of its header values that
 way: its form is settled where it is produced and checked, not here.
 
-**A tickets file.** Two changes, one of them spanning two lines, one field with two values, two
-ancestor lines cited by both tickets, the sentinel in both, and an `Unmapped` list holding one line
-and one range:
+**A tickets file.** Two changes, one of them spanning two lines and giving `change` one row on its
+first; `affected_surface` with two values in both tickets; two ancestor lines cited by both
+tickets, the sentinel in both, and an `Unmapped` list holding one line and one range:
 
 ```text
 snapshot: example-com-changelog.txt
@@ -464,25 +671,25 @@ line_numbers: snapshot
 
 | field | value | line | quote |
 | --- | --- | --- | --- |
-| change | GET /v1/widgets now requires the tenant parameter | 7 | GET /v1/widgets now requires the tenant parameter. |
-| change | The old form stops working on 2026-07-01 | 8 | The old form stops working on 2026-07-01. |
-| affected_surface | GET /v1/widgets | 7 | GET /v1/widgets now requires the tenant parameter. |
-| breaking | yes | 5 | Breaking changes |
-| entry_date | 2026-04-02 | 3 | 2026-04-02 |
+| change | GET /v1/widgets now requires the tenant parameter. | 7 | - GET /v1/widgets now requires the tenant parameter. |
+| affected_surface | GET /v1/widgets | 7 | - GET /v1/widgets now requires the tenant parameter. |
+| affected_surface | tenant | 7 | - GET /v1/widgets now requires the tenant parameter. |
+| breaking | yes | 5 | ### Breaking changes |
+| entry_date | 2026-04-02 | 3 | ## 2026-04-02 |
 | effective_date | not in source |  |  |
-| sunset_date | 2026-07-01 | 8 | The old form stops working on 2026-07-01. |
-| required_action | Send tenant on every call | 8 | Send tenant on every call. |
+| sunset_date | 2026-07-01 | 8 | The old form stops working on 2026-07-01. Send tenant on every call. |
+| required_action | Send tenant on every call. | 8 | The old form stops working on 2026-07-01. Send tenant on every call. |
 | source | https://example.com/changelog example-com-changelog.txt | 7-8 |  |
 
 ## Ticket 2
 
 | field | value | line | quote |
 | --- | --- | --- | --- |
-| change | The sort parameter of GET /v1/gadgets is removed | 9 | The sort parameter of GET /v1/gadgets is removed. |
-| affected_surface | sort | 9 | The sort parameter of GET /v1/gadgets is removed. |
-| affected_surface | GET /v1/gadgets | 9 | The sort parameter of GET /v1/gadgets is removed. |
-| breaking | yes | 5 | Breaking changes |
-| entry_date | 2026-04-02 | 3 | 2026-04-02 |
+| change | The sort parameter of GET /v1/gadgets is removed. | 9 | - The sort parameter of GET /v1/gadgets is removed. |
+| affected_surface | sort | 9 | - The sort parameter of GET /v1/gadgets is removed. |
+| affected_surface | GET /v1/gadgets | 9 | - The sort parameter of GET /v1/gadgets is removed. |
+| breaking | yes | 5 | ### Breaking changes |
+| entry_date | 2026-04-02 | 3 | ## 2026-04-02 |
 | effective_date | not in source |  |  |
 | sunset_date | not in source |  |  |
 | required_action | not in source |  |  |
@@ -547,7 +754,8 @@ line_numbers: none
 
 | field | value | line | quote |
 | --- | --- | --- | --- |
-| change | The sort parameter of GET /v1/gadgets is removed | unnumbered | The sort parameter of GET /v1/gadgets is removed. |
+| change | The sort parameter of GET /v1/gadgets is removed. | unnumbered | The sort parameter of GET /v1/gadgets is removed. |
+| affected_surface | sort | unnumbered | The sort parameter of GET /v1/gadgets is removed. |
 | affected_surface | GET /v1/gadgets | unnumbered | The sort parameter of GET /v1/gadgets is removed. |
 | breaking | not in source |  |  |
 | entry_date | not in source |  |  |
@@ -564,12 +772,12 @@ line_numbers: none
 
 ## What this file does not hold yet
 
-Two rules that belong here are not written, and their absence is a decision rather than an
-oversight. Which verbatim span of a long entry `change` takes (FR-12), and the date decision table
-FR-15 and FR-16 need — no dated heading, a version heading with and without a date, a date inside
-the item, several dates, nested headings. Both are translator prose rather than strict tables, and
-Story 5.1 adds them to this file, after the translator has been run against real changelogs rather
-than before.
+Two readings are left to the translator, and each is named where it stands rather than settled by
+a list nobody has needed yet. The **tying test** of the date decision table says a sentence's time
+belongs to the change taking effect or to old behaviour ending by what its verb says, and no list of
+verbs is written; which sentence states an action for `required_action` is read the same way. Two
+runs may differ on either, and on nothing else of the field rules above. A list is written if a run
+shows that one is needed, and not before.
 
 Both neighbours this file points at are written: `03_breaking-terms.md`, the closed list of phrases
 that fill `breaking` and the value each one maps to, and `05_checks.md`, where every rule above has

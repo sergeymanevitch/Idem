@@ -30,8 +30,9 @@ there is nowhere else to read them from; the citation form a step uses to name a
 place every citation of an **ambiguous** heading is pinned to, because a heading text standing in
 two reference files can otherwise be cited of the wrong one and resolve; the column a value is read
 from, asserted by name rather than taken by position; the four requirements the prohibitions must
-cover and the one the self-check must cite; the word that marks a draft and the epic that finishes
-one; and the short plain words Q20 exempts from the forbidden-value scan. Every phrase, reason,
+cover and the one the self-check must cite; the word that marks a draft and the words that say
+what it still leaves open; the sections of the field rules step 3 has to cite; and the short plain
+words Q20 exempts from the forbidden-value scan. Every phrase, reason,
 constant, field name and pattern is read from the contract through `contract.load()`, so a row
 renamed by decision is not typed here as well.
 
@@ -122,9 +123,20 @@ TABLE_ROW = re.compile(r"^[ \t]*[|]")
 #: One sentence, cut at a full stop, a question mark, a semicolon or a colon followed by space.
 SENTENCE = re.compile(r"(?<=[.!?;:])\s+")
 
-#: What marks a draft, and the epic that finishes one.
+#: What marks a draft, and what the notice says of the things it names. The notice carries no
+#: address of the plan: neither file names an epic, a story or a record of the workspace.
 DRAFT = "draft"
-EPIC = "Epic 5"
+OPEN = "not settled"
+ADDRESS = re.compile(r"Epic [0-9]|Story [0-9]|comp_[01][0-9]")
+#: The field rules, each a section of the file that owns it, every one of which step 3 cites.
+FIELD_RULES = [
+    ("What a quote is", "01_schema.md"),
+    ("The change span", "01_schema.md"),
+    ("What an affected surface is", "01_schema.md"),
+    ("The other copied spans", "01_schema.md"),
+    ("The date decision table \u2014 translator prose, not a strict table", "01_schema.md"),
+    ("Scoped and conditional wording", "03_breaking-terms.md"),
+]
 #: The heading the prohibitions stand under, and how many paragraphs stand under it. The count is
 #: pinned because a prohibition deleted while its tag stays somewhere else would otherwise survive.
 PROHIBITIONS = "## What is never done"
@@ -572,6 +584,15 @@ class TestEveryCitationResolves(unittest.TestCase):
         self.assertTrue(checked)
 
 
+class TestTheFieldRulesAreCited(unittest.TestCase):
+    def test_step_3_cites_every_section_of_the_field_rules_by_heading_and_file(self):
+        """The procedure points and holds nothing, so a rule that is written and not pointed at is
+        a rule the translator never reads. The mutation: a citation dropped from step 3."""
+        found = citations_in(steps()[3][1])
+        for heading, cited in FIELD_RULES:
+            self.assertIn((heading, cited), found, heading)
+
+
 class TestNeitherFileHoldsAContractValue(unittest.TestCase):
     """The grep the story asks for, run as a test and over both files at once: a value `reference/`
     owns must be found under `reference/` and nowhere else. Every value is read from the contract,
@@ -617,14 +638,21 @@ class TestTheDraftIsMarked(unittest.TestCase):
         body = text(RULES)
         first_step = body.index("## Step 1 ")
         self.assertIn(DRAFT, body[:first_step].lower())
-        self.assertIn(EPIC, body[:first_step])
 
-    def test_the_notice_says_which_epic_finishes_it_and_after_what(self):
-        """The mutation: a notice that says it is a draft and never says what would end that."""
+    def test_the_notice_says_what_is_not_settled_and_what_would_settle_it(self):
+        """The mutation: a notice that says it is a draft and never says what is still open, or
+        what would end that."""
         body = text(RULES)
-        notice = body[:body.index("## Step 1 ")]
-        self.assertIn(EPIC, notice)
+        notice = re.sub(r"\s+", " ", body[:body.index("## Step 1 ")])
+        self.assertIn(OPEN, notice)
         self.assertIn("changelog", notice.lower())
+
+    def test_neither_file_names_an_epic_a_story_or_a_record(self):
+        """What the reader of an upload set meets is the procedure, not the plan that built it: a
+        notice saying which epic finishes it is an address that goes stale the day the plan
+        moves."""
+        for name in both():
+            self.assertIsNone(ADDRESS.search(text(name)), name)
 
     def test_identity_is_not_marked_a_draft(self):
         """What Idem is does not change when the procedure is finished, so it carries no notice and

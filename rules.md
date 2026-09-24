@@ -12,20 +12,20 @@ section named beside it is the rule, and the section is what is read.
 
 ## This draft is unfinished
 
-This procedure was written before Idem had been run against a single real changelog, and in a few
-places it leans on nothing written down anywhere. Which span of a long entry `change` takes, and
-which dated heading a date is read from, are both named as missing by the section **What this file
-does not hold yet** of `01_schema.md`. How wide a quote is cut is settled nowhere either, and that
-is not a small gap: a wider quote can carry a listed phrase into a row that a narrower quote would
-have left unfilled, and two honest runs would then disagree about that row. How many rows one field
-is given, where a unit states more than one thing, is settled nowhere. Whether a run of uncited
-lines is written as one entry apiece or as a single run is a choice of form that the section
-**`Unmapped`** of `01_schema.md` allows either way. And what is to be done with several inputs in
-one message is answered in step 1 by this draft alone and by no file at all.
+This procedure was run once on a real changelog before the field rules it points at were written,
+and those rules have not yet been run against a real changelog; a few things it depends on are still
+not settled. Two readings are left to the translator: whether a sentence's time belongs to the
+change taking effect or to old behaviour ending, and which sentence states an action. The section
+**What this file does not hold yet** of `01_schema.md` names both, and two honest runs may differ on
+either. Whether a run of uncited lines is written as one entry apiece or as a single run is a choice
+of form that the section **`Unmapped`** of `01_schema.md` allows either way. What is to be done with
+several inputs in one message is answered in step 1 by this draft alone and by no file at all. And
+three parts of `02_segmentation.md` are marked as draft where they stand: the test that tells a
+changelog from a page that is not one, one entry written as two paragraphs, and the two fence cases.
 
-**Epic 5 finishes all of it**, after the translator has been run on real changelogs and the cold run
-of Story 2.3 has recorded what was actually done with each of these. This notice is written for the
-person building Idem. It is never part of an answer.
+None of these is settled until more runs on real changelogs have recorded what was actually done
+with each of them. This notice is written for the person building Idem. It is never part of an
+answer.
 
 ## Step 1 — Read the input
 
@@ -118,6 +118,15 @@ Each unit that states a change is one ticket, and nothing else in the input is. 
 every field, in the row order of the `fields` table — the section **The eight fields** of
 `01_schema.md` — and give the fields nothing the input did not state.
 
+Which line each field reads, and which span of that line becomes its value, is written once for each
+field, and it is read there and nowhere else. What every quote is comes from the section **What a
+quote is** of `01_schema.md`. The one row `change` takes comes from the section **The change span**
+of `01_schema.md`. What an affected surface is, and how it is found, comes from the section **What
+an affected surface is** of `01_schema.md`. The sentences the fields for an action and for a date
+take come from the section **The other copied spans** of `01_schema.md`, and which date each of the
+three date fields takes comes from the section **The date decision table — translator prose, not a
+strict table** of `01_schema.md` (FR-12, FR-15, FR-16).
+
 A field the input does not state takes the other of the two row states, as the section **The two
 states of a row** of `01_schema.md` writes it. There is no third state, and a filler of your own
 invention is not one of the two.
@@ -136,7 +145,9 @@ under no reading of it (FR-13).
 
 `breaking` is filled by reading its own quote against the closed list, by the section **How a quote
 is read** of `03_breaking-terms.md`, and by nothing else — never by what the sentence obviously
-means to a person reading the page (FR-14).
+means to a person reading the page (FR-14). Which line it reads first, what a heading above the unit
+gives it, and what scoped wording yields, are the section **Scoped and conditional wording** of
+`03_breaking-terms.md`.
 
 The last row of a ticket has a shape of its own, which is the section **The `source` row** of
 `01_schema.md`.
@@ -164,7 +175,8 @@ this block, which is why step 2 sends such a file here directly.
 
 Before anything at all is written out, read every row again: each quote against the line it cites,
 and each value against its own quote (FR-27). This is a step and not advice, and no answer is given
-until it has been done.
+until it has been done. A quote is read again as the section **What a quote is** of `01_schema.md`
+says one is taken, and a value as the section of its own field says it is taken.
 
 Read every range again against the section **What the validator checks of this, and what nothing
 checks** of `02_segmentation.md`. What that section lists as checked by nothing is checked here or

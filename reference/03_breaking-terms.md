@@ -108,7 +108,7 @@ run, and never lets one reading stand in for the other.
 ## Worked
 
 Illustration, not contract — the table below is unmarked and no tool reads it. It is the routine
-above applied to ten quotes.
+above applied to twelve quotes.
 
 | quote | what the scan keeps | the field reads |
 | --- | --- | --- |
@@ -122,10 +122,16 @@ above applied to ten quotes.
 | an unbreaking change | nothing | not in source |
 | X is a breaking change; Y is non-breaking. | breaking change, non-breaking | neither value: a failure |
 | The old form will stop working. | nothing | not in source |
+| This is a breaking change for v1 clients only. | breaking change | yes |
+| - Renamed the field; not a breaking change. | not a breaking change | no |
 
-The last row is FR-14's own example. "will stop working" is exactly the sentence a reader would call
-breaking, and it is not on the list, so the field reads the sentinel. That is the list working, not
-failing: `breaking` is never the translator's opinion of a sentence.
+The tenth row is FR-14's own example. "will stop working" is exactly the sentence a reader would
+call breaking, and it is not on the list, so the field reads the sentinel. That is the list working,
+not failing: `breaking` is never the translator's opinion of a sentence. The ninth row, a line
+whose phrases disagree, is what the two checks read of a row that quotes it whole, and a translator
+never writes one: the narrowing of **Scoped and conditional wording** below quotes
+`X is a breaking change;` and gives `yes`. The last two rows are the two cases of that section: a
+scope that changes nothing, and a unit line that decides before a heading would.
 
 ## What this list does not decide
 
@@ -151,18 +157,48 @@ guessing:
   file says nothing about what a validator does when two of them disagree. Neither does
   `05_checks.md`: it names that as a limit with no check, because each row is true of its own quote
   and the honest answer would be a rule about segmentation.
+- **A vendor's own mark is not a phrase.** `*BREAKING*` holds "breaking" and not "breaking change",
+  so a line marked that way and saying nothing more reads the sentinel. Body line 136 of the
+  PagerDuty snapshot shipped in `00_fetch/00_snapshots/` is such a line, and every row citing it
+  quotes `` - *BREAKING* `POST /service_dependencies/associate` was changed from 204 to 200 for
+  successful changes. ``, which keeps no phrase. The list is left as it is: widening it is a
+  decision about this table, and none has been taken.
 - **"is not deprecated" and its like are not this list's business.** They belong to the substring
   rule of a `copied` field (FR-30), which reads a value against its own quote and has nothing to do
   with `breaking`.
 
-## What Epic 5 adds
+## Scoped and conditional wording
 
-Scoped and conditional wording — "a breaking change for users of the beta endpoint", "this is a
-breaking change if you rely on the old ordering" — is what FR-14 means by stating what scoped or
-conditional wording yields. It is prose for the translator, written to this file by Story 5.1 after
-the translator has been run against real changelogs, and it leaves the table above unchanged: a
-phrase is added to the table only by a decision, never by a story that finds a sentence it would
-like to catch.
+**Scoped or conditional wording yields the value of the phrase it holds.** "This is a breaking change
+for v1 clients only" and "this is a breaking change if you rely on the old ordering" each keep
+"breaking change", and each reads `yes` by the routine above; nothing in the routine reads a scope or
+a condition. The scope is the quote's to carry, and it does, because a quote is the whole line — the
+section **What a quote is** of `01_schema.md`. A phrase is added to the table only by a decision,
+never because a sentence was found that someone would like to catch.
+
+**Which line the field cites.** `breaking` gives one row. It reads the unit's own lines first, in
+order, and cites the first of them whose quote keeps a phrase. Only when none of them keeps one does
+it read the ancestor headings of the unit's range, the nearest first, and cite the first of those
+that keeps one. The unit speaks for itself before a heading speaks for it: under `## Breaking
+changes`, the item `- Renamed the field; not a breaking change.` reads `no`, from its own line. When
+no line either reading reaches keeps a phrase — "will stop working", a vendor's `*BREAKING*` mark,
+any wording this list does not hold — the field is one row reading the sentinel, as the tenth row of
+**Worked** shows.
+
+**A "Breaking changes" heading is cited as an ancestor.** The `ancestor` cell of `breaking` in the
+`fields` table of `01_schema.md` allows it, and a heading above the unit's range with no heading of
+the same or a higher level between them is an ancestor by the section **Ancestor lines** of
+`02_segmentation.md`. So an item keeping no phrase, one heading level or two below `## Breaking
+changes`, reads `yes`; its row cites the heading's line and quotes `## Breaking changes`, hashes
+kept. An ancestor `item_start` line is not read for this field: a parent item that says a change
+breaks is a sentence about its leaves that this rule does not reach.
+
+**A line whose phrases disagree.** There the row does not quote the whole line. It quotes the first
+sentence of the line, left to right, that keeps a phrase — a sentence as the section **The other
+copied spans** of `01_schema.md` cuts one — and the field reads what that sentence gives: `X is a
+breaking change. Y is non-breaking.` gives `yes`, quote `X is a breaking change.`. This is the one
+narrowing of a quote that `01_schema.md` allows. A sentence whose own phrases disagree has nothing
+narrower in it, and the field reads the sentinel.
 
 ## What reads this table
 
@@ -180,5 +216,5 @@ from it can be true of it. The routine is one scan and the two checks read it on
 disagreement is not `breaking_value`'s, because a quote supporting neither value gives it nothing to
 compare.
 
-The **warning** of FR-37, which reads this list the other way, is not built: it belongs to the
-coverage phase, and that phase is registered with nothing behind it.
+The **warning** of FR-37 reads this list the other way, as **How a quote is read** says: it is
+`warn_breaking` of the coverage phase, and neither check above takes part in it.
