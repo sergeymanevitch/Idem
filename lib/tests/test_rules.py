@@ -674,6 +674,17 @@ class TestTheDraftIsMarked(unittest.TestCase):
         self.assertIn(OPEN, notice)
         self.assertIn("changelog", notice.lower())
 
+    def test_the_notice_says_the_field_rules_have_been_run_on_a_real_changelog(self):
+        """Six recorded runs after the field rules were written - two of them translations of a
+        real changelog body - made the notice's first claim false: it said the rules had not yet
+        been run against one. The mutation: the old claim back. The phrase pinned is the claim
+        itself; what the runs were is prose the record outside the repository holds."""
+        body = text(RULES)
+        notice = re.sub(r"\s+", " ", body[:body.index("## Step 1 ")]).lower()
+        self.assertIn("have been run on a real changelog", notice)
+        self.assertNotIn("not yet been run", notice)
+        self.assertNotIn("before the field rules", notice)
+
     def test_the_notice_no_longer_names_the_segmentation_file_as_unfinished(self):
         """The three parts of `02_segmentation.md` the notice once named as draft - the test for
         a changelog, one entry as two paragraphs, the two fence cases - are settled there, and a

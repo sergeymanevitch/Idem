@@ -12,9 +12,11 @@ section named beside it is the rule, and the section is what is read.
 
 ## This draft is unfinished
 
-This procedure was run once on a real changelog before the field rules it points at were written,
-and those rules have not yet been run against a real changelog; a few things it depends on are still
-not settled. Two readings are left to the translator: whether a sentence's time belongs to the
+This procedure and the field rules it points at have been run on a real changelog: two translations
+of one vendor's changelog body — one from that body pasted as text with no line numbers, one inside
+a body line range of a snapshot built by hand from the same body twice — and a refusal for each of
+the four reasons and the zero-ticket shape besides, every answer passing the validator in the mode
+its header selects. A few things it depends on are still not settled. Two readings are left to the translator: whether a sentence's time belongs to the
 change taking effect or to old behaviour ending, and which sentence states an action. The section
 **What this file does not hold yet** of `01_schema.md` names both, and two honest runs may differ on
 either. Whether a run of uncited lines is written as one entry apiece or as a single run is a choice
