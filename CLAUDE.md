@@ -88,12 +88,13 @@ run once from a fresh clone before it was written down, the claude.ai Project se
 recorded run, the limits with their sources, and one line for each thing not built.
 `.claude/` is built: `settings.json` registers one POSIX `sh` wrapper, `.claude/hooks/idem-hook.sh`,
 for three events of Claude Code — `PreToolUse` denies the file tools any path under
-`00_fetch/00_snapshots/` and any saved input text `*.input.txt` under `01_translate/00_tickets/`;
+`00_fetch/00_snapshots/` and any saved input text `*.input.txt` under `01_translate/00_tickets/`,
+and denies a `Bash` command that names either and looks like a write (a guess from its text);
 `PostToolUse` runs `02_validate/validate.py` on a `*.tickets.md` written directly in that folder
 and hands its lines back; `Stop` runs it over every such file and a failing one sends the turn back,
 once per turn, with its lines. The wrapper exits 0 or 2 and holds no check.
-`.claude/hooks/test_idem_hook.py` is its negative test; no hook has fired in a Claude Code session
-yet.
+`.claude/hooks/test_idem_hook.py` is its negative test; the file-tool deny, `PostToolUse` and
+`Stop` and the `Bash` deny all fired live in Claude Code sessions on 2026-09-24.
 Nothing else below is built — each folder's `CONTEXT.md` says
 what it will hold.
 

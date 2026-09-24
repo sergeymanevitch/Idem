@@ -4,7 +4,10 @@
 # Claude Code writes on stdin:
 #
 #   PreToolUse   a file tool about to write: denied under 00_fetch/00_snapshots/, and for a
-#                saved input text (*.input.txt) under 01_translate/00_tickets/.
+#                saved input text (*.input.txt) under 01_translate/00_tickets/. A Bash command
+#                whose text names either of those and holds a mark of writing (a redirect, or
+#                tee, cp, mv, rm, sed -i and the like) is denied too; it is a guess from the
+#                text, and a false deny costs one Read tool call.
 #   PostToolUse  a file tool that wrote: a *.tickets.md directly under 01_translate/00_tickets/
 #                is run through 02_validate/validate.py and its lines are handed back.
 #   Stop         every *.tickets.md directly under 01_translate/00_tickets/ is run through the
@@ -22,6 +25,11 @@
 # The JSON is read with sed and no interpreter, so the deny holds where no Python is installed. A
 # path holding a quote or a backslash escape is not read as JSON would read it, so on PreToolUse
 # it is denied as not plain.
+#
+# The Bash deny reads the whole tool_input text and not one JSON value, so a quote inside the
+# command hides nothing from it. It cannot see through a variable, a cd, or an interpreter told
+# to open a file: that is the stated limit, and the recorded sha256 of a snapshot is the guard
+# that holds whatever wrote it.
 
 input=$(cat)
 flat=$(printf '%s' "$input" | LC_ALL=C tr -d '\n\r')
@@ -43,6 +51,7 @@ after_key() {
 }
 
 event=$(value hook_event_name "$flat")
+tool=$(value tool_name "$flat")
 tool_input=$(after_key tool_input "$flat")
 # The path is whichever of the two keys comes first after tool_input, so a path named later, in a
 # tool_response, is never read in place of the tool's own.
@@ -80,6 +89,23 @@ plain() {
     case $1 in
         *//* | */./* | */../* | */. | */.. | *\\*) return 1 ;;
     esac
+    return 0
+}
+
+# writing_shell TEXT - true when TEXT names the snapshots folder or a saved input text and also
+# holds a mark of writing: a redirect, or one of the writing tools as a word. sed -E, which
+# BSD and GNU sed both take; the text is the tool_input as a whole, not one JSON value.
+writing_shell() {
+    names=$(printf '%s' "$1" | LC_ALL=C sed -E -n \
+        '/00_fetch\/00_snapshots|00_snapshots\/|\.input\.txt/p')
+    if [ -z "$names" ]; then
+        return 1
+    fi
+    marks=$(printf '%s' "$1" | LC_ALL=C sed -E -n \
+        '/>|(^|[^A-Za-z0-9_])(tee|cp|mv|rm|ln|dd|install|rsync|truncate|chmod|shred)([^A-Za-z0-9_]|$)|(^|[^A-Za-z0-9_])sed[^|;&]*-[A-Za-z]*i/p')
+    if [ -z "$marks" ]; then
+        return 1
+    fi
     return 0
 }
 
@@ -140,6 +166,13 @@ fi
 
 case $event in
     PreToolUse)
+        if [ "$tool" = Bash ]; then
+            if writing_shell "$tool_input"; then
+                say "denied: this shell command names 00_fetch/00_snapshots/ or a *.input.txt and looks like a write - a snapshot is evidence, written by 00_fetch/fetch.py alone, and an input text is saved by hand; to read one, use the Read tool"
+                exit 2
+            fi
+            exit 0
+        fi
         if [ -z "$path" ]; then
             exit 0
         fi

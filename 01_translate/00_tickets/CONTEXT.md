@@ -13,5 +13,5 @@ A tickets file written from pasted text, whose header reads `line_numbers: none`
 against that text. Save the text by hand as `<stem>.input.txt` beside `<stem>.tickets.md`; the
 hook hands it to the validator as `--input`. The file tools are denied every `*.input.txt` here,
 so the translator cannot write the text its own tickets are held to through them; a shell command
-is not seen. A `.input.txt` beside a file
+that names one and looks like a write is denied too, and one that hides the name is not seen. A `.input.txt` beside a file
 whose header reads `line_numbers: snapshot` is refused by the validator.

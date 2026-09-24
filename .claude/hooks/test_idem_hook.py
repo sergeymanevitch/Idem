@@ -46,6 +46,7 @@ WRAPPER = os.path.join(_HERE, "idem-hook.sh")
 SETTINGS = os.path.join(os.path.dirname(_HERE), "settings.json")
 REGISTERED = "${CLAUDE_PROJECT_DIR}/.claude/hooks/idem-hook.sh"
 MATCHER = "^(Write|Edit|MultiEdit|NotebookEdit)$"
+BASH_MATCHER = "^Bash$"
 TOOLS = ("Write", "Edit", "MultiEdit", "NotebookEdit")
 
 SNAPSHOTS = os.path.join("00_fetch", "00_snapshots")
@@ -207,6 +208,11 @@ def tool_event(event, path, tool="Write", key="file_path"):
                        "tool_input": {key: path, "content": "x"}})
 
 
+def bash_event(command):
+    return json.dumps({"session_id": "s", "hook_event_name": "PreToolUse", "tool_name": "Bash",
+                       "tool_input": {"command": command, "description": "x"}})
+
+
 def stop_event(active=False):
     return json.dumps({"session_id": "s", "hook_event_name": "Stop", "stop_hook_active": active})
 
@@ -342,6 +348,71 @@ class TestPreToolUse(HookCase):
         root = self.make(python=False)
         self.expect(root, tool_event("PreToolUse", root.at(SNAPSHOTS, "x.txt")), 2, lines=1)
         self.expect(root, tool_event("PreToolUse", root.at("README.md")), 0, lines=0)
+
+
+class TestPreToolUseBash(HookCase):
+    """A shell command naming the snapshots folder or a saved input text, with a mark of writing."""
+
+    WRITES = (
+        "printf '2026-09-24\\n' >> 00_fetch/00_snapshots/a.txt",
+        "echo x > /abs/idem/00_fetch/00_snapshots/a.txt",
+        "cat a.txt 2>&1 | tee 00_fetch/00_snapshots/a.txt",
+        "cp a.txt 00_fetch/00_snapshots/a.txt",
+        "mv 00_fetch/00_snapshots/a.txt 00_fetch/00_snapshots/b.txt",
+        "rm 00_fetch/00_snapshots/a.txt",
+        "sed -i 's/a/b/' 00_fetch/00_snapshots/a.txt",
+        "sed -n p x | sed -Ei.bak 's/a/b/' 00_fetch/00_snapshots/a.txt",
+        "cd 00_fetch && truncate -s 0 00_snapshots/a.txt",
+        "chmod +w 00_fetch/00_snapshots/a.txt",
+        "cp paste.txt 01_translate/00_tickets/a.input.txt",
+        "printf x > 01_translate/00_tickets/a.input.txt",
+        'python3 -c "open(\\"x\\")" > 01_translate/00_tickets/a.input.txt',
+    )
+    READS = (
+        "cat 00_fetch/00_snapshots/a.txt",
+        "ls 00_fetch/00_snapshots/",
+        "head -5 00_fetch/00_snapshots/a.txt | wc -l",
+        "python3 02_validate/validate.py --input 01_translate/00_tickets/a.input.txt "
+        "01_translate/00_tickets/a.tickets.md",
+        "python3 02_validate/validate.py 01_translate/00_tickets/a.tickets.md",
+        "sed -n '3,5p' 00_fetch/00_snapshots/a.txt",
+        "grep -c teed 00_fetch/00_snapshots/a.txt",
+        "shasum -a 256 00_fetch/00_snapshots/a.txt",
+        "printf x >> README.md",
+        "cp a b && rm c",
+        "git status --short",
+    )
+
+    def test_a_writing_command_naming_a_guarded_file_is_denied(self):
+        root = self.make()
+        for command in self.WRITES:
+            self.expect(root, bash_event(command), 2, lines=1, contains="Read tool")
+
+    def test_a_reading_command_or_a_write_elsewhere_passes(self):
+        root = self.make()
+        for command in self.READS:
+            self.expect(root, bash_event(command), 0, lines=0)
+
+    def test_a_quote_inside_the_command_hides_nothing(self):
+        root = self.make()
+        self.expect(root, bash_event('printf "%s" "x" >> 00_fetch/00_snapshots/a.txt'), 2,
+                    lines=1)
+
+    def test_the_deny_holds_with_no_interpreter(self):
+        root = self.make(python=False)
+        self.expect(root, bash_event("rm 00_fetch/00_snapshots/a.txt"), 2, lines=1)
+
+    def test_a_bash_event_with_no_command_passes(self):
+        root = self.make()
+        self.expect(root, json.dumps({"hook_event_name": "PreToolUse", "tool_name": "Bash",
+                                      "tool_input": {}}), 0, lines=0)
+
+    def test_the_file_tools_still_read_the_path_and_not_the_command(self):
+        root = self.make()
+        payload = json.dumps({"hook_event_name": "PreToolUse", "tool_name": "Write",
+                              "tool_input": {"file_path": root.at("README.md"),
+                                             "content": "rm 00_fetch/00_snapshots/a.txt"}})
+        self.expect(root, payload, 0, lines=0)
 
 
 class TestPostToolUse(HookCase):
@@ -558,19 +629,18 @@ class TestSettings(unittest.TestCase):
         self.assertEqual(sorted(self.settings["hooks"]), ["PostToolUse", "PreToolUse", "Stop"])
 
     def test_each_event_runs_the_committed_wrapper_in_exec_form(self):
+        expected = {"PreToolUse": [MATCHER, BASH_MATCHER], "PostToolUse": [MATCHER],
+                    "Stop": [None]}
         for event, groups in self.settings["hooks"].items():
-            self.assertEqual(len(groups), 1, event)
-            group = groups[0]
-            if event == "Stop":
-                self.assertNotIn("matcher", group)
-            else:
-                self.assertEqual(group["matcher"], MATCHER)
-            self.assertEqual(len(group["hooks"]), 1, event)
-            hook = group["hooks"][0]
-            self.assertEqual(hook, {"type": "command", "command": "sh", "args": [REGISTERED]})
-            resolved = hook["args"][0].replace("${CLAUDE_PROJECT_DIR}", IDEM)
-            self.assertEqual(os.path.realpath(resolved), os.path.realpath(WRAPPER))
-            self.assertTrue(os.path.isfile(resolved))
+            self.assertEqual([g.get("matcher") for g in groups], expected[event], event)
+            for group in groups:
+                self.assertEqual(len(group["hooks"]), 1, event)
+                hook = group["hooks"][0]
+                self.assertEqual(hook, {"type": "command", "command": "sh",
+                                        "args": [REGISTERED]})
+                resolved = hook["args"][0].replace("${CLAUDE_PROJECT_DIR}", IDEM)
+                self.assertEqual(os.path.realpath(resolved), os.path.realpath(WRAPPER))
+                self.assertTrue(os.path.isfile(resolved))
 
 
 if __name__ == "__main__":

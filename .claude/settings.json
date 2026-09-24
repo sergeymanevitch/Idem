@@ -10,6 +10,16 @@
             "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/idem-hook.sh"]
           }
         ]
+      },
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/idem-hook.sh"]
+          }
+        ]
       }
     ],
     "PostToolUse": [

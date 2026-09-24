@@ -95,12 +95,14 @@ the answer is
 `01_translate/00_tickets/raw-githubusercontent-com-pagerduty-api-schema-f2c09c0df6b3c4bd9d5df8a9940014785-20260922T032148Z.tickets.md`. No translation has been recorded this way yet, and `rules.md`
 says where it is still a draft.
 
-In Claude Code, `.claude/settings.json` registers three hooks, all through one POSIX `sh` wrapper,
-`.claude/hooks/idem-hook.sh`:
+In Claude Code, `.claude/settings.json` registers hooks on three events, all through one POSIX
+`sh` wrapper, `.claude/hooks/idem-hook.sh`:
 
 - **Before** a `Write`, `Edit`, `MultiEdit` or `NotebookEdit`, a path under
   `00_fetch/00_snapshots/` is denied with one line saying why, and so is any `*.input.txt` under
-  `01_translate/00_tickets/`.
+  `01_translate/00_tickets/`. **Before** a `Bash` command, one whose text names either of those
+  and holds a mark of writing (a `>`, or `tee`, `cp`, `mv`, `rm`, `sed -i` and the like) is
+  denied the same way; the limits below say what that guess misses.
 - **After** one of those tools writes a `*.tickets.md` directly in `01_translate/00_tickets/`, the
   validator of step 3 runs on it, and its failure lines are handed back to Claude. The write is
   not undone.
@@ -118,8 +120,12 @@ warnings included, goes to Claude Code's debug log and Claude never sees it; eve
 written from pasted text prints one such warning. A tickets file written from pasted text, whose
 header reads `line_numbers: none`, is validated against that text only if you save it by hand as
 `<stem>.input.txt` beside `<stem>.tickets.md`; the hook hands it to the validator as `--input`,
-and without it the validator prints its usage line. All three hooks are proved by the negative test
-alone, `.claude/hooks/test_idem_hook.py`; none has fired in a Claude Code session yet.
+and without it the validator prints its usage line. Every hook is held by the negative test,
+`.claude/hooks/test_idem_hook.py`. Three were also seen live in one Claude Code session on
+2026-09-24: the deny on `Edit` against a snapshot, the validator's lines handed back after a
+`Write` of a tickets file, and the turn sent back once and then let go; the `Bash` deny fired in a
+second session the same evening, on `echo … >>` against a snapshot. The deny on `Write`,
+`MultiEdit` and `NotebookEdit` and the `*.input.txt` deny have not fired in a session.
 
 In claude.ai, follow [In a claude.ai Project](#in-a-claudeai-project) below and save the answer
 under the same name.
@@ -211,7 +217,7 @@ The tests are four commands, and "the tests" means all four:
     python3 -m unittest discover -s .claude/hooks -t .claude/hooks
 
 Run on 2026-09-24 from a fresh clone: on 3.9.6 and on 3.14.4 alike, 645 tests OK with 2 skipped,
-452 OK, 134 OK and 40 OK. The second command takes about two minutes. The two skipped tests need
+452 OK, 134 OK and 46 OK. The second command takes about two minutes. The two skipped tests need
 3.11 or later and skip below it. Nobody has run 3.10 to 3.13. The third needs no network: it runs
 `fetch.py` against a stub server on 127.0.0.1. The fourth is the negative test of the hook wrapper:
 it feeds the wrapper hook input in a temporary folder, under `/bin/sh` and under `dash` when it is
@@ -270,8 +276,9 @@ its input and both answers are not in this repository.
 
 ## What is not built
 
-- A hook run in a Claude Code session: the three hooks are built and proved by their negative test,
-  and none has fired in a session yet.
+- A live run of every deny: `PreToolUse` on `Edit` and on `Bash`, `PostToolUse` and `Stop` have
+  fired in Claude Code sessions (see step 2); the file-tool deny on `Write`, `MultiEdit` and
+  `NotebookEdit` and the `*.input.txt` deny are proved by the negative test alone.
 - The examples: `examples.md` is a placeholder, and the script in `03_examples/` that would assemble
   it from validated answers is not written.
 - A shipped tickets file: `01_translate/00_tickets/` is empty, and the first one is yours.
@@ -299,9 +306,12 @@ its input and both answers are not in this repository.
 - **A refusal's header is verified by nothing.** A refusal under `line_numbers: snapshot` names the
   snapshot it refused, and no check reads that name, its digest or its URL, because a refusal is
   paired with nothing (`reference/05_checks.md`, **What each mode skips**).
-- **The hooks guard the file tools, not the shell.** A `Bash` command in Claude Code that writes
-  into `00_fetch/00_snapshots/`, or writes a `*.input.txt` under `01_translate/00_tickets/`, is not
-  seen. A path is compared with the root as text: one that is not absolute, or holds `//`, `/./`,
+- **The hooks guard the file tools, and guess at the shell.** A `Bash` command in Claude Code
+  whose text names `00_fetch/00_snapshots/` or a `*.input.txt` and holds a mark of writing (a `>`,
+  or `tee`, `cp`, `mv`, `rm`, `sed -i` and the like) is denied; one that hides the name in a
+  variable, a `cd` or an interpreter is not seen, and a reading command that also holds `>` is
+  denied wrongly, at the cost of one Read tool call (`.claude/CONTEXT.md`, Limits). The guard that
+  holds whatever wrote a snapshot is its recorded `sha256`. A path is compared with the root as text: one that is not absolute, or holds `//`, `/./`,
   `/../` or a backslash, is denied as not plain, and any part of the path spelled differently from
   what the wrapper compares — the root through a symlink, or any part in another case, such as
   `00_Snapshots`, `x.INPUT.TXT` or `x.TICKETS.md` — is not recognised, so the deny does not fire
