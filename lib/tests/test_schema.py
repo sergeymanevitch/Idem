@@ -204,6 +204,7 @@ DATE_CASES = [
     "a count of time",
     "a named period",
     "a version from which",
+    "a version, no date, ending",
     "a date in the sentence",
     "deprecated on a date, alone",
     "one date tied to both",
@@ -1209,6 +1210,17 @@ class TestTheFieldRulesAreWritten(unittest.TestCase):
         self.assertEqual(1, len(held), body)
         for words in ("version-bound", "temporal expression", '"starting with v3"',
                       "whole sentence"):
+            self.assertIn(words, held[0], words)
+
+    def test_a_version_bound_phrase_is_defined_by_what_it_names(self):
+        """The mutation: the definition dropped, so that "starting from this API version" or "in
+        the next release" is left for each run to read as a time or as none."""
+        body = re.sub(r"\s+", " ", " ".join(section(FIELD_RULES[3])))
+        held = [sentence for sentence in re.split(r"(?<=[.;]) ", body)
+                if "**version-bound phrase**" in sentence]
+        self.assertEqual(1, len(held), body)
+        for words in ("names a version or release", "past or future", "no date",
+                      '"starting from this API version"', '"in the next release"'):
             self.assertIn(words, held[0], words)
 
     def test_the_closing_section_names_what_is_left_and_no_address(self):

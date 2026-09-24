@@ -132,6 +132,8 @@ TWO_PARAGRAPHS = "**One entry written as two paragraphs.**"
 #: evidence, found by their own header, and a quote attributed to the wrong one is an invented fact.
 SIBLING_SNAPSHOT, SIBLING_VENDOR, SIBLING_LINES = "pagerduty", "PagerDuty", (90, 91)
 WRAPPED_SNAPSHOT, WRAPPED_VENDOR, WRAPPED_LINES = "moby", "Docker", (216, 217)
+#: An entry whose item line breaks before its change is said, and the two lines after it.
+BROKEN_LINES = (227, 228, 229)
 #: The folder the shipped snapshots stand in. A snapshot's origin is read from the first row of
 #: the header table, whatever that row is called.
 SNAPSHOTS = os.path.join("00_fetch", "00_snapshots")
@@ -1073,6 +1075,14 @@ class TestTheTestForAChangelog(unittest.TestCase):
         self.assertIn("cost", paragraph.lower())
         self.assertIn(BLOG, paragraph)
 
+    def test_the_two_paragraph_entry_says_what_the_recorded_runs_met_longer_than_one_line(self):
+        """A translation of the Docker snapshot wrote list items continued on indented lines as
+        units of several lines, which made "every unit of the runs so far was one line long" false.
+        The mutation: the old claim back."""
+        paragraph = paragraph_holding(sections(HEADING_2)["Paragraphs"], TWO_PARAGRAPHS)
+        self.assertNotIn("one line long", paragraph)
+        self.assertIn("continued on indented lines", paragraph)
+
     def test_the_two_bullets_of_what_nothing_checks_name_the_checklist_and_the_fence_block(self):
         """What nothing checks names the checklist and the fence block after a leaf, each as a
         bullet of its own, so a reader learns both from the last section."""
@@ -1191,6 +1201,19 @@ class TestTheStatedLimits(unittest.TestCase):
                          classify([lines[number] for number in WRAPPED_LINES]))
         after = paragraph_holding(body, "The ticket for line %d carries" % WRAPPED_LINES[0])
         self.assertIn("that line alone", after)
+
+    def test_an_item_line_that_breaks_before_its_change_is_said_gives_no_ticket(self):
+        """Two runs of the Docker snapshot differed on body lines 227 and 232: one ticketed each
+        item line, the other left it unmapped. The mutation: the sentence that decides it dropped,
+        or its example quoted from the wrong snapshot."""
+        body = self.section(HEADING_3, EXTENT)
+        paragraph = paragraph_holding(body, "breaks before its change is said")
+        self.assertIn("judged as a unit by itself", paragraph)
+        self.assertIn("gives no ticket", paragraph)
+        self.assertIn("`Unmapped`", paragraph)
+        lines = self.quoted_whole(body, WRAPPED_SNAPSHOT, WRAPPED_VENDOR, BROKEN_LINES)
+        self.assertEqual([ITEM_START, PLAIN, PLAIN],
+                         classify([lines[number] for number in BROKEN_LINES]))
 
     def test_the_setext_title_is_a_limit_under_the_separator_narrowing(self):
         body = self.section(HEADING_2, SEPARATORS)

@@ -80,6 +80,18 @@ unindented line directly under an open item as its continuation would widen the 
 `04_snapshot-format.md`, which this file may narrow and never widen (AD-8); so the limit is kept
 and stated.
 
+The item line is judged as a unit by itself, by what it says before it breaks. Line 216 says what
+changed before its break, so it is a ticket. An item line that breaks before its change is said
+states no change on its own: it gives no ticket, and it is listed under `Unmapped` with the lines
+that carry the rest of it (Sergey, 2026-09-25). Body lines 227 and 228 of the Docker snapshot, with
+229 after them, are one such entry, and body lines 232 to 235 are another:
+
+```text
+    227: * When the daemon detects a version mismatch with the client, usually when
+    228: the client is newer than the daemon, an HTTP 400 is now returned instead
+    229: of a 404.
+```
+
 ## Leaf items and parents
 
 An item whose extent holds another `item_start` line is a **parent**. An item whose extent holds
@@ -146,8 +158,8 @@ entry here and turns a blog post into one ticket with a page-long range. What it
 instead: a `required_action` that stands in the second paragraph is filed under the second ticket
 and never under the first, whose range cannot reach it, and a reader of the two tickets is left to
 see that they are one entry. The example **A changelog inside a blog post** below carries one such
-entry. No recorded run on a real changelog has met one yet: every unit of the runs so far was one
-line long.
+entry. No recorded run on a real changelog has met one yet: every unit the runs have written longer
+than one line was a list item continued on indented lines.
 
 ## What is not a change
 

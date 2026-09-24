@@ -271,7 +271,9 @@ reading, and **What this file does not hold yet** names it as one.
 the `date` pattern of the `warn-patterns` table in `05_checks.md` matches, or words that place the
 change in time — "next quarter", "in 30 days", "Q1 2027", "starting with v3". Where the sentence
 holds exactly one span the `date` pattern matches, the value is that span; otherwise it is the whole
-sentence, as written. A version-bound phrase with no date is a temporal expression as "starting with
+sentence, as written. A **version-bound phrase** names a version or release, past or future, and
+holds no date — "in v4", "in the next release", "starting from this API version" (Sergey,
+2026-09-25). A version-bound phrase with no date is a temporal expression as "starting with
 v3" is, and "in a future version" is one (Sergey, 2026-09-24): where such a sentence holds no span
 the `date` pattern matches, the field the tying test gives it takes the whole sentence. `now`,
 `immediately` and words like them are never a temporal expression: they place nothing in time that
@@ -319,6 +321,7 @@ not name it. An example is its lines top to bottom, joined by ` / `; a value is 
 | a count of time | `- In 30 days the field is required.` | not in source | `In 30 days the field is required.` | not in source |
 | a named period | `- From Q1 2027 the field is required.` | not in source | `From Q1 2027 the field is required.` | not in source |
 | a version from which | `- Starting with v3 the field is required.` | not in source | `Starting with v3 the field is required.` | not in source |
+| a version, no date, ending | `- The sort parameter is removed in the next release.` | not in source | not in source | `The sort parameter is removed in the next release.` |
 | a date in the sentence | `- From 2026-07-01 the field is required.` | not in source | `2026-07-01` | not in source |
 | deprecated on a date, alone | `- Deprecated on 2026-06-01.` | not in source | not in source | not in source |
 | one date tied to both | `- On 2026-07-01 the new form becomes required and the old one stops working.` | not in source | `2026-07-01` | `2026-07-01` |
