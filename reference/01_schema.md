@@ -270,10 +270,11 @@ the `date` pattern of the `warn-patterns` table in `05_checks.md` matches, or wo
 change in time — "next quarter", "in 30 days", "Q1 2027", "starting with v3". Where the sentence
 holds exactly one span the `date` pattern matches, the value is that span; otherwise it is the whole
 sentence, as written. A version-bound phrase with no date is a temporal expression as "starting with
-v3" is, and "in a future version" is one (Sergey, 2026-09-24): a sentence holding it holds no span the
-`date` pattern matches, so the field the tying test gives it takes the whole sentence. `now`, `immediately` and words like them are never a temporal expression: they
-place nothing in time that the entry's own date does not. Which of the two fields a sentence fills
-is the tying test, stated with the table below.
+v3" is, and "in a future version" is one (Sergey, 2026-09-24): where such a sentence holds no span
+the `date` pattern matches, the field the tying test gives it takes the whole sentence. `now`,
+`immediately` and words like them are never a temporal expression: they place nothing in time that
+the entry's own date does not. Which of the two fields a sentence fills is the tying test, stated
+with the table below.
 
 ## The date decision table — translator prose, not a strict table
 

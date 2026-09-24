@@ -187,8 +187,11 @@ and each value against its own quote (FR-27). This is a step and not advice, and
 until it has been done. A quote is read again as the section **What a quote is** of `01_schema.md`
 says one is taken, and a value as the section of its own field says it is taken.
 
-Read every `Unmapped` entry again as well, against its line: an entry whose text is not that line
-whole, leading spaces included, is copied again off the line, as step 4 says an entry is written.
+Read every `Unmapped` entry again as well. An entry that carries a line's text is read against that
+line — its body line, or under `line_numbers: none` the input line it copies — and one whose text is
+not that line whole, leading spaces and tabs included, is copied again off the line, as step 4 says
+an entry is written. A range entry carries no text, and it is read again as covering only lines that
+no row cites and that are not blank.
 Read every range again against the section **What the validator checks of this, and what nothing
 checks** of `02_segmentation.md`. What that section lists as checked by nothing is checked here or
 it is checked nowhere at all. Read every `breaking` row again by the section **How a quote is read**

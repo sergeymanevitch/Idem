@@ -769,8 +769,8 @@ class TestTheUnmappedEntryText(unittest.TestCase):
         """The mutation: the sentence dropped, or left without the indent it is about, or without
         the section that owns the rule."""
         body = re.sub(r"\s+", " ", steps()[4][1])
-        for words in ("from its first character", "leading spaces", "character for character",
-                      "the section **`Unmapped`** of `01_schema.md`"):
+        for words in ("from its first character", "leading spaces and tabs",
+                      "character for character", "the section **`Unmapped`** of `01_schema.md`"):
             self.assertIn(words, body, words)
 
     def test_step_5_reads_every_unmapped_entry_again_against_its_line(self):
@@ -780,7 +780,8 @@ class TestTheUnmappedEntryText(unittest.TestCase):
         held = [sentence for sentence in SENTENCE.split(body)
                 if "`Unmapped` entry" in sentence and "again" in sentence]
         self.assertTrue(held, body)
-        self.assertIn("its line", held[0])
+        for words in ("spaces and tabs", "range entry", "`line_numbers: none`"):
+            self.assertIn(words, body, words)
 
 
 if __name__ == "__main__":
