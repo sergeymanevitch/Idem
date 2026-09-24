@@ -1185,6 +1185,18 @@ class TestTheFieldRulesAreWritten(unittest.TestCase):
         self.assertIn(FIELD_RULES[1], holds)
         self.assertIsNone(ADDRESS.search(holds), holds)
 
+    def test_a_version_bound_phrase_with_no_date_is_a_temporal_expression(self):
+        """The mutation: "in a future version" dropped, or set apart from the version-bound phrase
+        the list already names, so that a dateless "will be removed in a future version" could be
+        read as placing nothing in time. One sentence holds all three."""
+        body = re.sub(r"\s+", " ", " ".join(section(FIELD_RULES[3])))
+        held = [sentence for sentence in re.split(r"(?<=[.;]) ", body)
+                if '"in a future version"' in sentence]
+        self.assertEqual(1, len(held), body)
+        for words in ("version-bound", "temporal expression", '"starting with v3"',
+                      "whole sentence"):
+            self.assertIn(words, held[0], words)
+
     def test_the_closing_section_names_what_is_left_and_no_address(self):
         body = " ".join(section(NOT_HELD))
         self.assertIn("tying test", body)
