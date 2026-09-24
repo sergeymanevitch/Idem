@@ -8,7 +8,7 @@ a copy written for the test would prove nothing about it.
 NOTHING HERE IS THE SEGMENTER
 
 `snapshot.py` owns the line classifier and takes every pattern from the `line-classes` table
-(AD-1, AD-8); `validate.py`, which owns the range checks, is not written. The helper below is a
+(AD-1, AD-8); `validate.py` owns the range checks. The helper below is a
 second reading of that table plus the open-item rule, written here before that module existed so
 that the worked examples of the file could be cut and the ranges they claim held against AD-2 - on
 the precedent of `lookup()` in `test_breaking_terms.py`. It holds no pattern of its own: every
@@ -22,16 +22,20 @@ named in `reference/CONTEXT.md`, whose owner is the story that replaces it.
 The file under test is **prose**: it holds no table, nothing loads it, and no tool reads a line of
 it. So what can be proved today is that it is not contract by accident, that every name it cites
 resolves, that it names only classes that exist, that the four cases FR-9 requires are worked, that
-the draft is marked as draft - and that the segmentation it states, applied to its own examples,
-gives the ranges and the ancestors those examples claim.
+no part of it is marked a draft and no line of it names the plan that built it, that the test for a
+changelog is a numbered checklist whose outcomes are read from the tables, that each limit the file
+states stands where the file says it stands with the lines it quotes - and that the segmentation it
+states, applied to its own examples, gives the ranges and the ancestors those examples claim.
 
 WHAT IS WRITTEN HERE AS A LITERAL
 
-The four class names above; the headings of the five worked examples, because the story fixes them
-and there is nowhere else to read them from; the two claim line forms of the example convention;
-the characters a separator line is made of; and `AD-2`, the provision this story is about. Every
-field name, check key, column name and constant is read from the contract, so a row renamed by
-decision is not typed here as well.
+The four class names above; the headings of the eight worked examples and of the sections that
+carry a checklist or a stated limit, because the story fixes them and there is nowhere else to read
+them from; the two claim line forms of the example convention; the characters a separator line is
+made of; the words the checklist's questions and the limits are held by; one word of the source
+URL of each of the two shipped snapshots a limit quotes from; and `AD-2`, the provision this story
+is about. Every field name, check key, column name and constant is read from the contract, so a
+row renamed by decision is not typed here as well.
 
 No test pins the catalogue's row set, or the row set of any table: a story that adds a table or a
 decision that adds a check must not have to edit this file.
@@ -72,23 +76,68 @@ COPIED = "copied"
 SEPARATOR_CHARACTERS = "-*_="
 
 HEADING_2, HEADING_3 = "## ", "### "
-#: The five worked examples, by their headings. The first four are the FR-9 cases the story
-#: requires; the fifth is the reconstruction of the first example of `01_schema.md`.
+#: The eight worked examples, by their headings. The first four are the FR-9 cases the story
+#: requires; the fifth is the reconstruction of the first example of `01_schema.md`; the last three
+#: are the mixed pages and the other language, which the checklist and the two sections after it
+#: point at.
 SEVERAL_ENDPOINTS = "Several endpoints in one list item"
 NESTED = "Nested sub-items"
 PARAGRAPH = "A prose paragraph"
 TWICE = "A change mentioned twice"
 RECONSTRUCTED = "The first example of 01_schema.md, reconstructed"
+BLOG = "A changelog inside a blog post"
+PRODUCTS = "Several products on one page"
+GERMAN = "A changelog in German"
 FR9_EXAMPLES = [SEVERAL_ENDPOINTS, NESTED, PARAGRAPH, TWICE]
-EXAMPLES = FR9_EXAMPLES + [RECONSTRUCTED]
+EXAMPLES = FR9_EXAMPLES + [RECONSTRUCTED, BLOG, PRODUCTS, GERMAN]
 
 #: The two line forms of the example convention: what the prose claims, in a form a test can read.
 CLAIM_TICKET = re.compile(r"^ticket ([1-9][0-9]*): ([1-9][0-9]*)(?:-([1-9][0-9]*))?$")
 CLAIM_ANCESTOR = re.compile(r"^ancestor of ([1-9][0-9]*): ([1-9][0-9]*)$")
 
-#: The word that marks a draft, and the epic that finishes one.
+#: The word that once marked a draft, and what an address of the plan looks like. Neither may stand
+#: anywhere in the file: a reader of the upload set meets the rule, not the plan that built it.
 DRAFT = "draft"
-EPIC = "Epic 5"
+ADDRESS = re.compile(r"Epic [0-9]|Story [0-9]|comp_[01][0-9]")
+#: The sections the checklist and the stated limits stand under, by heading and depth. The test for
+#: a changelog is found by its word rather than typed, as before; the two sections after it point at
+#: the mixed pages and the other language.
+MIXED = "Mixed input"
+LANGUAGE = "Another language"
+EXTENT = "The extent of an item"
+LEAVES = "Leaf items and parents"
+SEPARATORS = "The one narrowing: separator lines"
+FENCES = "Fences"
+#: A numbered question of the checklist: a number, a full stop, a space.
+NUMBERED = re.compile(r"^([1-9][0-9]*)\. ")
+#: The words each question is held by, in the order the questions stand: whether a unit states a
+#: change, whether a unit or a heading says a release holds no changes, and the refusal. The
+#: second and the third open with the word that makes the order an order.
+QUESTION_WORDS = [("unit", "change"), ("no changes", "heading"), ("refusal",)]
+OTHERWISE = "Otherwise"
+#: The sentences the checklist's logic is held by, beyond the questions' own words.
+FIRST_YES = "the first yes ending the test"
+NO_ABOUT = "No question asks what the page is about"
+HEADINGS_ALONE = "headings alone"
+VERDICT_ONE, READING_TWO = "Question 1's is the verdict", "Question 2's is the one reading"
+#: The words the file uses for what it leaves to the translator and for what it cannot do.
+VERDICT, READING, LIMIT = "verdict", "reading", "limit"
+#: The sentences the two sections after the checklist and the reworded paragraphs are held by.
+ONE_ANSWER = "one changelog and one answer"
+ANY_LANGUAGE = "in any language"
+TWO_RUNS = "**Where two runs may differ.**"
+TWO_PARAGRAPHS = "**One entry written as two paragraphs.**"
+#: One word of the source URL of each shipped snapshot a limit quotes from, the vendor's name as
+#: the prose writes it, and the body lines it quotes. None is contract: the snapshots are
+#: evidence, found by their own header, and a quote attributed to the wrong one is an invented fact.
+SIBLING_SNAPSHOT, SIBLING_VENDOR, SIBLING_LINES = "pagerduty", "PagerDuty", (90, 91)
+WRAPPED_SNAPSHOT, WRAPPED_VENDOR, WRAPPED_LINES = "moby", "Docker", (216, 217)
+#: The folder the shipped snapshots stand in. A snapshot's origin is read from the first row of
+#: the header table, whatever that row is called.
+SNAPSHOTS = os.path.join("00_fetch", "00_snapshots")
+#: The ticket count of each of the three new examples, pinned as FR-9's are: the blog post's two
+#: leaves and two paragraphs, the three product items, the three German items.
+NEW_COUNTS = {BLOG: 4, PRODUCTS: 3, GERMAN: 3}
 #: The provision this story is about. The file has to name the checks that come from it.
 AD_2 = "AD-2"
 #: What one citation of a provision looks like, whatever family it is of.
@@ -143,21 +192,65 @@ def unfenced():
 
 
 def sections(prefix):
-    """The file's sections at one heading depth, as {heading: body}, in file order."""
+    """The file's sections at one heading depth, as {heading: body}, in file order.
+
+    A section ends at the next heading of its own depth or of a higher one, so a `### ` section
+    stops at the `## ` heading after it and does not run on into the next chapter.
+    """
     found = {}
     heading = None
     body = []
+    depth = len(prefix.rstrip())
     for line in _lines(PATH):
+        hashes = len(line) - len(line.lstrip("#"))
         if line.startswith(prefix):
             if heading is not None:
                 found[heading] = "\n".join(body)
             heading = line[len(prefix):]
+            body = []
+        elif 0 < hashes < depth and line[hashes:hashes + 1] == " ":
+            if heading is not None:
+                found[heading] = "\n".join(body)
+            heading = None
             body = []
         elif heading is not None:
             body.append(line)
     if heading is not None:
         found[heading] = "\n".join(body)
     return found
+
+
+def paragraph_holding(body, phrase):
+    """The one blank-line-separated paragraph of a section body that holds `phrase`, as one line."""
+    found = [re.sub(r"\s+", " ", part) for part in body.split("\n\n")
+             if phrase in re.sub(r"\s+", " ", part)]
+    if len(found) != 1:
+        raise AssertionError(repr(phrase) + " stands in " + str(len(found)) + " paragraphs")
+    return found[0]
+
+
+def shipped_snapshot(word):
+    """The body lines of the one shipped snapshot whose source URL holds `word`, 1-based by index.
+
+    Read through `snapshot.read`, so the lines are exactly what the validator would see; found by
+    the URL and never by the file name, which carries a retrieval time nobody should type.
+    """
+    origin = list(table("snapshot-header").rows)[0]
+    found = []
+    folder = os.path.join(ROOT, SNAPSHOTS)
+    for name in sorted(os.listdir(folder)):
+        if not name.endswith(".txt"):
+            continue
+        handle = io.open(os.path.join(folder, name), "rb")
+        try:
+            loaded = snapshot.read(handle.read())
+        finally:
+            handle.close()
+        if word in loaded.header[origin].lower():
+            found.append(loaded.lines)
+    if len(found) != 1:
+        raise AssertionError(repr(word) + " names " + str(len(found)) + " shipped snapshots")
+    return [None] + list(found[0])
 
 
 def fences_under(heading):
@@ -324,13 +417,19 @@ def level_of(line):
 
 
 def item_extent(body, classes, start):
-    """(first, last) of the item opening on `start`, by the extent rule the file states."""
+    """(first, last) of the item opening on `start`, by the extent rule the file states.
+
+    Whether a line closes the item on having no indent is judged by its text, as `_still_open` of
+    `snapshot.py` judges it: an empty line inside a fence is `in_fence` and not `blank`, and the
+    open-item rule says a blank line closes nothing. The trailing lines dropped are `blank` by
+    class, so an empty fenced line at the end of a body stays in the extent.
+    """
     indents = [indent_of(line) for line in body]
     index = start + 1
     while index < len(body):
         if classes[index] == HEADING:
             break
-        if classes[index] != BLANK and indents[index] == 0:
+        if body[index].strip(" \t") != "" and indents[index] == 0:
             break
         if classes[index] in (ITEM_START, CONTINUATION) and indents[index] <= indents[start]:
             break
@@ -624,7 +723,15 @@ def provision_column(loaded):
 
 def bullet(key):
     """The bullet of the file that opens by naming `key` in backticks, as one string."""
-    opening = "- `" + key + "`"
+    return _bullet("- `" + key + "`")
+
+
+def bold_bullet(lead):
+    """The bullet of the file that opens with `lead` in bold, as one string."""
+    return _bullet("- **" + lead + "**")
+
+
+def _bullet(opening):
     found = []
     for line in unfenced():
         if found:
@@ -794,34 +901,359 @@ class TestWhatItNames(unittest.TestCase):
         self.assertEqual(set(refused), classes_named(bullet("range_heading")))
 
 
-# --- the draft is marked as a draft --------------------------------------------------------------------
+# --- nothing is draft, and nothing names the plan --------------------------------------------------------
 
 
-class TestTheDraftIsMarked(unittest.TestCase):
-    def changelog_section(self):
-        found = [(heading, body) for heading, body in sections(HEADING_2).items()
-                 if "changelog" in heading.lower()]
-        self.assertEqual(1, len(found), sorted(sections(HEADING_2)))
-        return found[0]
+class TestNothingIsDraft(unittest.TestCase):
+    def test_no_line_of_the_file_is_marked_a_draft(self):
+        """The file once carried three parts marked draft and a preface naming them. A reader of
+        the upload set meets the rule as it stands; what is still a reading is named as one where
+        it stands, never as unfinished work. The mutation: a draft mark left behind anywhere,
+        inside a fence included."""
+        for line in _lines(PATH):
+            self.assertNotIn(DRAFT, line.lower(), repr(line))
 
-    def test_the_changelog_test_is_present_and_marked_draft(self):
-        """FR-24's test for a changelog. The story asks for a first draft, said to be one where it
-        stands - not in a preface a reader may not reach."""
-        heading, body = self.changelog_section()
-        self.assertIn(DRAFT, (heading + body).lower())
+    def test_no_line_of_the_file_names_an_epic_a_story_or_a_record(self):
+        """What the reader of an upload set meets is the rule, not the plan that built it: an
+        address of the plan goes stale the day the plan moves, and a judge cannot resolve it."""
+        for line in _lines(PATH):
+            self.assertIsNone(ADDRESS.search(line), repr(line))
 
-    def test_the_changelog_test_names_the_three_outcomes_it_decides_between(self):
-        """Tickets, the zero-ticket shape and one refusal reason. The reason is read from
-        `refusal-reasons`, which owns the wording."""
-        _heading, body = self.changelog_section()
-        reason = list(table("refusal-reasons").rows)[0]
-        self.assertIn(reason, body)
-        self.assertIn(constant("schema-constants", "tickets_none_line"), body)
 
-    def test_the_file_says_what_is_draft_and_who_finishes_it(self):
-        body = text()
-        self.assertIn(DRAFT, body)
-        self.assertIn(EPIC, body)
+# --- the test for a changelog is a checklist -------------------------------------------------------------
+
+
+def changelog_section():
+    """(heading, body) of the one `## ` section whose heading holds the word."""
+    found = [(heading, body) for heading, body in sections(HEADING_2).items()
+             if "changelog" in heading.lower()]
+    if len(found) != 1:
+        raise AssertionError(repr(sorted(sections(HEADING_2))))
+    return found[0]
+
+
+def changelog_reason():
+    """The row of `refusal-reasons` whose cell names this file: the reason the checklist ends in.
+
+    Found by what the cell holds, so the reason's wording is read from the table and never typed.
+    """
+    rows = table("refusal-reasons").rows
+    column = table("refusal-reasons").columns[1]
+    found = [reason for reason in rows if os.path.basename(FILE) in rows[reason][column]]
+    if len(found) != 1:
+        raise AssertionError(repr(found))
+    return found[0]
+
+
+def questions():
+    """The numbered lines of the checklist, in order, each as (number, text of the whole item).
+
+    An item runs to the next numbered line or to the first blank line, whatever the indent of the
+    lines it wraps over, so a lazily wrapped item is read whole and a later indented paragraph is
+    not glued onto the last question.
+    """
+    found = []
+    open_item = False
+    for line in changelog_section()[1].split("\n"):
+        match = NUMBERED.match(line)
+        if match is not None:
+            found.append([int(match.group(1)), line[match.end():]])
+            open_item = True
+        elif line.strip() == "":
+            open_item = False
+        elif open_item:
+            found[-1][1] += " " + line.strip()
+    return [(number, body) for number, body in found]
+
+
+def date_pattern():
+    """The `date` pattern of `warn-patterns`, read from its pattern column by the column's kind."""
+    loaded = table("warn-patterns")
+    column = [name for name in loaded.columns if contract._is_pattern_column(name)][0]
+    return re.compile(loaded.rows["date"][column])
+
+
+def phrases():
+    """Every phrase of `breaking-terms`, folded, so a body can be searched for one."""
+    return [phrase.lower() for phrase in table("breaking-terms").rows]
+
+
+class TestTheTestForAChangelog(unittest.TestCase):
+    def test_the_section_stands_and_is_a_numbered_checklist_of_three_questions(self):
+        """FR-24's test, as a checklist a model answers from line classes and counts: three
+        questions, numbered from one in the order they are asked, and no fourth."""
+        found = questions()
+        self.assertEqual([1, 2, 3], [number for number, _body in found])
+
+    def test_each_question_is_held_by_its_words_and_the_order_by_its_word(self):
+        """The first asks whether a unit states a change; the second whether a unit or a heading
+        says a release holds no changes; the third is the refusal - and the second and the third
+        open on the word that makes them fall-throughs. The mutations: two questions swapped, which
+        would send a page of headings alone to the refusal without asking; a question widened to
+        ask what the page is about; the fall-through dropped."""
+        found = questions()
+        for index in range(len(QUESTION_WORDS)):
+            body = found[index][1].lower()
+            for word in QUESTION_WORDS[index]:
+                self.assertIn(word, body, "question " + str(index + 1))
+            for word in ("about", "mainly"):
+                self.assertNotIn(" " + word + " ", body, "question " + str(index + 1))
+        for index in (1, 2):
+            self.assertTrue(found[index][1].startswith(OTHERWISE), found[index][1][:40])
+        _heading, body = changelog_section()
+        self.assertIn(FIRST_YES, body)
+        self.assertIn(NO_ABOUT, body)
+
+    def test_the_outcomes_are_the_refusal_row_and_the_zero_ticket_line(self):
+        """Each outcome is named by the row or the constant that owns its wording, read from the
+        table: the refusal `refusal-reasons` points at this file for, in the last question and in
+        no other, and the line a zero-ticket file carries, in the second and in no other."""
+        found = questions()
+        reason = changelog_reason()
+        none_line = constant("schema-constants", "tickets_none_line")
+        self.assertIn(reason, found[2][1])
+        self.assertIn(none_line, found[1][1])
+        self.assertNotIn(none_line, found[2][1])
+        self.assertNotIn(reason, found[1][1])
+        self.assertNotIn(reason, found[0][1])
+
+    def test_the_first_question_points_at_the_section_that_owns_what_a_change_is(self):
+        """The checklist adds no second test of what a change is: question 1 is answered by the
+        section above that owns it, cited by its heading in bold."""
+        found = questions()
+        self.assertIn("**What is not a change**", found[0][1])
+
+    def test_a_body_of_headings_alone_reaches_the_second_question(self):
+        """A1 of the story: a heading that says a release holds no changes, with nothing under it,
+        is the zero-ticket shape and not the refusal. The paragraph that says so names both
+        outcomes, read from the tables."""
+        _heading, body = changelog_section()
+        paragraph = paragraph_holding(body, HEADINGS_ALONE)
+        self.assertIn("zero-ticket shape", paragraph)
+        self.assertIn("is the refusal", paragraph)
+        self.assertLess(paragraph.index("zero-ticket shape"), paragraph.index("is the refusal"))
+
+    def test_the_refusals_decided_before_it_are_named_and_no_limit_restated(self):
+        """The three refusals that come before the test belong to `01_schema.md`; the section names
+        every row of `refusal-reasons` so a reader knows what was already decided, and restates
+        no condition: the size limit's value is read from the table and must not stand here."""
+        _heading, body = changelog_section()
+        for reason in table("refusal-reasons").rows:
+            self.assertIn("`" + reason + "`", body, reason)
+        limit = constant("schema-constants", "max_body_lines")
+        self.assertIsNone(re.search(r"(?<![0-9])" + re.escape(limit) + r"(?![0-9])", body), limit)
+
+    def test_the_readings_it_leaves_are_named_as_verdicts(self):
+        """Two verdicts stand in the checklist and both are named as such: the one question 1
+        inherits, and the one question 2 adds. The mutation: the checklist presented as a
+        pattern, with the reading hidden - or one of the two sentences dropped while the other
+        word survives elsewhere in the section."""
+        _heading, body = changelog_section()
+        flat = re.sub(r"\s+", " ", body)
+        self.assertIn(VERDICT_ONE, flat)
+        self.assertIn(READING_TWO, flat)
+
+    def test_the_section_names_no_question_of_quality(self):
+        """The story: a checklist a model can apply without judgment of quality."""
+        _heading, body = changelog_section()
+        for word in ("quality", "well-written", "good enough"):
+            self.assertNotIn(word, body.lower(), word)
+
+    def test_the_paragraphs_that_point_at_the_checklist_still_stand(self):
+        """Two paragraphs this rewrite reworded, held by their bold leads under their own sections:
+        where two runs may differ, which now names question 2, and the entry written as two
+        paragraphs, kept as the rule with its cost stated."""
+        not_a_change = sections(HEADING_2)["What is not a change"]
+        paragraph = paragraph_holding(not_a_change, TWO_RUNS)
+        self.assertIn("question 2", paragraph)
+        self.assertIn("no changes", paragraph)
+        paragraphs = sections(HEADING_2)["Paragraphs"]
+        paragraph = paragraph_holding(paragraphs, TWO_PARAGRAPHS)
+        self.assertIn("two tickets", paragraph)
+        self.assertIn("cost", paragraph.lower())
+        self.assertIn(BLOG, paragraph)
+
+    def test_the_two_bullets_of_what_nothing_checks_name_the_checklist_and_the_fence_block(self):
+        """What nothing checks names the checklist and the fence block after a leaf, each as a
+        bullet of its own, so a reader learns both from the last section."""
+        self.assertIn("three questions", bold_bullet("the test for a changelog"))
+        fence = bold_bullet("the fence block after a leaf")
+        self.assertIn("`range_end`", fence)
+        self.assertIn("not settled", fence)
+
+
+class TestTheTwoSectionsAfterIt(unittest.TestCase):
+    def section(self, heading):
+        """The section's body as one line, so a heading named across a line wrap is still found."""
+        found = sections(HEADING_2)
+        self.assertIn(heading, found, sorted(found))
+        return re.sub(r"\s+", " ", found[heading])
+
+    def test_mixed_input_stands_after_the_checklist_and_points_at_both_examples(self):
+        """A changelog inside a blog post and a page covering several products: every unit that
+        states a change is a ticket wherever it stands, and each case has a worked example the
+        section names by heading."""
+        body = self.section(MIXED)
+        self.assertIn(BLOG, body)
+        self.assertIn(PRODUCTS, body)
+        order = list(sections(HEADING_2))
+        self.assertLess(order.index(changelog_section()[0]), order.index(MIXED))
+
+    def test_mixed_input_states_its_limit_and_one_answer_for_several_products(self):
+        """What the test asks is whether the page states a change, not whether it is a changelog;
+        a blog paragraph that states one is a ticket. Stated as a limit, not hidden. And a page of
+        several products is one changelog and one answer, never one per product."""
+        body = self.section(MIXED)
+        self.assertIn(LIMIT, body.lower())
+        self.assertIn("states a change", body.lower())
+        self.assertIn(ONE_ANSWER, body)
+        self.assertNotIn("per product", body)
+
+    def test_another_language_points_at_its_example_and_at_the_two_files_that_own_the_fields(self):
+        """Values are copied in their language, never translated; what `breaking` and the date
+        field read is pointed at, never restated here, and the pointer says the date table reads a
+        heading the same way in any language. The field names are read from the table: the one
+        `listed` field, and the one `copied` field whose cell says it reads a dated heading."""
+        body = self.section(LANGUAGE)
+        self.assertIn(GERMAN, body)
+        self.assertIn("never translated", body)
+        self.assertIn("`03_breaking-terms.md`", body)
+        self.assertIn("`01_schema.md`", body)
+        self.assertIn(ANY_LANGUAGE, body)
+        rows = table(FIELDS).rows
+        kinds = table(FIELDS).columns[1]
+        holds = table(FIELDS).columns[-1]
+        listed = [field for field in rows if rows[field][kinds] not in (COPIED, "") and
+                  rows[field][holds] and "quote" in rows[field][holds]]
+        self.assertEqual(1, len(listed), listed)
+        self.assertIn("`" + listed[0] + "`", body)
+        dated = [field for field in rows if "dated heading" in rows[field][holds]]
+        self.assertEqual(1, len(dated), dated)
+        self.assertIn("`" + dated[0] + "`", body)
+
+    def test_the_two_headings_hold_neither_the_word_changelog_nor_a_twin_in_another_file(self):
+        """`changelog_section()` asserts one `## ` heading holding the word, so the two sections
+        beside it may not; and `rules.md` cites both by heading and file, so neither heading may
+        stand in another reference file, where it would resolve against the wrong one."""
+        for heading in (MIXED, LANGUAGE):
+            self.assertNotIn("changelog", heading.lower())
+            for name in sorted(os.listdir(os.path.join(ROOT, "reference"))):
+                if name == os.path.basename(FILE) or not name.endswith(".md"):
+                    continue
+                for line in _lines(os.path.join(ROOT, "reference", name)):
+                    self.assertNotEqual(HEADING_2 + heading, line.strip(), name)
+
+
+# --- the stated limits stand where the file says, with the lines they quote --------------------------------
+
+
+class TestTheStatedLimits(unittest.TestCase):
+    """Each limit is a paragraph under the section that owns the rule it limits, and the two that
+    quote a shipped snapshot quote it whole: the lines are read back out of the snapshot and have to
+    stand in the section, so a quote that drifts from the evidence fails here."""
+
+    def section(self, prefix, heading):
+        found = sections(prefix)
+        self.assertIn(heading, found, sorted(found))
+        return found[heading]
+
+    def quoted_whole(self, body, word, vendor, numbers):
+        """The lines of the shipped snapshot found by `word` stand in `body` whole - each with its
+        number prefix, as a snapshot body prints it - and the sentence attributing them names the
+        vendor and both numbers. A quote attributed to the wrong snapshot is an invented fact."""
+        lines = shipped_snapshot(word)
+        for number in numbers:
+            self.assertIn(prefix_of(number).lstrip(" ") + lines[number], body, str(number))
+        attribution = "Body lines %d and %d of the %s" % (numbers[0], numbers[1], vendor)
+        self.assertIn(attribution, re.sub(r"\s+", " ", body))
+        return lines
+
+    def test_the_qualifying_sibling_is_a_limit_under_leaf_items_and_parents(self):
+        body = self.section(HEADING_2, LEAVES)
+        paragraph = paragraph_holding(body, "sibling that qualifies")
+        self.assertIn(LIMIT, paragraph.lower())
+        self.quoted_whole(body, SIBLING_SNAPSHOT, SIBLING_VENDOR, SIBLING_LINES)
+        after = paragraph_holding(body, "Line %d states a change" % SIBLING_LINES[0])
+        self.assertIn("states no change of its own", after)
+        self.assertIn("`Unmapped`", after)
+
+    def test_the_unindented_wrapped_line_is_a_limit_under_the_extent_of_an_item(self):
+        """The section is read to its own end - the `## ` heading after it - so "limit" and
+        `plain` are found in the paragraph that states the limit and nowhere wider."""
+        body = self.section(HEADING_3, EXTENT)
+        self.assertNotIn(HEADING_2, body)
+        paragraph = paragraph_holding(body, "wrapped onto a line with no indent")
+        self.assertIn(LIMIT, paragraph.lower())
+        self.assertIn("`" + PLAIN + "`", paragraph)
+        lines = self.quoted_whole(body, WRAPPED_SNAPSHOT, WRAPPED_VENDOR, WRAPPED_LINES)
+        self.assertEqual(0, indent_of(lines[WRAPPED_LINES[1]]))
+        self.assertEqual([ITEM_START, PLAIN],
+                         classify([lines[number] for number in WRAPPED_LINES]))
+        after = paragraph_holding(body, "The ticket for line %d carries" % WRAPPED_LINES[0])
+        self.assertIn("that line alone", after)
+
+    def test_the_setext_title_is_a_limit_under_the_separator_narrowing(self):
+        body = self.section(HEADING_2, SEPARATORS)
+        paragraph = paragraph_holding(body, "setext title")
+        self.assertIn(LIMIT, paragraph.lower())
+        self.assertIn("`" + PLAIN + "`", paragraph)
+        self.assertIn("never a `" + HEADING + "`", paragraph)
+        self.assertIn("never an ancestor", paragraph)
+
+    def fence_extent(self, body, start):
+        """The extent of the item opening on `start`, by the file's extent rule over the classes
+        `snapshot.classify` gives - the helper's own `classify()` refuses a fence on purpose."""
+        classes = [line.cls for line in snapshot.classify(body)]
+        return item_extent(body, classes, start), classes
+
+    def test_a_fence_that_never_closes_makes_every_later_line_in_fence(self):
+        """First bullet, first half: opened outside a unit, no unit begins below it."""
+        body = self.section(HEADING_2, FENCES)
+        paragraph = paragraph_holding(body, "a fence that never closes")
+        self.assertIn("`" + IN_FENCE + "` to the end of the body", paragraph)
+        self.assertIn("no unit begins anywhere below it", paragraph)
+        opened_outside = ["```text", "- an item", "", "a paragraph"]
+        classes = [line.cls for line in snapshot.classify(opened_outside)]
+        self.assertEqual([FENCE, IN_FENCE, IN_FENCE, IN_FENCE], classes)
+        self.assertNotIn(ITEM_START, classes[1:])
+        self.assertNotIn(PLAIN, classes[1:])
+
+    def test_a_fence_that_never_closes_inside_a_leaf_leaves_it_open_to_the_last_line(self):
+        """First bullet, second half: the leaf's extent runs to the last body line, an empty line
+        inside the fence included, because that line is `in_fence` and not `blank`."""
+        body = self.section(HEADING_2, FENCES)
+        paragraph = paragraph_holding(body, "a fence that never closes")
+        self.assertIn("the leaf stays open", paragraph)
+        self.assertIn("last line of the body", paragraph)
+        never_closed = ["- an item", "  ```text", "  code", "", "  more", ""]
+        (first, last), classes = self.fence_extent(never_closed, 0)
+        self.assertEqual([ITEM_START, FENCE, IN_FENCE, IN_FENCE, IN_FENCE, IN_FENCE], classes)
+        self.assertEqual((0, len(never_closed) - 1), (first, last))
+
+    def test_a_fenced_line_with_no_indent_closes_the_item_on_itself(self):
+        """Second bullet: the item ends on the line before the unindented fenced line; the fence
+        lines above stay in it, that line and the rest belong to no unit."""
+        body = self.section(HEADING_2, FENCES)
+        paragraph = paragraph_holding(body, "a fenced line with no indent")
+        self.assertIn("closes the item on itself", paragraph)
+        self.assertIn("stay in the item", paragraph)
+        unindented = ["- an item", "  ```text", "  kept", "code", "  ```", "  tail"]
+        (first, last), classes = self.fence_extent(unindented, 0)
+        self.assertEqual([ITEM_START, FENCE, IN_FENCE, IN_FENCE, FENCE, PLAIN], classes)
+        self.assertEqual((0, 2), (first, last))
+
+    def test_the_empty_fenced_line_is_the_one_limit_the_fences_section_names(self):
+        """Decision 5b: named as a limit, skipped in the ancestor walk as `05_checks.md` says, and
+        what coverage makes of it stated nowhere. And the file still says no example holds a fence."""
+        body = self.section(HEADING_2, FENCES)
+        paragraph = paragraph_holding(body, "One line inside a fence")
+        self.assertIn(LIMIT, paragraph.lower())
+        self.assertIn("`" + IN_FENCE + "` and not `" + BLANK + "`", paragraph)
+        self.assertIn("closes no item", paragraph)
+        self.assertIn("`05_checks.md`", paragraph)
+        self.assertIn("No worked example below holds a fence line", body)
+        self.assertEqual([FENCE, IN_FENCE, IN_FENCE, FENCE],
+                         [line.cls for line in snapshot.classify(["```", "", "x", "```"])])
 
 
 # --- the worked examples ----------------------------------------------------------------------------------
@@ -940,6 +1372,101 @@ class TestTheWorkedExamples(unittest.TestCase):
         self.assertTrue(parents, "the nested example cites no parent item as an ancestor")
         body, tickets, _ancestors = example(PARAGRAPH)
         self.assertEqual(PLAIN, classify(body)[tickets[1][0]])
+
+    def heading_ancestors(self, body, classes, ancestors, number):
+        return [line for line in ancestors.get(number, []) if classes[line] == HEADING]
+
+    def test_the_examples_under_worked_examples_are_exactly_the_ones_this_file_names(self):
+        """Both ways: a ninth example added under the heading and not to `EXAMPLES` would escape
+        every helper test above, and one named here and gone from the file fails already."""
+        found = []
+        inside = False
+        for line in _lines(PATH):
+            if line.startswith(HEADING_2):
+                inside = line == HEADING_2 + "Worked examples"
+            elif inside and line.startswith(HEADING_3):
+                found.append(line[len(HEADING_3):])
+        self.assertEqual(EXAMPLES, found)
+        self.assertIn("Eight, and every one of them", sections(HEADING_2)["Worked examples"])
+
+    def test_tickets_are_numbered_in_the_order_their_units_stand(self):
+        """The procedure numbers tickets in input order; the claims of every example agree."""
+        for heading in EXAMPLES:
+            _body, tickets, _ancestors = example(heading)
+            starts = [tickets[number][0] for number in sorted(tickets)]
+            self.assertEqual(sorted(starts), starts, heading)
+
+    def test_the_claimed_tickets_of_the_new_examples_are_exactly_the_units_that_state_a_change(self):
+        """Pinned as FR-9's counts are: the ticket count of each, and which units are left out -
+        the units that state no change, each named by its lines. The mutation: a paragraph that
+        states no change claimed as a ticket, or a changing sentence put in an unclaimed unit."""
+        left_out = {BLOG: [(2, 3), (16, 16)], PRODUCTS: [(15, 15)], GERMAN: [(9, 9)]}
+        for heading in NEW_COUNTS:
+            body, tickets, _ancestors = example(heading)
+            self.assertEqual(NEW_COUNTS[heading], len(tickets), heading)
+            claimed = set(tickets.values())
+            unclaimed = [(first, last) for first, last, _kind, lead in units(body)
+                         if (first, last) not in claimed and not lead]
+            self.assertEqual(left_out[heading], unclaimed, heading)
+        body, _tickets, _ancestors = example(PRODUCTS)
+        self.assertIn("Nothing changed", body[left_out[PRODUCTS][0][0]])
+        body, _tickets, _ancestors = example(GERMAN)
+        folded = "\n".join(body).lower()
+        for phrase in phrases():
+            self.assertNotIn(phrase, folded, phrase)
+
+    def test_the_blog_post_yields_tickets_from_its_list_and_two_from_its_two_paragraphs(self):
+        """One entry written as two paragraphs is two units and two tickets, kept and unmarked:
+        two paragraph tickets under one heading chain, beside the list's, and a paragraph that
+        states no change left out. The mutation: the two paragraphs merged into one range."""
+        body, tickets, ancestors = example(BLOG)
+        classes = classify(body)
+        kinds = dict([((first, last), kind) for first, last, kind, _lead in units(body)])
+        paragraphs = [number for number in tickets if kinds[tickets[number]] == PLAIN]
+        items = [number for number in tickets if kinds[tickets[number]] == ITEM_START]
+        self.assertGreaterEqual(len(paragraphs), 2, paragraphs)
+        self.assertGreaterEqual(len(items), 2, items)
+        chains = set([tuple(self.heading_ancestors(body, classes, ancestors, number))
+                      for number in paragraphs])
+        self.assertEqual(1, len(chains), chains)
+        unmapped = [index for index in range(len(body)) if classes[index] == PLAIN and
+                    not [number for number in tickets
+                         if tickets[number][0] <= index <= tickets[number][1]]]
+        self.assertTrue(unmapped, "every paragraph of the blog post is a ticket")
+
+    def test_the_several_products_page_cites_a_product_heading_as_an_ancestor(self):
+        """One changelog, one answer: a product heading is an ordinary ancestor, so two tickets
+        under two products cite two different nearest headings, neither of them dated."""
+        body, tickets, ancestors = example(PRODUCTS)
+        classes = classify(body)
+        date = date_pattern()
+        nearest = set()
+        dated = set()
+        for number in tickets:
+            headings = self.heading_ancestors(body, classes, ancestors, number)
+            self.assertTrue(headings, "ticket " + str(number))
+            nearest.add(max(headings))
+            dated.update([line for line in headings if date.search(body[line])])
+        self.assertGreaterEqual(len(nearest), 2, sorted(nearest))
+        for line in nearest:
+            self.assertIsNone(date.search(body[line]), body[line])
+        self.assertEqual(1, len(dated), "one dated heading over all of them")
+
+    def test_the_german_changelog_is_cut_by_the_same_classes_under_a_dated_heading(self):
+        """The same units by the same classes, every ticket under a heading the `date` pattern
+        matches, and a body that is not ASCII: a letter of the Latin script beyond it stands in
+        it, and no Cyrillic does, which the file-wide scan holds."""
+        body, tickets, ancestors = example(GERMAN)
+        classes = classify(body)
+        date = date_pattern()
+        self.assertGreaterEqual(len(tickets), 2)
+        for number in tickets:
+            headings = self.heading_ancestors(body, classes, ancestors, number)
+            self.assertTrue([line for line in headings if date.search(body[line])],
+                            "ticket " + str(number) + " sits under no dated heading")
+        beyond_ascii = [line for line in body
+                        if [char for char in line if ord(char) > 127 and char.isalpha()]]
+        self.assertGreaterEqual(len(beyond_ascii), 3, beyond_ascii)
 
 
 # --- the example the schema file already published -------------------------------------------------------
@@ -1230,8 +1757,8 @@ class TestTheHelperItself(unittest.TestCase):
     def test_the_two_readings_agree_on_every_body_this_file_works_through(self):
         """The helper above and `snapshot.classify` read one table by two readings. Every body any
         test here classifies goes through both - `classify()` cross-checks each answer - and this
-        test names the corpus that makes that claim worth something: the five worked examples of
-        the file, the body of the reconstruction, and the made-up bodies of this class, each of
+        test names the corpus that makes that claim worth something: the worked examples of the
+        file, the body of the reconstruction, and the made-up bodies of this class, each of
         which reaches the helper through one of the tests above."""
         bodies = [example(heading)[0] for heading in EXAMPLES]
         bodies.append(self.body("- Storage API",

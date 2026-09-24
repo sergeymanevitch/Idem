@@ -4,7 +4,7 @@ This file is the order of work and holds nothing else. Each step below says **wh
 and in what order it is done; what the thing *is* is written in the files this procedure names, and
 a step names the one that owns it in a single fixed form — the words "the section", the owning
 heading in bold, the word "of", and the bare name of the file it stands in. The file is named every
-time, because one heading text stands in two of them and the heading alone would not say which. What
+time, because some heading texts stand in two of them and the heading alone would not say which. What
 Idem is, and what it will not do at all, is `identity.md`.
 
 Where a step cites a requirement in parentheses, the requirement is where the rule came from. The
@@ -19,9 +19,7 @@ change taking effect or to old behaviour ending, and which sentence states an ac
 **What this file does not hold yet** of `01_schema.md` names both, and two honest runs may differ on
 either. Whether a run of uncited lines is written as one entry apiece or as a single run is a choice
 of form that the section **`Unmapped`** of `01_schema.md` allows either way. What is to be done with
-several inputs in one message is answered in step 1 by this draft alone and by no file at all. And
-three parts of `02_segmentation.md` are marked as draft where they stand: the test that tells a
-changelog from a page that is not one, one entry written as two paragraphs, and the two fence cases.
+several inputs in one message is answered in step 1 by this draft alone and by no file at all.
 
 None of these is settled until more runs on real changelogs have recorded what was actually done
 with each of them. This notice is written for the person building Idem. It is never part of an
@@ -84,19 +82,25 @@ text that carries no numbers (FR-25, FR-26).
 
 Cut the body into units and decide which of them state a change, by the section **The unit** of
 `02_segmentation.md`. Read with it the places that section hands off to, each where it applies: the
-sections **Leaf items and parents** and **Fences** of `02_segmentation.md` for a unit that is an
-item, the section **Paragraphs** of `02_segmentation.md` for one that is a run of prose, the section
-**The one narrowing: separator lines** of `02_segmentation.md` for the one class it narrows, and the
-section **What is not a change** of `02_segmentation.md` for everything the body holds that no
-ticket will cite. Do the whole body before anything else is decided: what the next paragraph reads
-is how many units state a change.
+section **The extent of an item** of `02_segmentation.md` for how far an item runs and where a line
+wrapped with no indent leaves it, the sections **Leaf items and parents** and **Fences** of
+`02_segmentation.md` for a unit that is an item, the section **Paragraphs** of `02_segmentation.md`
+for one that is a run of prose, the section **The one narrowing: separator lines** of
+`02_segmentation.md` for the one class it narrows, and the section **What is not a change** of
+`02_segmentation.md` for everything the body holds that no ticket will cite, and, for an input
+carrying no line numbers, the section **When the input has no line numbers** of
+`02_segmentation.md`, which says why its units are the same units. Do the whole body before
+anything else is decided: what the next paragraph reads is how many units state a change.
 
-Only now choose the shape, by the section **The test for a changelog — draft** of
-`02_segmentation.md`, which decides between the three that the section **The three shapes** of
-`01_schema.md` fixes: a file of tickets, a file announcing no change, and the one refusal left over
-from step 1 — that reason too exactly as the `refusal-reasons` table of `01_schema.md` writes it.
-What each shape holds, and in what order, is the section **What the whole file looks like** of
-`01_schema.md`.
+Only now choose the shape, by the section **The test for a changelog** of `02_segmentation.md`,
+which decides between the three that the section **The three shapes** of `01_schema.md` fixes: a
+file of tickets, a file announcing no change, and the one refusal left over from step 1 — that
+reason too exactly as the `refusal-reasons` table of `01_schema.md` writes it. What that test makes
+of a page that is more than a changelog, or of one that covers several products, is the section
+**Mixed input** of `02_segmentation.md`; what it makes of a changelog written in another language,
+and what is never done to such a page's words, is the section **Another language** of
+`02_segmentation.md`. What each shape holds, and in what order, is the section **What the whole
+file looks like** of `01_schema.md`.
 
 Number the tickets in the order their units stand in the input. The first unit that states a change
 is ticket 1, and the numbers rise by one from there.

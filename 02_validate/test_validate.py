@@ -44,7 +44,7 @@ from idemlib import contract, snapshot, tickets  # noqa: E402  - and so does thi
 #: held against it here - two readings of one page that agree are worth more than one.
 from tests import test_breaking_terms as prose  # noqa: E402
 #: The reading of the segmentation prose that `lib/tests/` holds, for the one thing this file needs
-#: of it: the parser of the five worked examples and the ancestors each one claims. The examples are
+#: of it: the parser of the worked examples and the ancestors each one claims. The examples are
 #: the oracle of the ancestor test the validator implements, and they are cut here by the same
 #: parser that holds them against the prose, never by a second one.
 from tests import test_segmentation as segmentation  # noqa: E402
@@ -2573,9 +2573,10 @@ class TestRangesAndAncestors(BuiltCase):
     # --- the ancestor test ------------------------------------------------------------------------
 
     def test_the_ancestor_test_finds_exactly_what_the_worked_examples_claim(self):
-        """The five worked examples of the segmentation file are its oracle: every ancestor each of
-        them claims for a ticket is one the test finds, and no other body line is."""
-        self.assertEqual(5, len(segmentation.EXAMPLES))
+        """The worked examples of the segmentation file are its oracle: every ancestor each of
+        them claims for a ticket is one the test finds, and no other body line is. At least the
+        five that stood when this was written; the segmentation tests own the exact set."""
+        self.assertGreaterEqual(len(segmentation.EXAMPLES), 5)
         for heading in segmentation.EXAMPLES:
             body, claimed_tickets, claimed = segmentation.example(heading)
             classified = snapshot.classify(body)

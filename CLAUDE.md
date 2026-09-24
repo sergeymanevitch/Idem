@@ -29,8 +29,9 @@ format constants, line classes, HTML elements, fetch limits;
 `reference/05_checks.md` holds every validator check with its key and code, the fetch failures in a
 table of their own, and the pattern a warning looks for; `reference/02_segmentation.md` holds what
 one change is — the unit, leaf items and parents, paragraphs, the one narrowing, ancestor lines,
-five worked examples and a first-draft test for a changelog — in prose and no table, with its draft
-parts marked. `lib/idemlib/contract.py` loads the five that hold tables, lints their patterns, and
+the test for a changelog as a checklist of three questions, what a mixed page and a changelog in
+another language get, and eight worked examples — in prose and no table, every limit stated where
+it stands and no part of it marked a draft. `lib/idemlib/contract.py` loads the five that hold tables, lints their patterns, and
 `lib/tests/` proves it. `lib/idemlib/snapshot.py` is the second module and the first that reads the
 contract for its own work: it writes a snapshot, reads one back, hashes a body the way FR-4 defines
 it, and classifies every body line, taking the header fields, the constants and the line-class

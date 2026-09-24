@@ -119,7 +119,7 @@ modules run under it, and like a step script each puts `../lib/` on `sys.path` i
   prose that names them, the map between the classes of finding `tickets.py` makes and the checks
   that report them — both ways, by injection and never by a typed key — one bullet of the contract
   at a time for the grammar, row-states, quotes-and-values, ranges-and-ancestors and coverage
-  checks and for the two warnings that read `Unmapped`, the ancestor test against the five worked examples of `../reference/02_segmentation.md`, the routine of
+  checks and for the two warnings that read `Unmapped`, the ancestor test against the worked examples of `../reference/02_segmentation.md`, the routine of
   `../reference/03_breaking-terms.md` against the reading of that prose which `../lib/tests/`
   holds, and each committed fixture against the codes its own manifest row expects.
 - `test_run_fixtures.py` runs the committed corpus through the suite, and proves each way the suite

@@ -16,21 +16,9 @@ one. No class is redefined here, no class is given a pattern here, and no line i
 this file invented. The one thing done to a class here is to **narrow** it, once, in a section of
 its own (AD-8).
 
-## What is draft here
-
-This is Epic 2's first draft, written before the translator has been run against a single real
-changelog. Three things in it are draft, and each is marked where it stands rather than only here:
-
-- **the test for a changelog** — the whole of the second-to-last section. It decides between three
-  shapes and it leans on a reading in two places, both named there;
-- **one entry written as two paragraphs**, which this draft cuts into two units. The case is named
-  under **Paragraphs** as the known weak spot of the rule;
-- **two fence cases** — a fence that never closes, and a fence whose unindented content closes the
-  item it sits in — named under **Fences**.
-
-**Epic 5 finishes all three**, after the translator has been run on real changelogs and the cold
-run of Story 2.3 has recorded what actually happened. Nothing else in this file is draft: the unit,
-the extent rule, the narrowing and the ancestor rule are the rule as it stands.
+Where the rule meets a case it cannot decide from structure, it says so where the case arises — a
+**limit** — and where it leaves a reading to the translator it names the reading as one. No part of
+it waits on later work; what it leaves unsettled is named where it arises, beside what it does.
 
 ## The unit
 
@@ -74,6 +62,24 @@ group 1 of the two patterns that have one hands back. A `blank` line has no inde
 skipped wherever indents are compared, here and in the ancestor rule below. Two indents are
 compared by that count and by nothing else.
 
+**A limit, stated rather than solved: item text wrapped onto a line with no indent.** Some
+changelogs wrap a long item by starting its next line at the left margin. That line has no indent,
+so the open-item rule closes the item on it, and with no item open the classes give it `plain`: it
+is a paragraph of its own, and the item is one line long. Body lines 216 and 217 of the Docker
+snapshot are one such entry:
+
+```text
+    216: * `PUT /containers/(id)/archive` upload an archive of content to be extracted to
+    217: an existing directory inside a container's filesystem.
+```
+
+The ticket for line 216 carries that line alone. Line 217 is a paragraph that states no change, so
+it is cited by nothing and lands in `Unmapped`; where such a line stands directly before the next
+`item_start` it is a lead-in as well, and a change it happens to state is lost with it. Reading an
+unindented line directly under an open item as its continuation would widen the open-item rule of
+`04_snapshot-format.md`, which this file may narrow and never widen (AD-8); so the limit is kept
+and stated.
+
 ## Leaf items and parents
 
 An item whose extent holds another `item_start` line is a **parent**. An item whose extent holds
@@ -97,6 +103,21 @@ reading of `range_end` stated in the last section, which the validator implement
 than its first line. A parent's range that runs on over the leaves beneath it ends where a leaf
 would, and nothing catches that; `reference/CONTEXT.md` names it as debt.
 
+**A limit, stated rather than solved: a sibling that qualifies the change above it.** A leaf is
+its own unit whatever its neighbour says. Body lines 90 and 91 of the PagerDuty snapshot are two
+leaves under one dated heading:
+
+```text
+     90: - Modified `optional_total` query param to `total` on the business service list endpoint.
+     91: - `optional_total` field will continue to be supported.
+```
+
+Line 90 states a change and is a ticket. Line 91 qualifies it — the old name goes on working — and
+states no change of its own, so it is cited by nothing, lands in `Unmapped`, and the qualification
+is lost to the ticket. Reading the second leaf as part of the first would be a judgment about what
+two sentences mean to each other, made while translating, which is what this file exists to
+refuse. The two recorded runs on that snapshot both left line 91 unmapped.
+
 ## Paragraphs
 
 A paragraph is a maximal run of consecutive `plain` lines. The run ends at the first line of any
@@ -117,13 +138,16 @@ following endpoints change on 1 July:" — introduces the list rather than stati
 own. It is not a ticket, and it cannot be an ancestor either: AD-2 (4) admits only a `heading` or
 an `item_start` as one. Its lines land in `Unmapped`.
 
-**The known weak spot of this draft.** One entry written as two paragraphs — a heading, then two
-blank-separated paragraphs about the same change — is two units here, so two tickets, unless one
-ticket is written whose `required_action` sits in a paragraph its range cannot reach. The draft
-keeps paragraph = unit, which is how FR-9 words it. The alternative was considered and refused:
-merging every blank-separated paragraph of one heading section with no item between them gives one
-ticket per entry here, and turns a blog post into one ticket with a page-long range. Story 2.3
-records what the cold run does with such an entry, and Epic 5 settles it.
+**One entry written as two paragraphs.** A heading, then two blank-separated paragraphs about one
+change, is two units and so two tickets, and that is kept as the rule and not marked as a weakness:
+paragraph = unit is how FR-9 words it. The alternative was considered and refused — merging every
+blank-separated paragraph of one heading section with no item between them gives one ticket per
+entry here and turns a blog post into one ticket with a page-long range. What it costs is stated
+instead: a `required_action` that stands in the second paragraph is filed under the second ticket
+and never under the first, whose range cannot reach it, and a reader of the two tickets is left to
+see that they are one entry. The example **A changelog inside a blog post** below carries one such
+entry. No recorded run on a real changelog has met one yet: every unit of the runs so far was one
+line long.
 
 ## What is not a change
 
@@ -141,7 +165,8 @@ every non-blank body line no row cites, and that list is where all of it lands.
 **Where two runs may differ.** Boundaries are mechanical, so two runs of one input cut the same
 units (NFR-3). Two places are left where two runs may honestly disagree, and they are named here
 rather than left to be discovered: the verdict on a borderline unit — "We improved reliability" —
-and the zero-change reading in the changelog test below. Story 2.3 is asked to record both first.
+and the reading that question 2 of **The test for a changelog** below adds, whether a unit or a
+heading says that a release, a version or a period holds no changes.
 
 ## The one narrowing: separator lines
 
@@ -162,6 +187,14 @@ that classifies as a `continuation` least of all, because it is carried by the i
 A separator ends a paragraph, starts no unit and is never an ancestor. A `continuation` line under
 a separator item belongs to no unit either. A line underlining the one above it with equals signs
 or hyphens — a setext underline, which is no `heading` here — is a separator like any other.
+
+The title line above such an underline is a **limit**, recorded and not narrowed. The classes of
+`04_snapshot-format.md` read a heading off one line — ATX headings only — so a setext title is a
+`plain` line: part of whatever paragraph the `plain` lines around it make, never a `heading`, never
+an ancestor of anything, and a release date written on it is read by no field that reads a heading.
+An underline of one hyphen alone is not even a separator — it is an `item_start` with nothing after
+its marker, as the paragraph below says. Making the title a heading would be a change to the class
+table and to AD-2, not to this file.
 
 **A separator is not an item, and it makes no parent.** A separator `item_start` is passed over by
 the leaf-and-parent test: an item whose extent holds one is still a leaf, because a rule written
@@ -184,13 +217,23 @@ code sample indented under a list item is part of that item, and a range never s
 Outside a unit they belong to no unit, and no fence line ever starts one — a paragraph is a run of
 `plain` lines, and an item begins on an `item_start`.
 
-Two cases are **draft limits**, named rather than solved, and Epic 5 settles both after real
-changelogs have been run:
+Two cases are settled as the classifier of `04_snapshot-format.md` already behaves, and this file
+states what it does rather than choosing again:
 
-- a fence that never closes runs to the end of the body, so every line after it is `in_fence` and
-  no unit begins anywhere below it;
-- a fence whose content is unindented closes the item it sits in, in the middle of the fence,
-  because the open-item rule is read literally for lines of every class.
+- **a fence that never closes.** Every line after the opener is `in_fence` to the end of the body,
+  so no unit begins anywhere below it. Opened outside a unit, those lines belong to no unit and
+  land in `Unmapped`. Opened inside a leaf, with every fenced line indented, the leaf stays open —
+  no line closes it — and its extent runs to the last line of the body, an empty line inside the
+  fence included, because such a line is `in_fence` and not `blank`;
+- **a fenced line with no indent.** The open-item rule is read literally for lines of every class,
+  so a fenced line standing at the left margin closes the item on itself. The fence lines above
+  that line stay in the item's extent; that line, every fenced line after it and the line that
+  closes the fence belong to no unit and land in `Unmapped`.
+
+One line inside a fence is a **limit**, named and not settled: an empty line between two fence
+lines is `in_fence` and not `blank`. It closes no item, and the walk to an item ancestor skips it
+as it skips a blank line — `05_checks.md` says so — but what the coverage checks of that file make
+of it is stated nowhere yet.
 
 No worked example below holds a fence line.
 
@@ -209,8 +252,8 @@ An **ancestor of a range** is one of exactly two things, in the words of AD-2 (4
   a three-hash one;
 - an `item_start` above the range, less indented than the range's first line, with no `heading` and
   no line of equal or lesser indent between them. **The indent compared is the ancestor's own** —
-  amended into AD-2 (4) by Sergey on 2026-09-21, with this story. A `blank` line has no indent and
-  is skipped; every other line's indent is its leading spaces and tabs, as measured above.
+  amended into AD-2 (4) by Sergey on 2026-09-21. A `blank` line has no indent and is skipped;
+  every other line's indent is its leading spaces and tabs, as measured above.
 
 Read any other way that clause breaks a list that works. Compared with the range's first line, a
 first sub-item would block the parent for every later sibling; with a `blank` line counted as an
@@ -229,10 +272,12 @@ not listed under `Unmapped`, because `Unmapped` holds the lines no row cites (FR
 
 ## Worked examples
 
-Five, and every one of them is **invented**: the host is `example.com`, every endpoint, parameter
+Eight, and every one of them is **invented**: the host is `example.com`, every endpoint, parameter
 and date is made up, and nothing here is a fact about any real API. Four are the cases FR-9 names.
 The fifth is the body that the first example of `01_schema.md` implies, printed so that the rule
-and the published example can be checked against each other.
+and the published example can be checked against each other. The last three are the pages that
+**Mixed input** and **Another language** point at: a changelog inside a blog post, a page covering
+several products, and a changelog in German.
 
 Each example is shown as a snapshot **body**, numbered the way `04_snapshot-format.md` numbers one;
 the snapshot's header is not reproduced, because only the body and its numbers matter here. A blank
@@ -406,6 +451,129 @@ ancestor of 2: 3
 ancestor of 2: 5
 ```
 
+### A changelog inside a blog post
+
+A post that holds a list of changes in the middle of its prose. Question 1 of **The test for a
+changelog** is answered yes by line 8 alone, so the page is translated as a changelog whatever else
+it holds: the two leaves are tickets, and so are the two paragraphs under the second heading,
+because each of them states a change. Those two are the entry written as two paragraphs that
+**Paragraphs** names — one entry, two units, two tickets. The opening paragraph and the closing one
+state no change, so they are unmapped, with every heading nobody cites. Four tickets.
+
+```text
+      1: # What we shipped this spring
+      2: 
+      3: Spring was a busy season for the platform team, and this post rounds up what reached the API.
+      4: Thanks to everyone who wrote in with a report.
+      5: 
+      6: ## Changes to the widgets API
+      7: 
+      8: - GET /v1/widgets now requires the tenant parameter.
+      9: - The colour field of a widget is renamed to color.
+     10: 
+     11: ## One more thing
+     12: 
+     13: The rate limit on POST /v1/widgets is raised from 60 to 600 calls a minute.
+     14: 
+     15: The old limit is withdrawn on 2026-07-01; until then a client may rely on either.
+     16: 
+     17: Read the full reference at https://example.com/docs, and see you next quarter.
+```
+
+```text
+ticket 1: 8
+ticket 2: 9
+ticket 3: 13
+ticket 4: 15
+ancestor of 1: 1
+ancestor of 1: 6
+ancestor of 2: 1
+ancestor of 2: 6
+ancestor of 3: 1
+ancestor of 3: 11
+ancestor of 4: 1
+ancestor of 4: 11
+```
+
+### Several products on one page
+
+One page, three products, one dated heading over all of them. It is one changelog and one answer:
+a product's name in a heading is an ordinary `heading` and so an ordinary ancestor, blocked by the
+next heading of its own or a higher level and by nothing else, and the dated heading above them
+all is an ancestor of every ticket. The paragraph under the third product says that nothing
+changed; with tickets on the page it is simply a unit that states no change, unmapped like any
+other, and question 2 of the test is never reached. Three tickets.
+
+```text
+      1: # Platform changelog
+      2: 
+      3: ## 2026-07-08
+      4: 
+      5: ### Widgets API
+      6: 
+      7: - GET /v1/widgets gains the page parameter.
+      8: - The limit parameter of GET /v1/widgets now caps at 200.
+      9: 
+     10: ### Gadgets API
+     11: 
+     12: - DELETE /v1/gadgets is removed.
+     13: 
+     14: ### Billing
+     15: 
+     16: Nothing changed this month.
+```
+
+```text
+ticket 1: 7
+ticket 2: 8
+ticket 3: 12
+ancestor of 1: 1
+ancestor of 1: 3
+ancestor of 1: 5
+ancestor of 2: 1
+ancestor of 2: 3
+ancestor of 2: 5
+ancestor of 3: 1
+ancestor of 3: 3
+ancestor of 3: 10
+```
+
+### A changelog in German
+
+The same classes cut the same units whatever language the lines are in: two leaves of one line,
+one leaf of two, one paragraph. Every value a ticket takes from these lines is copied in German
+and never translated — the two names of the field in the second item stay as they stand, and so does
+every word around them. What the last item says about compatibility is no phrase of the closed
+list of `03_breaking-terms.md`, and what that yields is that file's to say. The heading on line 3
+is dated by the date table of `01_schema.md`, which reads a heading the same way in any language;
+the date written in words on line 7 stands on an item line and no heading, and that table reads it
+as it reads any other span of a unit's own line. Three tickets.
+
+```text
+      1: # Änderungen an der API
+      2: 
+      3: ## 2026-08-03
+      4: 
+      5: - GET /v1/widgets verlangt jetzt bei jedem Aufruf den Parameter tenant.
+      6: - Das Feld colour eines Widgets heißt jetzt color.
+      7:   Der alte Name wird bis Oktober 2026 weiter angenommen.
+      8: - Diese Änderung ist nicht abwärtskompatibel: DELETE /v1/gadgets wird entfernt.
+      9: 
+     10: Fragen bitte an das Team unter https://example.com/support.
+```
+
+```text
+ticket 1: 5
+ticket 2: 6-7
+ticket 3: 8
+ancestor of 1: 1
+ancestor of 1: 3
+ancestor of 2: 1
+ancestor of 2: 3
+ancestor of 3: 1
+ancestor of 3: 3
+```
+
 ## When the input has no line numbers
 
 FR-25's other mode changes nothing here. Pasted text has the same structure a numbered snapshot
@@ -434,40 +602,69 @@ An ancestor line outside `body_range` is **never cited** either. No check covers
 citation outside the body range is not a `source` range, so `range_body` does not see it — and
 `reference/CONTEXT.md` names it as debt with the rest.
 
-## The test for a changelog — draft
+## The test for a changelog
 
-**This section is a draft.** It is the part of this file with the least behind it, it is marked
-here and named again at the end, and Epic 5 rewrites it after the runs on real changelogs.
+Three refusals come before it and none is a reading of the page. They belong to `01_schema.md`,
+which owns their reasons — `a bare URL and nothing to fetch it`, `no body`, `over the size limit` —
+and the procedure decides them before any unit is cut, in that order. None is restated here; only
+the fourth reason of that table is this test's.
 
-Two answers come before it and neither is a judgment about what a page is. They belong to
-`01_schema.md`, which owns the refusals: an input with no non-blank body line is the refusal
-`no body`, and an input longer than `max_body_lines` is the refusal `over the size limit`.
+What is left is decided over the units already cut and the headings above them, by three questions
+asked in this order, each answered yes or no, the first yes ending the test:
 
-What is left is decided by **conditions**, not by steps, and they are read in this order:
+1. **Does at least one unit state a change**, by **What is not a change** above — a lead-in, a
+   parent's own lines and a separator being no change by that section, whatever they say? Yes → the
+   tickets shape: every unit that is a change is a ticket and every other unit is unmapped,
+   whatever else the page holds — see **Mixed input** below.
+2. Otherwise, **does any unit, or any `heading`, say in its own words that a release, a version or
+   a period holds no changes** — "No API changes this release", "Nothing changed in May"? Yes →
+   the zero-ticket shape, `Tickets: none`, with every non-blank body line unmapped (FR-23).
+3. Otherwise → the refusal `not a changelog` (FR-22, FR-24).
 
-- **at least one unit is a change** → the input is a changelog, whatever else it is. It is
-  translated entry by entry: every unit that is a change is a ticket, everything else is unmapped.
-  That covers a changelog inside a blog post and a page carrying several products at once (FR-24) —
-  a product's name in a heading is an ordinary ancestor line and needs no rule of its own. A
-  changelog in another language is read by the same test and translated the same way; its values
-  are copied, never translated;
-- **no unit is a change, and some unit says that a release holds no changes** → the zero-ticket
-  shape, `Tickets: none`, with every non-blank body line unmapped (FR-23);
-- **neither** → the refusal `not a changelog` (FR-22, FR-24).
+No question asks what the page is about, how much of it is a changelog, or how well it is written.
+Two verdicts stand in the test and both are named as such. Question 1's is the verdict that **What
+is not a change** already leaves to the translator — whether a unit states a change — and the test
+adds nothing to it. Question 2's is the one reading this test adds: "says in its own words" is read
+and not matched, it has to tell "No API changes this release" from a page that merely mentions no
+change, and it is the second of the two places named under **What is not a change** where two runs
+may differ.
 
-**What is weak about it, named rather than hidden.** One sentence reading "we fixed the spelling on
-the pricing page" makes any page at all pass the first condition, so the test is closer to "does
-this page state a change" than to "is this page a changelog". And "says that a release holds no
-changes" is a reading and not a pattern: it has to tell "No API changes this release" from a page
-that simply mentions no change, and nothing here says how. Those two are exactly what Story 2.3's
-cold run is asked to record first.
+Question 2 reads headings as well as units, so a body of headings alone reaches it: `### No
+changes this release` and nothing under it is the zero-ticket shape, and a body of headings that
+say nothing of the kind is the refusal. A page that states one change — "we fixed the spelling on
+the pricing page" — passes question 1 and is translated with one ticket; that is the cost of a test
+that asks whether the page states a change, and it is stated as a limit under **Mixed input**.
 
-A third edge is narrower and it is not a reading at all: the second condition asks for a **unit**
-that says a release holds no changes, so a page announcing it in a heading — `### No changes this
-release` — and nothing else offers no unit to read it off, and the answer is the refusal rather
-than the zero-ticket shape. That outcome is at least the same on every run, which is why it is not
-in the list of places two runs may differ; it is a gap in the condition, and Epic 5 closes it or
-writes it down as intended.
+## Mixed input
+
+The test above asks whether the page states a change, not whether the page is a changelog, and
+that is a **limit**, stated rather than hidden: every unit that is a change by **What is not a
+change** is a ticket wherever it stands, and every other unit is unmapped. So a page whose changelog is one list inside a blog
+post is translated entry by entry with the post around it unmapped — and a paragraph of the post
+that itself states a change is a ticket too, because nothing in this file can tell the post from
+the changelog, and a rule that tried would be reading what the page is about. The example **A
+changelog inside a blog post** shows both.
+
+A page covering several products at once is one changelog and one answer (FR-24). A product's name
+in a heading is an ordinary `heading`: an ancestor of the tickets beneath it by **Ancestor lines**,
+blocked by the next heading of its own or a higher level, and it needs no rule of its own. The
+example **Several products on one page** shows it. Several inputs supplied in one message are a
+different case — several pages, not one mixed page — and the procedure says what is done with them.
+
+## Another language
+
+A changelog in another language is cut by the same classes into the same units, and the test reads
+it by the same three questions: whether a unit states a change is read in whatever language the
+unit is written in. Every value is **copied in that language and never translated** — a French
+sentence is quoted in French, and a value inside it is a span of that French line. Two fields read
+something beside the unit's own words, and what they read is owned elsewhere and pointed at here.
+`breaking` is filled by reading the quote against the closed list of `03_breaking-terms.md`, by
+**How a quote is read** of that file, so a line in another language that carries no phrase of that
+list yields what that file says an unlisted phrase yields. `entry_date` reads the nearest dated
+heading by the date table of `01_schema.md`, where a dated heading is one holding a date in the one
+form the `date` pattern of `warn-patterns` matches — the same in every language — and a date
+written in words, in any language, makes no heading dated. The example **A changelog in German**
+shows the three.
 
 ## What the validator checks of this, and what nothing checks
 
@@ -511,7 +708,11 @@ passes:
 - **that a unit cut by the body range is not a change**, and that an ancestor line outside the body
   range is not cited;
 - **the test for a changelog** — the reason on a refusal is checked against the closed list of
-  reasons, and nothing compares the shape chosen with the page it was chosen for.
+  reasons, and nothing compares the shape chosen with the page it was chosen for: no check answers
+  any of the three questions of the checklist;
+- **the fence block after a leaf**, which `range_end` reads by two classes alone: a range that stops
+  before an indented fence block its leaf carries is passed, because the next non-blank line is
+  neither a `continuation` nor an `item_start`. Named, and not settled.
 
 Every one of these is named as debt in `reference/CONTEXT.md`. A rule stated here that no key
 covers is a rule the translator keeps because it is written down, and for no other reason.

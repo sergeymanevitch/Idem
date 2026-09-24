@@ -31,7 +31,8 @@ place every citation of an **ambiguous** heading is pinned to, because a heading
 two reference files can otherwise be cited of the wrong one and resolve; the column a value is read
 from, asserted by name rather than taken by position; the four requirements the prohibitions must
 cover and the one the self-check must cite; the word that marks a draft and the words that say
-what it still leaves open; the sections of the field rules step 3 has to cite; and the short plain
+what it still leaves open; the sections of the field rules step 3 has to cite and the sections of
+the segmentation rule step 2 has to cite; and the short plain
 words Q20 exempts from the forbidden-value scan. Every phrase, reason,
 constant, field name and pattern is read from the contract through `contract.load()`, so a row
 renamed by decision is not typed here as well.
@@ -94,6 +95,7 @@ AMBIGUOUS_CITATIONS = [
     ("Step 1 — Read the input", "The header", "01_schema.md"),
     ("Step 1 — Read the input", "The header", "01_schema.md"),
     ("Step 1 — Read the input", "Names that are used twice", "01_schema.md"),
+    ("Step 2 — Segment", "When the input has no line numbers", "02_segmentation.md"),
     ("Step 3 — Fill the fields", "When the input has no line numbers", "01_schema.md"),
     ("Step 4 — Build `Unmapped`", "Names that are used twice", "01_schema.md"),
     ("Step 4 — Build `Unmapped`", "When the input has no line numbers", "01_schema.md"),
@@ -136,6 +138,23 @@ FIELD_RULES = [
     ("The other copied spans", "01_schema.md"),
     ("The date decision table \u2014 translator prose, not a strict table", "01_schema.md"),
     ("Scoped and conditional wording", "03_breaking-terms.md"),
+]
+#: The segmentation rule, section by section, every one of which step 2 cites: what a unit is and
+#: how far an item runs, leaves and parents, fences, paragraphs, the narrowing, what is not a
+#: change, the test for a changelog and the two sections after it, and the two modes of input.
+SEGMENTATION_RULES = [
+    ("The unit", "02_segmentation.md"),
+    ("The extent of an item", "02_segmentation.md"),
+    ("Leaf items and parents", "02_segmentation.md"),
+    ("Fences", "02_segmentation.md"),
+    ("Paragraphs", "02_segmentation.md"),
+    ("The one narrowing: separator lines", "02_segmentation.md"),
+    ("What is not a change", "02_segmentation.md"),
+    ("The test for a changelog", "02_segmentation.md"),
+    ("Mixed input", "02_segmentation.md"),
+    ("Another language", "02_segmentation.md"),
+    ("When the header gives a body range", "02_segmentation.md"),
+    ("When the input has no line numbers", "02_segmentation.md"),
 ]
 #: The heading the prohibitions stand under, and how many paragraphs stand under it. The count is
 #: pinned because a prohibition deleted while its tag stays somewhere else would otherwise survive.
@@ -592,6 +611,14 @@ class TestTheFieldRulesAreCited(unittest.TestCase):
         for heading, cited in FIELD_RULES:
             self.assertIn((heading, cited), found, heading)
 
+    def test_step_2_cites_every_section_of_the_segmentation_rule_by_heading_and_file(self):
+        """The same for the segmentation rule: a section of it that step 2 does not point at is a
+        section the translator never reads. The mutation: the checklist renamed and step 2 left
+        pointing at the old heading, or a new section added and pointed at by nothing."""
+        found = citations_in(steps()[2][1])
+        for heading, cited in SEGMENTATION_RULES:
+            self.assertIn((heading, cited), found, heading)
+
 
 class TestNeitherFileHoldsAContractValue(unittest.TestCase):
     """The grep the story asks for, run as a test and over both files at once: a value `reference/`
@@ -646,6 +673,16 @@ class TestTheDraftIsMarked(unittest.TestCase):
         notice = re.sub(r"\s+", " ", body[:body.index("## Step 1 ")])
         self.assertIn(OPEN, notice)
         self.assertIn("changelog", notice.lower())
+
+    def test_the_notice_no_longer_names_the_segmentation_file_as_unfinished(self):
+        """The three parts of `02_segmentation.md` the notice once named as draft - the test for
+        a changelog, one entry as two paragraphs, the two fence cases - are settled there, and a
+        notice still naming them would send the reader to look for marks that are gone."""
+        body = text(RULES)
+        notice = re.sub(r"\s+", " ", body[:body.index("## Step 1 ")]).lower()
+        self.assertNotIn("02_segmentation.md", notice)
+        self.assertNotIn("fence", notice)
+        self.assertNotIn("two paragraphs", notice)
 
     def test_neither_file_names_an_epic_a_story_or_a_record(self):
         """What the reader of an upload set meets is the procedure, not the plan that built it: a
