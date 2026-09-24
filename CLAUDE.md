@@ -2,8 +2,8 @@
 
 Idem turns an API vendor's changelog into migration tickets of one fixed shape, every value copied
 from the source with its quote and line number, every gap marked `not in source`. `README.md` is
-written for the person using or judging the folder; this file is the route for an agent about to
-work in it. It routes and holds no rule.
+written for the person using or judging the folder: how to run it, what a passing check proves, and
+what is not built; this file is the route for an agent about to work in it. It routes and holds no rule.
 
 **State: `reference/` is written whole and can be read, `identity.md` is written and `rules.md` is
 written as a first draft, `lib/idemlib/` holds the contract loader and the two format modules — the
@@ -77,7 +77,10 @@ built by hand from it, and one input text, the Plaid body as pasted.
 `identity.md` says what Idem is, takes, returns and refuses; `rules.md` is the first-draft
 procedure — six numbered steps, each naming the file and the section it depends on, the self-check
 of FR-27 before the emit step, and the prohibitions under them — and it says where it is still a
-draft and that Epic 5 finishes it. Nothing else below is built — each folder's `CONTEXT.md` says
+draft and that Epic 5 finishes it. `README.md` is written: every root entry, every command that
+exists, each run once from a fresh clone before it was written down, the claude.ai Project set-up
+of the one recorded run, the limits with their sources, and one line for each thing not built.
+Nothing else below is built — each folder's `CONTEXT.md` says
 what it will hold.
 
 ## To translate a snapshot
