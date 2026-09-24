@@ -7,14 +7,13 @@ reason* is as bad as one that passes, so this file says not only that a fixture 
 expected set; a mutation that fails for another reason, or by a crash, is a suite failure (FR-40,
 AD-7).
 
-**The corpus is written one row at a time.** Every row below was written before any of the files it
-names, which is the order the whole folder is built in. Sixty-one of those files exist today: the
-clean tickets file and the zero-ticket clean file, the three of the reading stage, the six of the
-pairing phase, the twelve of canonical form and grammar, the eight of the row states, the twelve of
-quotes and values — every row of that phase but `quote_input`, which waits with the check that
-would read it — the eight of ranges and ancestors, the eight of coverage and the two warning
-fixtures. The rest come with the checks that read them, and
-`run_fixtures.py` prints on every run how many rows still name a file that is not there. Beside that,
+**The corpus was written one row at a time, and it is whole.** Every row below was written before
+any of the files it names, which is the order the whole folder is built in. All sixty-four of those
+files exist: the three clean files, one of each shape, the three of the reading stage, the six of
+the pairing phase, the twelve of canonical form and grammar, the eight of the row states, the
+thirteen of quotes and values, the eight of ranges and ancestors, the eight of coverage and the
+three warning fixtures. `run_fixtures.py` fails on a row whose file is not there, and prints on
+every run the four counts a whole corpus holds at zero. Beside that,
 the rows carry the both-ways reconciliation in `test_manifest.py`: every row of `checks` in
 `reference/05_checks.md` is named here, and every code named here is a row of `checks`. The two
 exempt rows are `CONTRACT_TABLE` and `INTERNAL`, which report a defect in the tool and cannot be
@@ -52,7 +51,7 @@ canonical form, and no serialiser would have written it.
 
 ## Rows that need a word
 
-Most rows say all there is to say. Ten do not:
+Most rows say all there is to say. Eleven do not:
 
 - **`grammar_shape-01`** is a **missing** block: the `## Unmapped` heading and the blank line above
   it are taken out, so the entries stand where the heading should. Blocks that merely run together
@@ -77,7 +76,8 @@ Most rows say all there is to say. Ten do not:
   and `terms-01.txt` — that last one rewrites three body lines **for the text they carry**, so that
   a line holds a phrase of the list that decides `breaking`, and it stands for no refetch of
   anything; so was `items-01.txt`, for the three rows below that need it; the table in
-  `00_fixtures/CONTEXT.md` says which of the seven snapshots is evidence and which six are not.
+  `00_fixtures/CONTEXT.md` says which of the eight snapshots is evidence and which seven are not,
+  and that the one input text beside them is no snapshot at all.
 - **`snapshot_sha256-01`** has a snapshot whose body no longer matches its own header digest. Its
   tickets header carries the **recomputed** digest, not the snapshot's stale one, so that the
   pairing check passes and the snapshot's own check is the only thing that fires.
@@ -88,7 +88,13 @@ Most rows say all there is to say. Ten do not:
 - **`quote_input-01`** and **`warn_unbound-01`** are the two files in `line_numbers: none`. Every
   run in that mode emits `WARN_UNBOUND`, whatever else it finds and wherever it stops, because that
   line is a statement about what was not checked (AD-10) — so it stands in both rows' expected
-  codes. `warn_date` and `warn_breaking` are the other way round: they read `Unmapped` against a
+  codes. Their `snapshot` cell names **`pasted-01.txt`, which is no snapshot**: it is the input
+  text both were written from — the two hundred body lines of `changelog-01.txt` as a person would
+  paste them, UTF-8, every line ended by a line feed, with no header and no number prefix, so that
+  `snapshot.read` refuses it. `run_fixtures.py` hands it to the validator's input flag because
+  each file's own header reads `none`, and for no other reason. `warn_unbound-01` is `clean-01`
+  rewritten into that mode through the parser, and `quote_input-01` is one row of it given a quote
+  that stands nowhere in that text. `warn_date` and `warn_breaking` are the other way round: they read `Unmapped` against a
   ticket's range, so only a run that reaches coverage prints one, which is why `warn_date-01` and
   `warn_breaking-01` are otherwise clean files: exit 0 and one `WARN` line each. **Both are paired
   with `warns-01.txt`** (Sergey, 2026-09-23): no non-heading line of the Plaid body holds a date
@@ -129,6 +135,13 @@ Most rows say all there is to say. Ten do not:
   shows it: the coverage checks called on the paired run of `cite_range-01` fire, and the run prints
   the one ranges code. The items base itself is proved silent by the tool through every phase,
   coverage included, by the test that rebuilds it.
+
+- **`clean-02`** is the refusal shape: `refusal_reason-01`'s header — `clean-01`'s values, with
+  `body_range` reading the sentinel because a refusal translated nothing — and the line
+  `Refusal: not a changelog`. **That reason is false of the Plaid changelog**, and the file does not
+  claim otherwise: it is a file of the refusal's grammar, and the paragraph below says why the suite
+  never asks whether the reason was true. `refusal_reason-01` is its one mutation, an improvised
+  reason, and was built first.
 
 One thing the suite does not do: re-decide a refusal. `clean-02` and the shape fixtures are checked
 against the grammar of their shape, never against whether the input really was a changelog, and
@@ -210,8 +223,9 @@ Sixty-four rows: forty-six checks covered, sixty-one rows naming at least one co
 clean files** that must be accepted with nothing said about them — one of each shape. `clean-01` is
 the tickets shape, `clean-02` a refusal and `clean-03` a zero-ticket file, because a validator that
 accepted only the shape it sees most would pass a suite built out of the other two's mutations.
-Ten snapshots are named — `changelog-01.txt` and its refetch `changelog-02.txt`, `pasted-01.txt`
-for the unnumbered mode, `long-01.txt` for the size limit, `terms-01.txt` for the three mutations
+Ten files are named in the `snapshot` column — `changelog-01.txt` and its refetch
+`changelog-02.txt`, `pasted-01.txt` for the unnumbered mode, which is an input text and no
+snapshot, `long-01.txt` for the size limit, `terms-01.txt` for the three mutations
 that need a line holding a listed phrase or a temporal expression, `items-01.txt` for the three
 that need a continuation line, `warns-01.txt` for the two warnings, `edited-01.txt` and
 `unreadable-01.txt` for the two snapshot checks, and the absent `no-such-snapshot.txt`.

@@ -21,6 +21,8 @@ the two passages in them a test reads, the counts the story fixes, the manifest 
 position, and the shapes a line must have.
 """
 import ast
+import collections
+import functools
 import io
 import os
 import re
@@ -75,11 +77,11 @@ ANCHORED_RE = re.compile(r"^`([^`]+)`$")
 #: Its columns, by position: the phase, the key that opens it, the key that closes it.
 FIRST, LAST = 1, 2
 
-#: What the story fixes about the shipped table: forty-five checks written, two rows the frame
-#: raises, and the one registered with nothing behind it. They are counted, never listed.
-WRITTEN = 45
+#: What the shipped table comes to: forty-six checks written, the two rows the frame raises, and
+#: nothing registered with nothing behind it. They are counted, never listed.
+WRITTEN = 46
 FRAME_ROWS = 2
-PENDING_ROWS = 1
+PENDING_ROWS = 0
 #: The checks that end their phase. The count is in the prose; the names are read from it.
 ENDING = 5
 #: The nine phases of AD-6.
@@ -100,11 +102,10 @@ CANONICAL, STRAY, BLOCKS, NUMBERS, FIELD_ROWS, REASON, ENTRY_FORM, SIZE = range(
 #: The checks of the row-states phase, by the same rule: the three states, the shape of the source
 #: row, what that row names, the form of a line cell, and the range that runs backwards.
 SENTINEL_ROW, FILLED_ROW, EMPTY_ROW, SOURCE_SHAPE, SOURCE_NAMES, LINE_CELL, REVERSED = range(7)
-#: The **written** checks of the quotes-and-values phase, by the same rule: a line past the body, a
-#: quote not on the line cited, a value not inside its quote, and the two that read the phrase list.
-#: The sixth row of that phase is registered with nothing behind it and carries no phase, so it is
-#: in none of these positions - which is what `test_one_row_of_the_phase_is_still_pending` says.
-LINE_PAST, QUOTE_ON_LINE, VALUE_IN_QUOTE, BREAKING_READ, BREAKING_BOTH = range(5)
+#: The checks of the quotes-and-values phase, by the same rule: a line past the body, a quote not on
+#: the line cited, a quote nowhere in the input text, a value not inside its quote, and the two that
+#: read the phrase list.
+LINE_PAST, QUOTE_ON_LINE, QUOTE_IN_INPUT, VALUE_IN_QUOTE, BREAKING_READ, BREAKING_BOTH = range(6)
 #: The checks of the ranges-and-ancestors phase, by the same rule: a line cited outside its range
 #: that is no ancestor of it, an ancestor cited under a field that allows none, two ranges that
 #: overlap, a heading inside a range, the line a range starts on, the line it ends on, and a range
@@ -119,10 +120,10 @@ DATE_WARNING, BREAKING_WARNING, UNBOUND_WARNING = range(3)
 #: How many committed fixtures each of the four phases has. More than one key carries several.
 GRAMMAR_FIXTURES = 12
 STATES_FIXTURES = 8
-QUOTES_FIXTURES = 12
+QUOTES_FIXTURES = 13
 RANGES_FIXTURES = 8
 COVERAGE_FIXTURES = 8
-WARNING_FIXTURES = 2
+WARNING_FIXTURES = 3
 #: The nine classes of finding the one reader of the format makes, counted and never listed.
 FINDING_CLASSES = 9
 #: The stray sentence the grammar fixtures are built with.
@@ -397,6 +398,29 @@ def with_item(lines, name, value):
     return found
 
 
+def unbound(data):
+    """Whether the header of these bytes reads the mode with no line numbers. Nothing is written."""
+    header = tickets.parse(data).header or []
+    return bool([item for item in header if item.name == validate.MODE_ITEM
+                 and item.value == tickets.unnumbered_mode()])
+
+
+def quotes_of(lines):
+    """An input text for a published example: the quote of every row that carries one, a line each.
+
+    The example of a file written from pasted text cites no input it prints, so a case that runs it
+    through `main` - which now requires the text in that mode - writes one out of the quotes the
+    example itself carries: every quote is then in it, and nothing else is.
+    """
+    model = tickets.parse(as_bytes(lines)).model
+    found = []
+    for ticket in model.tickets:
+        for row in ticket.rows:
+            if row.quote != "":
+                found.append(row.quote)
+    return ("\n".join(found) + "\n").encode("utf-8")
+
+
 class ValidatorCase(unittest.TestCase):
     """A temporary directory for files the corpus does not hold, and one way to run the tool."""
 
@@ -447,9 +471,17 @@ class ValidatorCase(unittest.TestCase):
         return found
 
     def fixture(self, name, snapshots=None):
-        """Run the tool on a committed fixture, against the committed snapshots."""
-        return self.run_main([os.path.join(TICKETS_FOLDER, name), validate.FLAG,
-                              SNAPSHOTS_FOLDER if snapshots is None else snapshots])
+        """Run the tool on a committed fixture, against the committed snapshots.
+
+        The header chooses the flags, as it chooses them for the suite: a file whose mode item reads
+        the unnumbered mode is handed the input text its manifest row names, and no other file is.
+        """
+        path = os.path.join(TICKETS_FOLDER, name)
+        argv = [path, validate.FLAG, SNAPSHOTS_FOLDER if snapshots is None else snapshots]
+        if unbound(self.bytes_of(path)):
+            argv.extend([validate.INPUT_FLAG,
+                         os.path.join(SNAPSHOTS_FOLDER, manifest_row(name).cells[SNAPSHOT])])
+        return self.run_main(argv)
 
     def assert_manifest(self, name):
         """The file raises exactly what its manifest row says, and exits as it says."""
@@ -469,6 +501,23 @@ class ValidatorCase(unittest.TestCase):
 
     def clean(self):
         return self.bytes_of(os.path.join(TICKETS_FOLDER, CLEAN))
+
+    def run_unbound(self, lines, name):
+        """Run `main` on these lines, in the mode with no line numbers, with an input text written
+        out of their own quotes - which that mode requires of the tickets shape."""
+        path = self.write(name, as_bytes(lines))
+        given = self.write(name + ".input.txt", quotes_of(lines))
+        return self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER, validate.INPUT_FLAG, given])
+
+    def real_header(self, lines):
+        """Those lines with the snapshot, the digest and the URL the clean file's header gives.
+
+        Under the numbered mode those three items name a snapshot and never read the sentinel, so a
+        published example switched into that mode takes them from the clean file."""
+        for item in self.model_of(self.clean()).header:
+            if item.name in (validate.SNAPSHOT_ITEM, validate.DIGEST_ITEM, validate.URL_ITEM):
+                lines = with_item(lines, item.name, item.value)
+        return lines
 
     def a_run(self, data, directory=None):
         """One run over these bytes, built as `main` builds one and with nothing opened.
@@ -712,7 +761,7 @@ class TestThePhases(ValidatorCase):
         for key in keys_of(validate.WARNINGS):
             original = getattr(validate, validate.CHECK_PREFIX + key)
             watcher = remember(key)
-            watcher.phase = original.phase
+            functools.update_wrapper(watcher, original)
             setattr(validate, validate.CHECK_PREFIX + key, watcher)
             self.addCleanup(setattr, validate, validate.CHECK_PREFIX + key, original)
         self.fixture(CLEAN)
@@ -872,8 +921,7 @@ class TestWhatHasNothingToRead(ValidatorCase):
         return found[0]
 
     def test_the_unnumbered_mode_prints_the_warning_and_exits_zero(self):
-        path = self.write("a.tickets.md", as_bytes(self.unnumbered()))
-        code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        code, lines = self.run_unbound(self.unnumbered(), "a.tickets.md")
         self.assertEqual(0, code, lines)
         self.assertEqual(1, len(lines), lines)
         self.assertEqual(validate.WARNING_FIELD, lines[0].split(contract.TAB)[0])
@@ -897,8 +945,7 @@ class TestWhatHasNothingToRead(ValidatorCase):
         """The file names no snapshot, and the name it does write is not a file on disk; had the
         phase run, the absent snapshot would be a failure and never a skip."""
         pairing = set([code_of(key) for key in keys_of(validate.PAIRING)])
-        path = self.write("c.tickets.md", as_bytes(self.unnumbered()))
-        _code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER])
+        _code, lines = self.run_unbound(self.unnumbered(), "c.tickets.md")
         self.assertEqual(set(), self.codes(lines) & pairing, lines)
 
     def test_a_name_that_walks_out_of_the_snapshot_directory_is_never_opened(self):
@@ -922,8 +969,7 @@ class TestWhatHasNothingToRead(ValidatorCase):
             opened.append(run.path)
             return original(run)
 
-        watch.phase = original.phase
-        watch.ends_phase = original.ends_phase
+        functools.update_wrapper(watch, original)
         validate.check_snapshot_format = watch
         self.addCleanup(setattr, validate, "check_snapshot_format", original)
 
@@ -972,7 +1018,7 @@ class TestWhatHasNothingToRead(ValidatorCase):
     def test_a_refusal_naming_a_snapshot_that_is_not_there_is_not_paired(self):
         """A refusal translated nothing, so there is nothing to pair. The snapshot it names is
         deliberately absent: if the phase ran at all, this file would fail."""
-        block = self.refusal()
+        block = self.real_header(self.refusal())
         block = with_item(block, validate.SNAPSHOT_ITEM, "no-such-snapshot.txt")
         block = with_item(block, validate.MODE_ITEM, tickets.numbered_mode())
         path = self.write("d.tickets.md", as_bytes(block))
@@ -1117,7 +1163,8 @@ class TestTheGrammarPhase(ValidatorCase):
         label = constant("refusal_label")
         colon = constant("header_colon")
         for reason in list(SHIPPED[validate.REASONS_TABLE].rows):
-            block = with_item(self.refusal(), validate.MODE_ITEM, tickets.numbered_mode())
+            block = with_item(self.real_header(self.refusal()), validate.MODE_ITEM,
+                              tickets.numbered_mode())
             block = [item_line(label, reason) if line.startswith(label + colon)
                      else line for line in block]
             path = self.write("r.tickets.md", as_bytes(block))
@@ -1617,7 +1664,13 @@ class TestQuotesAndValues(ValidatorCase):
             for name in names:
                 found += 1
                 lines = self.assert_manifest(name)
-                self.assertEqual(1, len(lines), lines)
+                #: One failure line, and beside it the warning every run of the unnumbered mode
+                #: prints and no run of the other mode does.
+                failures = [line for line in lines
+                            if line.split(contract.TAB)[0] != validate.WARNING_FIELD]
+                self.assertEqual(1, len(failures), lines)
+                warned = unbound(self.bytes_of(os.path.join(TICKETS_FOLDER, name)))
+                self.assertEqual(1 if warned else 0, len(lines) - len(failures), lines)
         self.assertEqual(QUOTES_FIXTURES, found)
 
     def test_the_base_the_three_fixtures_over_the_second_snapshot_mutate_is_clean(self):
@@ -1678,16 +1731,15 @@ class TestQuotesAndValues(ValidatorCase):
         self.assertIn(validate.NO, values)
         self.assertEqual(set([validate.NO]), held & (values | set(terms.rows)))
 
-    def test_one_row_of_the_phase_is_still_pending_and_its_fixture_waits_with_it(self):
-        """Nothing supplies an input text to search until the flag that takes one is built, so the
-        row that searches a quote in one is registered with nothing behind it; a check written now
-        would return an empty list on every run there is, which is a check exercised by nothing."""
+    def test_no_row_of_the_phase_is_pending_and_every_one_has_a_fixture(self):
+        """The row that searches a quote in the input text has a check behind it now that the flag
+        which supplies that text is built, and the file it was waiting on is committed."""
         checks = registry()
         rows = phase_keys(validate.QUOTES)
-        idle = [key for key in rows if checks[key] is validate.pending]
-        self.assertEqual(1, len(idle), idle)
-        self.assertEqual(len(keys_of(validate.QUOTES)) + 1, len(rows))
-        self.assertEqual([], fixtures_for(idle[0]))
+        self.assertEqual([], [key for key in rows if checks[key] is validate.pending])
+        self.assertEqual(rows, keys_of(validate.QUOTES))
+        for key in rows:
+            self.assertTrue(fixtures_for(key), key)
 
     def test_the_clean_file_says_nothing_in_this_phase(self):
         self.assert_quiet(validate.QUOTES, self.clean())
@@ -2951,7 +3003,7 @@ class CoverageCase(BuiltCase):
             def watch(run):
                 heard.append(key)
                 return original(run)
-            watch.phase = original.phase
+            functools.update_wrapper(watch, original)
             return watch
 
         for key in keys_of(phase):
@@ -3006,7 +3058,7 @@ class TestCoverage(CoverageCase):
 
         key = keys_of(validate.WARNINGS)[UNBOUND_WARNING]
         original = getattr(validate, validate.CHECK_PREFIX + key)
-        watch.phase = original.phase
+        functools.update_wrapper(watch, original)
         setattr(validate, validate.CHECK_PREFIX + key, watch)
         self.addCleanup(setattr, validate, validate.CHECK_PREFIX + key, original)
         code, lines = self.fixture(ZERO_TICKETS)
@@ -3086,8 +3138,21 @@ class TestCoverage(CoverageCase):
         self.assertEqual({}, self.fired(run))
 
     def test_under_the_mode_with_no_line_numbers_no_entry_carries_a_number(self):
-        """Decision 1: the snapshot and its classes put on the run by hand, and still nothing to
-        read - every entry is text alone, and the body range reads the sentinel in that mode."""
+        """The frame does not skip coverage in that mode, and the phase reads nothing there: every
+        entry is text alone, the body range reads the sentinel, and pairing - which is skipped -
+        leaves no snapshot on the run. A real run of the committed unbound file calls every check of
+        the phase and none of them speaks; and with the snapshot and its classes put on a run by
+        hand there is still no line to read, so the silence is the entries' and not only the
+        skip's."""
+        name = fixtures_for(keys_of(validate.WARNINGS)[UNBOUND_WARNING])[0]
+        heard = self.called(validate.COVERAGE)
+        code, lines = self.fixture(name)
+        self.assertEqual(0, code, lines)
+        self.assertEqual(set([code_at(validate.WARNINGS, UNBOUND_WARNING)]), self.codes(lines))
+        self.assertEqual(keys_of(validate.COVERAGE), heard)
+        run = self.a_run(self.bytes_of(os.path.join(TICKETS_FOLDER, name)))
+        self.assertTrue(validate._has_material(validate.COVERAGE, run))
+        self.assertIsNone(validate._listed(run))
         block = TestWhatHasNothingToRead.unnumbered(self)
         run = self.a_run(as_bytes(block))
         run.snapshot = self.plaid()
@@ -3459,7 +3524,7 @@ class TestTheTwoWarnings(CoverageCase):
 
     def test_each_warning_fixture_prints_one_warning_line_and_exits_zero(self):
         found = 0
-        for place in (DATE_WARNING, BREAKING_WARNING):
+        for place in (DATE_WARNING, BREAKING_WARNING, UNBOUND_WARNING):
             for name in fixtures_for(keys_of(validate.WARNINGS)[place]):
                 found += 1
                 lines = self.assert_manifest(name)
@@ -3660,6 +3725,616 @@ class TestTheTwoWarnings(CoverageCase):
         self.assertEqual(1, len(check_at(validate.WARNINGS, BREAKING_WARNING)(run)))
 
 
+# --- the three modes (AD-10) --------------------------------------------------------------------------
+
+
+#: The checks of the reading stage, by the position of their row: the encoding, the header block,
+#: and the header values.
+UNDECODED, HEADER_BLOCK, HEADER_VALUES = range(3)
+#: The check of the pairing phase that holds the header's digest to the snapshot's body, by the
+#: position of its row in that phase.
+PAIRED_DIGEST = 4
+#: The phases a run is expected to call a check of, per shape and mode - the table of the spec this
+#: frame implements, one row per shape and mode. The contract phase carries no check of its own, so
+#: it is in no row.
+EVERY_PHASE = [validate.READING, validate.PAIRING, validate.GRAMMAR, validate.STATES,
+               validate.QUOTES, validate.RANGES, validate.COVERAGE, validate.WARNINGS]
+NUMBERED_TICKETS = EVERY_PHASE
+UNNUMBERED_TICKETS = [validate.READING, validate.GRAMMAR, validate.STATES, validate.QUOTES,
+                      validate.COVERAGE, validate.WARNINGS]
+REFUSED = [validate.READING, validate.GRAMMAR, validate.WARNINGS]
+NUMBERED_NO_CHANGE = [validate.READING, validate.PAIRING, validate.GRAMMAR, validate.COVERAGE,
+                      validate.WARNINGS]
+UNNUMBERED_NO_CHANGE = [validate.READING, validate.GRAMMAR, validate.COVERAGE, validate.WARNINGS]
+
+
+def into_unbound(data):
+    """These bytes rewritten into the mode with no line numbers, through the parser.
+
+    The four header items that name a snapshot read the sentinel and the mode item the unnumbered
+    mode; every filled line cell of fields 1 to 7 reads the unnumbered word; the source row's value
+    reads the sentinel twice and its line cell once; every unmapped entry is its text alone. That is
+    how the committed unbound file was built out of the clean one, and a test holds the two to it.
+    """
+    model = tickets.parse(data).model
+    sentinel = SHIPPED[CONSTANTS].rows[tickets.SENTINEL][tickets.VALUE]
+    word = SHIPPED[CONSTANTS].rows[validate.UNNUMBERED_CELL][tickets.VALUE]
+    gap = " " * int(SHIPPED[CONSTANTS].rows[validate.SOURCE_GAP][tickets.VALUE])
+    last = list(SHIPPED[tickets.FIELDS_TABLE].rows)[-1]
+    header = [item._replace(value=tickets.unnumbered_mode() if item.name == validate.MODE_ITEM
+                            else sentinel) for item in model.header]
+    built = []
+    for ticket in model.tickets:
+        rows = []
+        for row in ticket.rows:
+            if row.field == last:
+                rows.append(row._replace(value=sentinel + gap + sentinel, line=sentinel))
+            elif row.line != "":
+                rows.append(row._replace(line=word))
+            else:
+                rows.append(row)
+        built.append(ticket._replace(rows=rows))
+    unmapped = model.unmapped
+    if unmapped is not None:
+        unmapped = unmapped._replace(entries=[item._replace(number=None, last=None)
+                                              for item in unmapped.entries])
+    return tickets.serialise(model._replace(header=header, mode=tickets.unnumbered_mode(),
+                                            body_range=None, tickets=built, unmapped=unmapped))
+
+
+class ModesCase(ValidatorCase):
+    """A run of the phases with every check of the registry watched, and the committed files of the
+    three shapes."""
+
+    def watched(self):
+        """The registry with every check wrapped to record its key when it is called, and the list
+        it records into. Each wrapper carries what its check carries - the phase, whether it ends
+        it, whether it reads a line, and the phase it is called again after."""
+        heard = []
+        wrapped = collections.OrderedDict()
+        checks = registry()
+        for key in checks:
+            def watch(run, key=key, original=checks[key]):
+                heard.append(key)
+                return original(run)
+            functools.update_wrapper(watch, checks[key])
+            wrapped[key] = watch
+        return wrapped, heard
+
+    def through(self, data, given=None):
+        """(the lines, whether one was a failure, the keys called in order) for a run of the phases
+        over these bytes, built as `main` builds one, with `given` as its input text."""
+        run = validate.Run("a.tickets.md", data, tickets.parse(data), SNAPSHOTS_FOLDER, SHIPPED)
+        run.input = given
+        wrapped, heard = self.watched()
+        lines, failed = validate.run_phases(run, wrapped, table())
+        return lines, failed, heard
+
+    def phases_called(self, heard):
+        checks = registry()
+        found = []
+        for key in heard:
+            phase = getattr(checks[key], validate.PHASE)
+            if phase not in found:
+                found.append(phase)
+        return found
+
+    def committed(self, name):
+        return self.bytes_of(os.path.join(TICKETS_FOLDER, name))
+
+    def unbound_file(self):
+        return self.committed(fixtures_for(keys_of(validate.WARNINGS)[UNBOUND_WARNING])[0])
+
+    def invented_file(self):
+        return self.committed(fixtures_for(keys_of(validate.QUOTES)[QUOTE_IN_INPUT])[0])
+
+    def input_path(self):
+        name = fixtures_for(keys_of(validate.WARNINGS)[UNBOUND_WARNING])[0]
+        return os.path.join(SNAPSHOTS_FOLDER, manifest_row(name).cells[SNAPSHOT])
+
+    def pasted(self):
+        return self.bytes_of(self.input_path()).decode("utf-8")
+
+    def refused(self):
+        """The clean refusal: the one clean file whose shape is the refusal."""
+        found = [row.cells[FIXTURE] for row in ROWS if row.cells[CODES] == ""
+                 and tickets.parse(self.committed(row.cells[FIXTURE])).shape == tickets.REFUSAL]
+        self.assertEqual(1, len(found), found)
+        return self.committed(found[0])
+
+    def with_value(self, data, name, value):
+        return ("\n".join(with_item(data.decode("utf-8").split("\n"), name, value))).encode("utf-8")
+
+    def usage_or_run(self, data, given=None, name="m.tickets.md"):
+        path = self.write(name, data)
+        argv = [path, validate.FLAG, SNAPSHOTS_FOLDER]
+        if given is not None:
+            argv.extend([validate.INPUT_FLAG, given])
+        return self.run_main(argv)
+
+
+class TestTheThreeModes(ModesCase):
+    """The skips AD-10 names, in the frame and nowhere else: every check of the registry watched,
+    each of the shapes run through the phases, and exactly the phases of the table called."""
+
+    def test_the_numbered_tickets_shape_runs_every_phase_and_every_check(self):
+        lines, failed, heard = self.through(self.clean())
+        self.assertEqual(([], False), (lines, failed))
+        self.assertEqual(NUMBERED_TICKETS, self.phases_called(heard))
+        for phase in NUMBERED_TICKETS:
+            self.assertTrue(set(keys_of(phase)) <= set(heard), phase)
+
+    def test_the_unnumbered_tickets_shape_skips_pairing_ranges_and_the_two_line_checks(self):
+        lines, failed, heard = self.through(self.unbound_file(), self.pasted())
+        self.assertFalse(failed, lines)
+        self.assertEqual(set([code_at(validate.WARNINGS, UNBOUND_WARNING)]), self.codes(lines))
+        self.assertEqual(UNNUMBERED_TICKETS, self.phases_called(heard))
+        quotes = [key for key in heard if key in keys_of(validate.QUOTES)]
+        expected = [key for place, key in enumerate(keys_of(validate.QUOTES))
+                    if place not in (LINE_PAST, QUOTE_ON_LINE)]
+        self.assertEqual(expected, quotes)
+        self.assertIn(keys_of(validate.QUOTES)[QUOTE_IN_INPUT], heard)
+        self.assertEqual(keys_of(validate.COVERAGE),
+                         [key for key in heard if key in keys_of(validate.COVERAGE)])
+
+    def test_a_refusal_in_either_mode_runs_reading_grammar_and_the_warnings(self):
+        refused = self.refused()
+        for data, given in ((refused, None), (into_unbound(refused), None),
+                            (into_unbound(refused), self.pasted())):
+            lines, failed, heard = self.through(data, given)
+            self.assertFalse(failed, lines)
+            self.assertEqual(REFUSED, self.phases_called(heard))
+
+    def test_the_zero_ticket_shape_runs_pairing_and_coverage_and_nothing_between(self):
+        lines, failed, heard = self.through(self.committed(ZERO_TICKETS))
+        self.assertEqual(([], False), (lines, failed))
+        self.assertEqual(NUMBERED_NO_CHANGE, self.phases_called(heard))
+        missing = [name for name in fixtures_for(keys_of(validate.COVERAGE)[MISSING])
+                   if tickets.parse(self.committed(name)).shape == tickets.TICKETS_NONE]
+        self.assertEqual(1, len(missing))
+        lines, failed, heard = self.through(self.committed(missing[0]))
+        self.assertTrue(failed)
+        self.assertEqual(set([code_at(validate.COVERAGE, MISSING)]), self.codes(lines))
+        self.assertEqual(NUMBERED_NO_CHANGE, self.phases_called(heard))
+
+    def test_the_zero_ticket_shape_under_the_unnumbered_mode_follows_that_modes_row(self):
+        """Pairing and ranges are skipped as for the tickets shape in that mode, the row states and
+        the quotes as for the zero-ticket shape in either, and coverage runs and reads nothing."""
+        data = into_unbound(self.committed(ZERO_TICKETS))
+        for given in (None, self.pasted()):
+            lines, failed, heard = self.through(data, given)
+            self.assertFalse(failed, lines)
+            self.assertEqual(UNNUMBERED_NO_CHANGE, self.phases_called(heard))
+
+    def test_has_material_says_the_same_phase_by_phase(self):
+        """The rows of the table read off `_has_material` itself, for the four shapes."""
+        cases = ((self.clean(), NUMBERED_TICKETS),
+                 (self.unbound_file(), UNNUMBERED_TICKETS),
+                 (self.refused(), REFUSED),
+                 (into_unbound(self.refused()), REFUSED),
+                 (self.committed(ZERO_TICKETS), NUMBERED_NO_CHANGE),
+                 (into_unbound(self.committed(ZERO_TICKETS)), UNNUMBERED_NO_CHANGE))
+        for data, expected in cases:
+            run = self.a_run(data)
+            for phase in EVERY_PHASE:
+                self.assertEqual(phase in expected, validate._has_material(phase, run),
+                                 phase + " " + repr(expected))
+
+    def test_the_two_line_checks_are_the_ones_the_unnumbered_mode_skips(self):
+        numbered = self.a_run(self.clean())
+        unnumbered = self.a_run(self.unbound_file())
+        for place in range(len(keys_of(validate.QUOTES))):
+            function = check_at(validate.QUOTES, place)
+            bound = place in (LINE_PAST, QUOTE_ON_LINE)
+            self.assertEqual(bound, getattr(function, validate.LINE_BOUND, False), place)
+            self.assertTrue(validate._has_material(validate.QUOTES, numbered, function), place)
+            self.assertEqual(not bound,
+                             validate._has_material(validate.QUOTES, unnumbered, function), place)
+        checks = registry()
+        self.assertEqual(sorted([keys_of(validate.QUOTES)[LINE_PAST],
+                                 keys_of(validate.QUOTES)[QUOTE_ON_LINE]]),
+                         sorted([key for key in checks
+                                 if getattr(checks[key], validate.LINE_BOUND, False)]))
+
+    def test_a_skipped_phase_does_not_move_how_far_the_run_got(self):
+        """Nothing after the grammar runs for a refusal, so the run records the grammar as the last
+        phase it reached; and the unnumbered run records coverage, which runs and reads nothing."""
+        refused = self.refused()
+        run = self.a_run(refused)
+        validate.run_phases(run, registry(), table())
+        self.assertEqual(validate.GRAMMAR, run.reached)
+        run = self.a_run(self.unbound_file())
+        run.input = self.pasted()
+        validate.run_phases(run, registry(), table())
+        self.assertEqual(validate.COVERAGE, run.reached)
+
+    def test_the_committed_unbound_file_is_the_clean_file_rewritten_into_that_mode(self):
+        self.assertEqual(into_unbound(self.clean()), self.unbound_file())
+
+    def test_the_input_text_is_the_clean_files_snapshot_body_and_no_snapshot(self):
+        """Raw text, as a person would paste it: the body lines of the snapshot the clean file
+        names, each ended by a line feed, with no header and no number prefix - so the one reader of
+        the snapshot format refuses it."""
+        data = self.bytes_of(self.input_path())
+        header = self.model_of(self.clean()).header
+        name = [item.value for item in header if item.name == validate.SNAPSHOT_ITEM][0]
+        body = snapshot.read(self.bytes_of(os.path.join(SNAPSHOTS_FOLDER, name))).body
+        self.assertEqual(body.encode("utf-8"), data)
+        self.assertRaises(snapshot.SnapshotError, snapshot.read, data)
+
+    def test_the_clean_refusal_is_the_improvised_refusal_with_a_listed_reason(self):
+        """The refusal fixture is one mutation of the clean refusal: the same header and another
+        reason, one the contract does not list."""
+        refused = tickets.parse(self.refused()).model
+        name = fixtures_for(keys_of(validate.GRAMMAR)[REASON])[0]
+        improvised = tickets.parse(self.committed(name)).model
+        self.assertIn(refused.refusal.reason, SHIPPED[validate.REASONS_TABLE].rows)
+        self.assertEqual(self.committed(name), tickets.serialise(refused._replace(
+            refusal=refused.refusal._replace(reason=improvised.refusal.reason))))
+        self.assertEqual(self.model_of(self.clean()).header[:3], refused.header[:3])
+
+    def test_the_clean_refusal_says_nothing_and_its_mutation_says_one_thing(self):
+        self.assertEqual((0, []), self.usage_or_run(self.refused()))
+        name = fixtures_for(keys_of(validate.GRAMMAR)[REASON])[0]
+        self.assert_manifest(name)
+
+    def test_a_refusal_under_the_unnumbered_mode_prints_the_warning_alone(self):
+        data = into_unbound(self.refused())
+        for given in (self.input_path(), None):
+            code, lines = self.usage_or_run(data, given)
+            self.assertEqual(0, code, lines)
+            self.assertEqual(set([code_at(validate.WARNINGS, UNBOUND_WARNING)]),
+                             self.codes(lines))
+
+    def test_a_reversed_range_in_a_zero_ticket_list_comes_back_as_missing_lines(self):
+        """As before this frame: the row states do not run for that shape, and a range that runs
+        backwards stands for nothing in coverage, so its lines are missing."""
+        model = self.model_of(self.committed(ZERO_TICKETS))
+        entries = list(model.unmapped.entries)
+        self.assertEqual([1, 2], [item.number for item in entries[:2]])
+        entries[:2] = [tickets.Entry(2, 1, None, 0)]
+        data = tickets.serialise(model._replace(unmapped=model.unmapped._replace(entries=entries)))
+        code, lines = self.usage_or_run(data)
+        self.assertEqual(1, code, lines)
+        self.assertEqual(set([code_at(validate.COVERAGE, MISSING)]), self.codes(lines))
+        self.assertEqual(2, len(lines), lines)
+
+    def test_the_material_rule_inside_each_check_stays_beside_the_skip(self):
+        """A second guard. A check called by hand on a shape its phase is skipped for still reads
+        nothing: the frame's skip is not the only thing between a refusal and a false failure."""
+        refused = self.a_run(self.refused())
+        for phase in (validate.STATES, validate.QUOTES, validate.RANGES, validate.COVERAGE):
+            for key in keys_of(phase):
+                self.assertEqual([], registry()[key](refused), key)
+        unnumbered = self.a_run(self.unbound_file())
+        for place in (LINE_PAST, QUOTE_ON_LINE):
+            self.assertEqual([], check_at(validate.QUOTES, place)(unnumbered), place)
+
+
+class TestQuoteInput(ModesCase):
+    """A quote of a file written from pasted text is searched anywhere in the text supplied."""
+
+    def test_the_unbound_file_prints_the_warning_and_the_invented_quote_its_code(self):
+        for name in (fixtures_for(keys_of(validate.WARNINGS)[UNBOUND_WARNING])[0],
+                     fixtures_for(keys_of(validate.QUOTES)[QUOTE_IN_INPUT])[0]):
+            self.assert_manifest(name)
+
+    def test_the_failure_points_at_the_row_whose_quote_is_nowhere(self):
+        name = fixtures_for(keys_of(validate.QUOTES)[QUOTE_IN_INPUT])[0]
+        _code, lines = self.fixture(name)
+        failures = [line for line in lines
+                    if line.split(contract.TAB)[0] == code_at(validate.QUOTES, QUOTE_IN_INPUT)]
+        self.assertEqual(1, len(failures), lines)
+        at = self.model_of(self.invented_file()).tickets[0].rows[0].at
+        self.assertEqual(str(at), failures[0].split(contract.TAB)[1].rsplit(":", 1)[1])
+
+    def test_the_invented_file_is_one_row_away_from_the_unbound_file(self):
+        unbound_model = self.model_of(self.unbound_file())
+        invented = self.model_of(self.invented_file())
+        row = invented.tickets[0].rows[0]
+        self.assertNotIn(row.quote, self.pasted())
+        self.assertIn(row.value, row.quote)
+        self.assertEqual(self.invented_file(), tickets.serialise(
+            with_row_in(unbound_model, field_at(0), 0, value=row.value, quote=row.quote)))
+
+    def test_the_quote_is_searched_anywhere_and_not_on_a_line(self):
+        """A quote moved to the text of line 9 of the input, in the first ticket, still passes: the
+        mode carries no line, so the whole text is where a quote may stand."""
+        text = self.pasted().split("\n")[8].strip(" \t")
+        self.assertTrue(text)
+        data = tickets.serialise(with_row_in(self.model_of(self.unbound_file()), field_at(0), 0,
+                                             value=text, quote=text))
+        code, lines = self.usage_or_run(data, self.input_path())
+        self.assertEqual(0, code, lines)
+        self.assertEqual(set([code_at(validate.WARNINGS, UNBOUND_WARNING)]), self.codes(lines))
+
+    def test_the_input_is_normalised_before_the_search(self):
+        """CRLF line endings, a lone CR and a byte-order mark give the same verdicts: the text is
+        put through the one normaliser of the snapshot format before anything is searched."""
+        raw = self.pasted()
+        for variant in (raw.replace("\n", "\r\n"), raw.replace("\n", "\r"),
+                        snapshot.BOM + raw):
+            given = self.write("i.txt", variant.encode("utf-8"))
+            for data, exit_code in ((self.unbound_file(), 0), (self.invented_file(), 1)):
+                code, lines = self.usage_or_run(data, given)
+                self.assertEqual(exit_code, code, lines)
+
+    def test_it_reads_nothing_without_an_input_text(self):
+        run = self.a_run(self.invented_file())
+        self.assertIsNone(run.input)
+        self.assertEqual([], check_at(validate.QUOTES, QUOTE_IN_INPUT)(run))
+        run.input = self.pasted()
+        self.assertEqual(1, len(check_at(validate.QUOTES, QUOTE_IN_INPUT)(run)))
+
+    def test_it_reads_nothing_under_the_numbered_mode(self):
+        """Every filled line cell there is a number, so no row is unbound and the mode is not asked:
+        an empty text beside the clean file finds nothing."""
+        run = self.a_run(self.clean())
+        run.input = ""
+        self.assertEqual([], check_at(validate.QUOTES, QUOTE_IN_INPUT)(run))
+        self.assertEqual([], validate._unbound(run))
+
+    def test_it_reads_nothing_on_a_refusal_a_zero_ticket_file_or_no_model(self):
+        for data in (into_unbound(self.refused()), into_unbound(self.committed(ZERO_TICKETS))):
+            run = self.a_run(data)
+            run.input = ""
+            self.assertEqual([], check_at(validate.QUOTES, QUOTE_IN_INPUT)(run))
+        run = validate.Run("a.tickets.md", b"", tickets.Parsed(None, [], None, None),
+                           SNAPSHOTS_FOLDER, SHIPPED)
+        run.input = ""
+        self.assertEqual([], check_at(validate.QUOTES, QUOTE_IN_INPUT)(run))
+
+    def test_a_sentinel_row_and_a_row_missing_its_quote_are_not_read(self):
+        """Each of those is the row states', a phase above; a row read here is filled, carries a
+        quote, and its line cell reads the unnumbered word."""
+        model = self.model_of(self.unbound_file())
+        every = [row.at for row in validate._unbound(self.a_run(self.unbound_file()))]
+        self.assertEqual(2 * len(model.tickets), len(every))
+        run = self.a_run(tickets.serialise(with_row_in(model, field_at(0), 0, quote="")))
+        run.input = ""
+        self.assertEqual(every[1:], [row.at for row in validate._unbound(run)])
+        self.assertEqual(len(every) - 1, len(check_at(validate.QUOTES, QUOTE_IN_INPUT)(run)))
+        sentinel = constant(tickets.SENTINEL)
+        run = self.a_run(tickets.serialise(with_row_in(model, field_at(0), 0, value=sentinel)))
+        run.input = ""
+        self.assertNotIn(model.tickets[0].rows[0].at, [row.at for row in validate._unbound(run)])
+
+    def test_the_quote_is_searched_as_it_stands(self):
+        """Neither side is folded or trimmed: a quote in another case is not in the text."""
+        model = self.model_of(self.unbound_file())
+        quote = model.tickets[0].rows[0].quote
+        for changed in (quote.upper(), quote + ".", quote.replace(" ", "  ", 1)):
+            run = self.a_run(tickets.serialise(with_row_in(model, field_at(0), 0, quote=changed)))
+            run.input = self.pasted()
+            self.assertEqual(1, len(check_at(validate.QUOTES, QUOTE_IN_INPUT)(run)), changed)
+
+
+class TestHeaderValueSubRules(ModesCase):
+    """The three sub-rules of the header values beyond the reader's patterns: a range that runs
+    backwards, a value that disagrees with the mode, and a range past the last body line."""
+
+    def only(self, code, lines, count=1):
+        self.assertEqual(set([code]), self.codes(lines), lines)
+        self.assertEqual(count, len(lines), lines)
+
+    def item_at(self, data, name):
+        return [item.at for item in tickets.parse(data).header if item.name == name][0]
+
+    def test_a_body_range_that_runs_backwards_is_one_failure_at_the_item(self):
+        data = self.with_value(self.clean(), tickets.RANGE_ITEM, "5-3")
+        self.assertEqual([], tickets.parse(data).findings)
+        code, lines = self.usage_or_run(data)
+        self.assertEqual(1, code)
+        self.only(code_at(validate.READING, HEADER_VALUES), lines)
+        self.assertIn(":" + str(self.item_at(data, tickets.RANGE_ITEM)) + contract.TAB, lines[0])
+        raised = check_at(validate.READING, HEADER_VALUES)(self.a_run(data))
+        self.assertEqual(1, len(raised))
+        for forwards in ("3-5", "9-10", "199-200"):
+            data = self.with_value(self.clean(), tickets.RANGE_ITEM, forwards)
+            self.assertEqual([], check_at(validate.READING, HEADER_VALUES)(self.a_run(data)))
+        data = self.with_value(self.clean(), tickets.RANGE_ITEM, "10-9")
+        self.assertEqual(1, len(check_at(validate.READING, HEADER_VALUES)(self.a_run(data))))
+
+    def test_the_reversed_body_range_is_read_by_nothing_that_reads_the_range(self):
+        data = self.with_value(self.clean(), tickets.RANGE_ITEM, "5-3")
+        run = self.paired(data)
+        self.assertIsNone(validate._body_bounds(run))
+        self.assertEqual([], check_at(validate.GRAMMAR, SIZE)(run))
+        self.assertTrue(validate._ranges(run))
+
+    def test_a_body_range_past_the_body_is_raised_at_the_end_of_pairing_and_alone(self):
+        last = len(self.paired(self.clean()).snapshot.lines)
+        data = self.with_value(self.clean(), tickets.RANGE_ITEM, "1-" + str(last + 1))
+        lines, failed, heard = self.through(data)
+        self.assertTrue(failed)
+        self.only(code_at(validate.READING, HEADER_VALUES), lines)
+        self.assertEqual([validate.READING, validate.PAIRING, validate.WARNINGS],
+                         self.phases_called(heard))
+        self.assertEqual(2, heard.count(keys_of(validate.READING)[HEADER_VALUES]))
+        self.assertEqual(keys_of(validate.READING)[HEADER_VALUES],
+                         [key for key in heard if key in keys_of(validate.READING) or
+                          key in keys_of(validate.PAIRING)][-1])
+        code, printed = self.usage_or_run(data)
+        self.assertEqual(1, code, printed)
+        self.only(code_at(validate.READING, HEADER_VALUES), printed)
+        self.assertEqual([], check_at(validate.READING, HEADER_VALUES)(self.a_run(data)))
+        self.assertEqual(1, len(check_at(validate.READING, HEADER_VALUES)(self.paired(data))))
+
+    def test_the_last_body_line_is_inside_the_body(self):
+        last = len(self.paired(self.clean()).snapshot.lines)
+        for value in (str(last), "1-" + str(last), str(last - 1) + "-" + str(last)):
+            data = self.with_value(self.clean(), tickets.RANGE_ITEM, value)
+            self.assertEqual([], check_at(validate.READING, HEADER_VALUES)(self.paired(data)),
+                             value)
+        huge = "1" + "0" * 4499
+        for value in ("1-" + huge, str(last + 1)):
+            data = self.with_value(self.clean(), tickets.RANGE_ITEM, value)
+            self.assertEqual(1, len(check_at(validate.READING, HEADER_VALUES)(self.paired(data))),
+                             value[:12])
+
+    def test_a_body_range_past_the_body_is_not_raised_where_pairing_failed(self):
+        last = len(self.paired(self.clean()).snapshot.lines)
+        data = self.with_value(self.clean(), tickets.RANGE_ITEM, "1-" + str(last + 1))
+        data = self.with_value(data, validate.DIGEST_ITEM, "0" * 64)
+        lines, failed, heard = self.through(data)
+        self.assertTrue(failed)
+        self.only(code_at(validate.PAIRING, PAIRED_DIGEST), lines)
+        self.assertEqual(1, heard.count(keys_of(validate.READING)[HEADER_VALUES]))
+
+    def test_the_second_call_is_the_one_check_that_carries_the_attribute(self):
+        checks = registry()
+        carriers = [key for key in checks if getattr(checks[key], validate.ALSO_AFTER, None)]
+        self.assertEqual([keys_of(validate.READING)[HEADER_VALUES]], carriers)
+        function = checks[carriers[0]]
+        self.assertEqual(validate.READING, getattr(function, validate.PHASE))
+        self.assertEqual(validate.PAIRING, getattr(function, validate.ALSO_AFTER))
+
+    def test_the_sentinel_under_the_numbered_mode_is_one_failure_per_item(self):
+        sentinel = constant(tickets.SENTINEL)
+        for name in (validate.SNAPSHOT_ITEM, validate.DIGEST_ITEM, validate.URL_ITEM,
+                     tickets.RANGE_ITEM):
+            data = self.with_value(self.clean(), name, sentinel)
+            code, lines = self.usage_or_run(data)
+            self.assertEqual(1, code, name)
+            self.only(code_at(validate.READING, HEADER_VALUES), lines)
+            self.assertIn(":" + str(self.item_at(data, name)) + contract.TAB, lines[0])
+        data = self.clean()
+        for name in (validate.SNAPSHOT_ITEM, tickets.RANGE_ITEM):
+            data = self.with_value(data, name, sentinel)
+        code, lines = self.usage_or_run(data)
+        self.only(code_at(validate.READING, HEADER_VALUES), lines, 2)
+
+    def test_a_zero_ticket_body_range_under_the_numbered_mode_is_a_range(self):
+        """Only a refusal's body range reads the sentinel under the numbered mode; a file with no
+        ticket translated every line it lists, and says which."""
+        data = self.with_value(self.committed(ZERO_TICKETS), tickets.RANGE_ITEM,
+                               constant(tickets.SENTINEL))
+        code, lines = self.usage_or_run(data)
+        self.assertEqual(1, code, lines)
+        self.only(code_at(validate.READING, HEADER_VALUES), lines)
+        self.assertIn(":" + str(self.item_at(data, tickets.RANGE_ITEM)) + contract.TAB, lines[0])
+
+    def test_a_header_with_nothing_after_it_is_still_held_to_its_mode(self):
+        """The reader gives a file of a header and nothing else no shape, and its values all read:
+        the mode rule still holds them, at the reading stage, before pairing opens anything."""
+        header_only = self.with_value(self.clean(), validate.SNAPSHOT_ITEM,
+                                      constant(tickets.SENTINEL)).split(b"\n\n")[0] + b"\n"
+        self.assertIsNone(tickets.parse(header_only).shape)
+        code, lines = self.usage_or_run(header_only)
+        self.assertEqual(1, code, lines)
+        self.only(code_at(validate.READING, HEADER_VALUES), lines)
+        self.assertIn(":" + str(self.item_at(header_only, validate.SNAPSHOT_ITEM)) + contract.TAB,
+                      lines[0])
+
+    def test_a_real_value_under_the_unnumbered_mode_is_that_failure_beside_the_warning(self):
+        header = self.model_of(self.clean()).header
+        for item in header:
+            if item.name == validate.MODE_ITEM:
+                continue
+            data = self.with_value(self.unbound_file(), item.name, item.value)
+            code, lines = self.usage_or_run(data, self.input_path())
+            self.assertEqual(1, code, item.name)
+            self.assertEqual(set([code_at(validate.READING, HEADER_VALUES),
+                                  code_at(validate.WARNINGS, UNBOUND_WARNING)]),
+                             self.codes(lines), item.name)
+            self.assertEqual(2, len(lines), lines)
+
+    def test_a_refusals_body_range_reads_the_sentinel_under_either_mode(self):
+        for data in (self.refused(), into_unbound(self.refused())):
+            ranged = self.with_value(data, tickets.RANGE_ITEM, "1-200")
+            raised = check_at(validate.READING, HEADER_VALUES)(self.a_run(ranged))
+            self.assertEqual(1, len(raised), raised)
+            self.assertEqual(self.item_at(ranged, tickets.RANGE_ITEM), raised[0].line)
+            self.assertEqual([], check_at(validate.READING, HEADER_VALUES)(self.a_run(data)))
+        code, lines = self.usage_or_run(self.with_value(self.refused(), tickets.RANGE_ITEM,
+                                                        "1-200"))
+        self.assertEqual(1, code)
+        self.only(code_at(validate.READING, HEADER_VALUES), lines)
+
+    def test_a_refusal_under_the_numbered_mode_still_names_its_snapshot(self):
+        sentinel = constant(tickets.SENTINEL)
+        for name in (validate.SNAPSHOT_ITEM, validate.DIGEST_ITEM, validate.URL_ITEM):
+            data = self.with_value(self.refused(), name, sentinel)
+            self.assertEqual(1, len(check_at(validate.READING, HEADER_VALUES)(self.a_run(data))),
+                             name)
+
+    def test_a_mistyped_mode_is_a_header_value_and_never_a_usage_exit(self):
+        """The mode item failed its pattern, so the reader gives the file no shape: neither the mode
+        rule nor the input rule has anything to read, and the input flag is neither owed nor
+        refused."""
+        for base in (self.clean(), self.unbound_file()):
+            data = self.with_value(base, validate.MODE_ITEM, "nonee")
+            self.assertIsNone(tickets.parse(data).shape)
+            for given in (None, self.input_path()):
+                code, lines = self.usage_or_run(data, given)
+                self.assertEqual(1, code, lines)
+                self.only(code_at(validate.READING, HEADER_VALUES), lines)
+
+    def test_the_second_call_reads_the_body_and_nothing_else(self):
+        """On a run that carries the snapshot the check reads the one sub-rule that needs it: a
+        value failing its pattern, one disagreeing with the mode and a range running backwards were
+        the first call's, and are not reported again."""
+        last = len(self.paired(self.clean()).snapshot.lines)
+        for name, value in ((tickets.RANGE_ITEM, "many"), (tickets.RANGE_ITEM, "5-3"),
+                            (validate.URL_ITEM, constant(tickets.SENTINEL))):
+            data = self.with_value(self.clean(), name, value)
+            self.assertEqual(1, len(check_at(validate.READING, HEADER_VALUES)(self.a_run(data))),
+                             value)
+            self.assertEqual([], check_at(validate.READING, HEADER_VALUES)(self.paired(data)),
+                             value)
+        data = self.with_value(self.clean(), tickets.RANGE_ITEM, "3-" + str(last + 5))
+        raised = check_at(validate.READING, HEADER_VALUES)(self.paired(data))
+        self.assertEqual([self.item_at(data, tickets.RANGE_ITEM)], [one.line for one in raised])
+
+    def test_a_range_of_one_line_written_twice_is_one_failure(self):
+        """`5-5` fails the item's own pattern, and it is also a range whose first number is not
+        below its second: two defects of one value, reported once."""
+        data = self.with_value(self.clean(), tickets.RANGE_ITEM, "5-5")
+        self.assertTrue(tickets.parse(data).findings)
+        self.assertEqual(1, len(check_at(validate.READING, HEADER_VALUES)(self.a_run(data))))
+
+    def test_only_the_body_range_is_read_for_running_backwards(self):
+        """A snapshot name or a digest that happens to read like a range is a name or a digest."""
+        for name in (validate.SNAPSHOT_ITEM, validate.DIGEST_ITEM, validate.URL_ITEM):
+            data = self.with_value(self.clean(), name, "3-1")
+            self.assertEqual([], check_at(validate.READING, HEADER_VALUES)(self.a_run(data)),
+                             name)
+
+    def test_a_value_disagreeing_with_the_mode_is_named_for_that(self):
+        """`5-3` under the unnumbered mode is a number where the sentinel belongs before it is a
+        range that runs backwards, and the one failure says so."""
+        data = self.with_value(self.unbound_file(), tickets.RANGE_ITEM, "5-3")
+        raised = check_at(validate.READING, HEADER_VALUES)(self.a_run(data))
+        self.assertEqual(1, len(raised))
+        self.assertIn("no line numbers", raised[0].message)
+        self.assertNotIn("runs from its first line to its last", raised[0].message)
+
+    def test_a_mode_that_failed_its_pattern_leaves_nothing_to_agree_with(self):
+        """Where the mode item failed its pattern the mode rule reads nothing: only the reader's
+        own finding is reported, whatever else would disagree with either mode."""
+        data = self.with_value(self.unbound_file(), validate.MODE_ITEM, "nonee")
+        data = self.with_value(data, validate.SNAPSHOT_ITEM, "changelog-01.txt")
+        raised = check_at(validate.READING, HEADER_VALUES)(self.a_run(data))
+        self.assertEqual([self.item_at(data, validate.MODE_ITEM)], [one.line for one in raised])
+
+    def test_another_value_failing_its_pattern_leaves_the_mode_read(self):
+        """A mode that read is read, whatever another item failed: a real name under the unnumbered
+        mode beside a body range of no form is two failures, one per item."""
+        data = self.with_value(self.unbound_file(), tickets.RANGE_ITEM, "many")
+        data = self.with_value(data, validate.SNAPSHOT_ITEM, "changelog-01.txt")
+        self.assertIsNone(tickets.parse(data).shape)
+        raised = check_at(validate.READING, HEADER_VALUES)(self.a_run(data))
+        self.assertEqual(sorted([self.item_at(data, tickets.RANGE_ITEM),
+                                 self.item_at(data, validate.SNAPSHOT_ITEM)]),
+                         [one.line for one in raised])
+
+    def test_two_defects_of_one_value_are_one_failure(self):
+        """A range that runs backwards and reads a number under the unnumbered mode is two defects
+        of one value, and one failure."""
+        data = self.with_value(self.unbound_file(), tickets.RANGE_ITEM, "5-3")
+        self.assertEqual(1, len(check_at(validate.READING, HEADER_VALUES)(self.a_run(data))))
+
+
 class TestSuppression(ValidatorCase):
     """The first phase that fails is the only one that speaks (AD-6), and these two cases are where
     that matters to a fixture."""
@@ -3813,7 +4488,7 @@ class TestTheLineForm(ValidatorCase):
         def loud(run):
             return [validate.Failure(1, "one\ttwo\nthree")]
 
-        loud.phase = original.phase
+        functools.update_wrapper(loud, original)
         validate.check_snapshot_name = loud
         self.addCleanup(setattr, validate, "check_snapshot_name", original)
         code, lines = self.fixture(CLEAN)
@@ -3835,7 +4510,7 @@ class TestTheLineForm(ValidatorCase):
         def several(run):
             return [validate.Failure(3, "the third"), validate.Failure(1, "the first")]
 
-        several.phase = original.phase
+        functools.update_wrapper(several, original)
         validate.check_snapshot_name = several
         self.addCleanup(setattr, validate, "check_snapshot_name", original)
         _code, lines = self.fixture(CLEAN)
@@ -3887,7 +4562,7 @@ class TestHowTheToolCanFailToRun(ValidatorCase):
 
     def test_the_usage_line_names_the_grammar(self):
         line = self.usage([])
-        for part in (validate.FLAG, "<tickets>"):
+        for part in (validate.FLAG, validate.INPUT_FLAG, "<tickets>"):
             self.assertIn(part, line, part)
 
     def test_a_path_that_names_nothing_is_one_plain_line_and_no_code(self):
@@ -3937,7 +4612,7 @@ class TestHowTheToolCanFailToRun(ValidatorCase):
         def explode(run):
             raise RuntimeError("injected\twith a tab\nand a second line")
 
-        explode.phase = original.phase
+        functools.update_wrapper(explode, original)
         validate.check_snapshot_name = explode
         self.addCleanup(setattr, validate, "check_snapshot_name", original)
         code, lines = self.fixture(CLEAN)
@@ -3976,7 +4651,7 @@ class TestHowTheToolCanFailToRun(ValidatorCase):
         def explode(run):
             raise RuntimeError("injected")
 
-        explode.phase = original.phase
+        functools.update_wrapper(explode, original)
         validate.check_pair_sha256 = explode
         self.addCleanup(setattr, validate, "check_pair_sha256", original)
         for key in keys_of(validate.PAIRING):
@@ -3984,6 +4659,151 @@ class TestHowTheToolCanFailToRun(ValidatorCase):
             if code == 2:
                 self.assertEqual(1, len(lines), lines)
                 self.assertEqual(contract.INTERNAL, lines[0].split(contract.TAB)[0])
+
+
+class TestTheInputArgument(ModesCase):
+    """`--input FILE`: the second flag and the last. The header decides whether it was owed - the
+    flag never chooses the mode - and a file it names that cannot be read is no finding about a
+    document."""
+
+    def usage(self, argv):
+        code, lines = self.run_main(argv)
+        self.assertEqual(2, code, lines)
+        self.assertEqual([validate.USAGE], lines)
+
+    def plain(self, argv):
+        code, lines = self.run_main(argv)
+        self.assertEqual(2, code, lines)
+        self.assertEqual(1, len(lines), lines)
+        self.assertNotIn(contract.TAB, lines[0])
+        self.assertNotIn("Traceback", lines[0])
+        self.assertFalse(lines[0].lower().startswith("usage"), lines[0])
+        return lines[0]
+
+    def unbound_path(self):
+        return os.path.join(TICKETS_FOLDER, fixtures_for(keys_of(validate.WARNINGS)[
+            UNBOUND_WARNING])[0])
+
+    def test_the_unnumbered_mode_with_no_input_is_the_usage_line(self):
+        self.usage([self.unbound_path(), validate.FLAG, SNAPSHOTS_FOLDER])
+        self.usage([self.unbound_path()])
+
+    def test_the_numbered_mode_with_an_input_is_the_usage_line(self):
+        self.usage([os.path.join(TICKETS_FOLDER, CLEAN), validate.FLAG, SNAPSHOTS_FOLDER,
+                    validate.INPUT_FLAG, self.input_path()])
+        self.usage([os.path.join(TICKETS_FOLDER, ZERO_TICKETS), validate.INPUT_FLAG,
+                    self.input_path(), validate.FLAG, SNAPSHOTS_FOLDER])
+
+    def test_the_flag_twice_with_no_value_or_beside_a_third_flag_is_the_usage_line(self):
+        path = self.unbound_path()
+        given = self.input_path()
+        for argv in ([path, validate.INPUT_FLAG, given, validate.INPUT_FLAG, given],
+                     [path, validate.INPUT_FLAG],
+                     [path, validate.INPUT_FLAG, ""],
+                     [path, validate.INPUT_FLAG, given, "--mode", tickets.unnumbered_mode()],
+                     [path, validate.INPUT_FLAG, given, "--skip"]):
+            self.usage(argv)
+
+    def test_the_order_of_the_flags_and_the_file_does_not_matter(self):
+        path = self.unbound_path()
+        given = self.input_path()
+        for argv in ([path, validate.INPUT_FLAG, given, validate.FLAG, SNAPSHOTS_FOLDER],
+                     [validate.INPUT_FLAG, given, path],
+                     [validate.FLAG, SNAPSHOTS_FOLDER, validate.INPUT_FLAG, given, path]):
+            code, lines = self.run_main(argv)
+            self.assertEqual(0, code, lines)
+            self.assertEqual(set([code_at(validate.WARNINGS, UNBOUND_WARNING)]), self.codes(lines))
+
+    def test_an_input_that_names_nothing_is_one_plain_line(self):
+        line = self.plain([self.unbound_path(), validate.INPUT_FLAG,
+                           os.path.join(self.directory, "nope.txt")])
+        self.assertIn("nope.txt", line)
+        self.plain([self.unbound_path(), validate.INPUT_FLAG, self.directory])
+
+    def test_an_input_that_is_not_utf8_is_one_plain_line(self):
+        given = self.write("latin.txt", b"caf\xe9\n")
+        self.plain([self.unbound_path(), validate.INPUT_FLAG, given])
+
+    def test_an_unreadable_header_is_reported_as_it_was_with_or_without_the_flag(self):
+        name = fixtures_for(keys_of(validate.READING)[HEADER_BLOCK])[0]
+        path = os.path.join(TICKETS_FOLDER, name)
+        for extra in ([], [validate.INPUT_FLAG, self.input_path()]):
+            code, lines = self.run_main([path, validate.FLAG, SNAPSHOTS_FOLDER] + extra)
+            self.assertEqual(1, code, lines)
+            self.assertEqual(expected_codes(name), self.codes(lines))
+            self.assertEqual(1, len(lines), lines)
+
+    def test_a_header_with_nothing_after_it_under_the_numbered_mode_refuses_the_input(self):
+        header_only = self.clean().split(b"\n\n")[0] + b"\n"
+        self.assertIsNone(tickets.parse(header_only).shape)
+        path = self.write("h.tickets.md", header_only)
+        self.usage([path, validate.FLAG, SNAPSHOTS_FOLDER, validate.INPUT_FLAG,
+                    self.input_path()])
+
+    def test_a_mistyped_mode_neither_owes_nor_refuses_the_input(self):
+        for base in (self.clean(), self.unbound_file()):
+            data = self.with_value(base, validate.MODE_ITEM, "nonee")
+            for given in (None, self.input_path()):
+                code, lines = self.usage_or_run(data, given)
+                self.assertEqual(1, code, lines)
+                self.assertEqual(set([code_at(validate.READING, HEADER_VALUES)]),
+                                 self.codes(lines))
+
+    def test_the_input_is_read_only_after_the_header_decided_it_was_owed(self):
+        """Under the numbered mode an input naming nothing is the usage line and not the plain one:
+        the flag was refused before anything was opened."""
+        self.usage([os.path.join(TICKETS_FOLDER, CLEAN), validate.INPUT_FLAG,
+                    os.path.join(self.directory, "nope.txt")])
+
+    def test_a_refusal_and_a_zero_ticket_file_under_that_mode_accept_it_and_do_not_need_it(self):
+        for data in (into_unbound(self.refused()), into_unbound(self.committed(ZERO_TICKETS))):
+            for given in (None, self.input_path()):
+                code, lines = self.usage_or_run(data, given)
+                self.assertEqual(0, code, lines)
+                self.assertEqual(set([code_at(validate.WARNINGS, UNBOUND_WARNING)]),
+                                 self.codes(lines))
+
+    def test_the_input_is_kept_on_the_run_as_normalised_text(self):
+        """What `main` reads is what the check searches: the decoded, normalised text, and None
+        where no flag was given."""
+        seen = []
+        original = validate.check_quote_input
+
+        def watch(run):
+            seen.append(run.input)
+            return original(run)
+
+        functools.update_wrapper(watch, original)
+        validate.check_quote_input = watch
+        self.addCleanup(setattr, validate, "check_quote_input", original)
+        given = self.write("crlf.txt", (snapshot.BOM + self.pasted().replace("\n", "\r\n"))
+                           .encode("utf-8"))
+        code, lines = self.run_main([self.unbound_path(), validate.INPUT_FLAG, given])
+        self.assertEqual(0, code, lines)
+        self.assertEqual([self.pasted()], seen)
+        self.run_main([os.path.join(TICKETS_FOLDER, CLEAN), validate.FLAG, SNAPSHOTS_FOLDER])
+        self.assertEqual([self.pasted(), None], seen)
+
+    def test_the_module_s_words_are_no_key_code_table_or_mode(self):
+        """`--input`, the attribute a line-bound check carries and the one a check called again
+        carries are this module's words: none of them is a key, a code, a table id or a mode. And
+        no literal of either tool is the unnumbered mode; the numbered mode stands in the validator
+        only as the address of the header item that shares its spelling."""
+        owned = set(order())
+        owned.update([code_of(key) for key in order()])
+        owned.update(SHIPPED)
+        modes = set([tickets.numbered_mode(), tickets.unnumbered_mode()])
+        for word in (validate.INPUT_FLAG, validate.LINE_BOUND, validate.ALSO_AFTER):
+            self.assertNotIn(word, owned, word)
+            self.assertNotIn(word, modes, word)
+        for path in (validate.__file__, os.path.join(HERE, "run_fixtures.py")):
+            held = set(literals(text_of(path)))
+            self.assertNotIn(tickets.unnumbered_mode(), held, path)
+        self.assertEqual(validate.SNAPSHOT_ITEM, tickets.numbered_mode())
+        self.assertNotIn(tickets.numbered_mode(),
+                         set(literals(text_of(os.path.join(HERE, "run_fixtures.py")))))
+        self.assertEqual(1, [literal for literal in literals(text_of(validate.__file__))]
+                         .count(tickets.numbered_mode()))
 
 
 # --- the tool writes nothing ------------------------------------------------------------------------------

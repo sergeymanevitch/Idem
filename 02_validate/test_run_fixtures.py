@@ -35,6 +35,9 @@ import run_fixtures  # noqa: E402  - the path has to be set first
 import validate  # noqa: E402  - and so does this
 from idemlib import contract, tickets  # noqa: E402
 
+#: The suite's own runner, kept before any test replaces it for the length of that test.
+_original_run_one = run_fixtures.run_one
+
 MANIFEST = "manifest"
 MANIFEST_PATH = os.path.join(ROOT, "02_validate", "00_fixtures", "manifest.md")
 TICKETS_FOLDER = os.path.join(ROOT, "02_validate", "00_fixtures", "01_tickets")
@@ -47,9 +50,9 @@ COLUMNS = ["fixture", "snapshot", "expected exit", "expected codes"]
 MARKER = "<!-- table: " + MANIFEST + " -->"
 
 #: What the committed corpus comes to. Every one of these is a count and never a value.
-FIXTURES_RUN = 61
+FIXTURES_RUN = 64
 MANIFEST_ROWS = 64
-PENDING_ROWS = 1
+PENDING_ROWS = 0
 CLEAN = "clean-01.tickets.md"
 
 SHIPPED = {}
@@ -345,15 +348,95 @@ class TestEachFailure(SuiteCase):
         self.assertEqual(1, status, "\n".join(lines))
         self.assertTrue([line for line in lines if line.startswith(run_fixtures.FAILED)], lines)
 
-    def test_a_row_whose_file_is_not_written_is_counted_and_not_failed(self):
+    def test_a_row_whose_file_is_not_written_fails_and_is_still_counted(self):
+        """The corpus is whole, so a row naming a file that is not on disk is a claim about nothing:
+        it fails the suite, one line naming the row, and the count below still says how many."""
         row = list(self.row_for(CLEAN))
         row[FIXTURE] = "clean-98.tickets.md"
         self.rows.append(row)
         self.patched()
         status, lines = self.run_suite()
-        self.assertEqual(0, status, "\n".join(lines))
-        self.assertEqual(len(self.rows) - 1, len(self.verdicts(lines)))
+        self.assertEqual(1, status, "\n".join(lines))
+        failed = [line for line in lines if line.startswith(run_fixtures.FAILED)]
+        self.assertEqual(1, len(failed), failed)
+        self.assertIn("clean-98.tickets.md", failed[0])
+        self.assertEqual(len(self.rows) - 1, self.verdicts(lines).count(run_fixtures.PASSED))
         self.assertEqual(1, int(lines[-4].rsplit(": ", 1)[1]))
+
+    def test_a_committed_file_removed_fails_the_suite_naming_its_row(self):
+        os.remove(os.path.join(self.tickets, CLEAN))
+        self.patched()
+        status, lines = self.run_suite()
+        self.assertEqual(1, status, "\n".join(lines))
+        failed = [line for line in lines if line.startswith(run_fixtures.FAILED)]
+        self.assertEqual(1, len(failed), failed)
+        self.assertEqual(CLEAN, failed[0].split(contract.TAB)[1])
+
+    def test_a_key_with_nothing_behind_it_fails_the_suite(self):
+        """Any of the four counts above zero is a suite that is not complete, and it says so by its
+        exit: here a check taken out of the module in this process, so the registry the counts are
+        read from holds one row with nothing behind it. Every fixture still passes - each runs in a
+        process of its own - and the counts are still printed."""
+        checks = validate.registry(SHIPPED)
+        key = [name for name in checks if getattr(checks[name], validate.PHASE, None) ==
+               validate.QUOTES][0]
+        original = getattr(validate, validate.CHECK_PREFIX + key)
+        delattr(validate, validate.CHECK_PREFIX + key)
+        self.addCleanup(setattr, validate, validate.CHECK_PREFIX + key, original)
+        self.patched()
+        status, lines = self.run_suite()
+        self.assertEqual(1, status, "\n".join(lines))
+        self.assertEqual([run_fixtures.PASSED] * len(self.rows), self.verdicts(lines))
+        self.assertEqual(1, int(lines[-3].rsplit(": ", 1)[1]))
+
+    def test_a_row_no_fixture_names_fails_the_suite(self):
+        """A code named by no row - the rows naming it taken out with their files - is a row of the
+        checks table nothing exercises, and the suite that prints that count exits 1 on it."""
+        name = "header-01.tickets.md"
+        code = self.row_for(name)[CODES]
+        for row in [row for row in self.rows if row[CODES] == code]:
+            self.rows.remove(row)
+            os.remove(os.path.join(self.tickets, row[FIXTURE]))
+        self.patched()
+        status, lines = self.run_suite()
+        self.assertEqual(1, status, "\n".join(lines))
+        self.assertEqual([run_fixtures.PASSED] * len(self.rows), self.verdicts(lines))
+        self.assertEqual([1, 1], [int(line.rsplit(": ", 1)[1]) for line in lines[-2:]])
+
+    def test_a_row_in_the_unnumbered_mode_is_run_with_the_input_its_row_names(self):
+        """The decision is made per row, from the header the file itself carries: a file whose
+        mode item reads the unnumbered mode is handed the file its row names as the input text,
+        and every other file is run with the snapshot directory alone."""
+        heard = []
+        original = run_fixtures.run_one
+
+        def record(fixture, snapshots, given=None):
+            heard.append((os.path.basename(fixture), given))
+            return original(fixture, snapshots, given)
+
+        run_fixtures.run_one = record
+        self.addCleanup(setattr, run_fixtures, "run_one", original)
+        unbound = row_named("warn_unbound-01.tickets.md")
+        for name in (CLEAN, unbound.cells[FIXTURE], "refusal_reason-01.tickets.md"):
+            printed, good = run_fixtures.check_one(_Row(self.row_for(name)), self.snapshots,
+                                                   self.tickets)
+            self.assertTrue(good, printed)
+        self.assertEqual([(CLEAN, None),
+                          (unbound.cells[FIXTURE],
+                           os.path.join(self.snapshots, unbound.cells[SNAPSHOT])),
+                          ("refusal_reason-01.tickets.md", None)], heard)
+
+    def test_a_file_with_no_readable_header_gets_no_input_flag(self):
+        heard = []
+        self.addCleanup(setattr, run_fixtures, "run_one", _original_run_one)
+        run_fixtures.run_one = lambda fixture, snapshots, given=None: (
+            heard.append(given) or (1, "", ""))
+        for name in ("header-01.tickets.md", "encoding-01.tickets.md"):
+            run_fixtures.check_one(_Row(self.row_for(name)), self.snapshots, self.tickets)
+        self.assertEqual([None, None], heard)
+
+    def test_the_input_flag_is_the_validators_own(self):
+        self.assertEqual(validate.INPUT_FLAG, run_fixtures.validate.INPUT_FLAG)
 
     def test_a_run_that_reports_a_defect_in_the_validator_fails(self):
         """A subprocess cannot be made to crash from here, so the reading of its output is what is
@@ -371,7 +454,7 @@ class TestEachFailure(SuiteCase):
         counted = []
         for code in (contract.INTERNAL, ordinary):
             line = (code + contract.TAB + "02_validate/validate.py:1" + contract.TAB + "a message")
-            run_fixtures.run_one = lambda fixture, snapshots: (2, line + "\n", "")
+            run_fixtures.run_one = lambda fixture, snapshots, given=None: (2, line + "\n", "")
             printed, good = run_fixtures.check_one(_Row(row), self.snapshots, self.tickets)
             self.assertFalse(good)
             self.assertEqual(run_fixtures.FAILED, printed.split(contract.TAB)[0])
@@ -413,7 +496,7 @@ class TestEachFailure(SuiteCase):
     def test_a_run_that_prints_an_uncoded_line_fails_the_row(self):
         row = self.row_for(CLEAN)
         original = run_fixtures.run_one
-        run_fixtures.run_one = lambda fixture, snapshots: (0, "a line with no separator\n", "")
+        run_fixtures.run_one = lambda fixture, snapshots, given=None: (0, "a line with no separator\n", "")
         self.addCleanup(setattr, run_fixtures, "run_one", original)
         printed, good = run_fixtures.check_one(_Row(row), self.snapshots, self.tickets)
         self.assertFalse(good)
@@ -424,7 +507,7 @@ class TestEachFailure(SuiteCase):
         beside it has not done what AD-6 says, and throwing that stream away would let it pass."""
         row = self.row_for(CLEAN)
         original = run_fixtures.run_one
-        run_fixtures.run_one = lambda fixture, snapshots: (
+        run_fixtures.run_one = lambda fixture, snapshots, given=None: (
             0, "", "Traceback (most recent call last):\n  File ...\n")
         self.addCleanup(setattr, run_fixtures, "run_one", original)
         printed, good = run_fixtures.check_one(_Row(row), self.snapshots, self.tickets)
@@ -436,7 +519,7 @@ class TestEachFailure(SuiteCase):
         self.assertTrue(run_fixtures.TIMEOUT_SECONDS > 0)
         row = self.row_for(CLEAN)
         original = run_fixtures.run_one
-        run_fixtures.run_one = lambda fixture, snapshots: (
+        run_fixtures.run_one = lambda fixture, snapshots, given=None: (
             None, "", "it was still running after " + str(run_fixtures.TIMEOUT_SECONDS) +
             " seconds and was stopped")
         self.addCleanup(setattr, run_fixtures, "run_one", original)
@@ -461,7 +544,7 @@ class TestEachFailure(SuiteCase):
         constants = SHIPPED["schema-constants"].rows
         sentinel = constants["sentinel"]["value"]
         word = constants["unnumbered_cell"]["value"]
-        header = [item if item.name != validate.MODE_ITEM
+        header = [item._replace(value=sentinel) if item.name != validate.MODE_ITEM
                   else item._replace(value=tickets.unnumbered_mode()) for item in model.header]
         fields = list(SHIPPED["fields"].rows)
         changed = []
@@ -469,7 +552,7 @@ class TestEachFailure(SuiteCase):
             rows = []
             for row in ticket.rows:
                 if row.field == fields[-1]:
-                    rows.append(row._replace(line=sentinel))
+                    rows.append(row._replace(value=sentinel + " " + sentinel, line=sentinel))
                 elif row.line != "":
                     rows.append(row._replace(line=word))
                 else:
@@ -478,7 +561,8 @@ class TestEachFailure(SuiteCase):
         entries = [entry._replace(number=None, last=None) for entry in model.unmapped.entries]
         unmapped = model.unmapped._replace(entries=entries)
         data = tickets.serialise(model._replace(header=header, mode=tickets.unnumbered_mode(),
-                                                tickets=changed, unmapped=unmapped))
+                                                body_range=None, tickets=changed,
+                                                unmapped=unmapped))
         self.assertEqual([], tickets.parse(data).findings)
         handle = open(os.path.join(self.tickets, name), "wb")
         try:

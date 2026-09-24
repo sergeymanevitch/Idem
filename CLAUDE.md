@@ -9,12 +9,12 @@ work in it. It routes and holds no rule.
 written as a first draft, `lib/idemlib/` holds the contract loader and the two format modules — the
 snapshot and the tickets file — the first step script is built — `00_fetch/fetch.py`, for one
 URL — and `00_fetch/00_snapshots/` holds the three example snapshots it wrote, one vendor each.
-`02_validate/validate.py` is built as a frame: every check of `reference/05_checks.md` is
-registered under its key, the reading stage, the pairing phase, canonical form and grammar, the row
-states, quotes and values, ranges and ancestors, coverage and the three warnings are written — all
-of those but the row that searches a quote in a supplied input text, which is registered with
-nothing behind it. `02_validate/run_fixtures.py` runs the fixture corpus, of which sixty-nine files
-exist — sixty-one tickets files and eight snapshots.**
+`02_validate/validate.py` is built: every check of `reference/05_checks.md` is registered under
+its key and written — the reading stage, the pairing phase, canonical form and grammar, the row
+states, quotes and values, ranges and ancestors, coverage and the three warnings — and the header
+alone selects which of them run for the three shapes and the two modes. `02_validate/run_fixtures.py`
+runs the whole fixture corpus — seventy-three files, sixty-four tickets files, eight snapshots and
+one input text — and fails if any file its manifest names is missing.**
 `reference/00_catalogue.md` states the strict-table grammar and names every contract table;
 `reference/01_schema.md` holds the five tables of the ticket schema — the eight fields, the
 constants and the canonical form, the header items, the refusal reasons, the classes of line — with
@@ -52,12 +52,14 @@ needs one. It opens no file and prints nothing, and what a cell *holds* is the v
 tickets file to pass or to coded failures, nine phases in the fixed order of AD-6, every row of that
 table registered as a callable under its key and reconciled with it both ways. What is written is
 the reading stage — the encoding, the five header items and their values — the whole pairing phase,
-canonical form and grammar, the row states, five of the six rows of quotes and values, the seven
-rows of ranges and ancestors, the six rows of coverage — `Unmapped` held to the body: every
-uncited non-blank line inside `body_range` listed, nothing listed that is cited, repeated, blank or
-absent, every entry's text its line's verbatim — and the three warnings, the two that read an
-`Unmapped` line inside a ticket's range printing only on a run that reached coverage; `quote_input`
-is the one row registered and empty. The ancestor test of `reference/02_segmentation.md` is
+canonical form and grammar, the row states, the six rows of quotes and values — among them the one
+that searches a quote anywhere in the input text a file written from pasted text was made from, the
+text handed over with `--input` — the seven rows of ranges and ancestors, the six rows of coverage —
+`Unmapped` held to the body: every uncited non-blank line inside `body_range` listed, nothing listed
+that is cited, repeated, blank or absent, every entry's text its line's verbatim — and the three
+warnings, the two that read an `Unmapped` line inside a ticket's range printing only on a run that
+reached coverage. The skips AD-10 names for a refusal, a zero-ticket file and the mode with no line
+numbers live in one function of the frame. The ancestor test of `reference/02_segmentation.md` is
 implemented there once, over the classes `snapshot.classify` gives, and nothing of segmentation
 beside it. The routine of
 `reference/03_breaking-terms.md` — the fold, the left-to-right scan, the longest phrase at a
@@ -65,13 +67,13 @@ position and the disagreement — is implemented there and reads every phrase ou
 key of `checks` is a string literal in it: a check is the function
 named for its key. Six of the grammar checks report one class of finding of `tickets.py` each and
 nothing else, and a test holds that map both ways, so a class of finding with no check and a check
-claiming two of them both fail. `02_validate/run_fixtures.py` runs the corpus and prints how far it
-has got. `02_validate/00_fixtures/manifest.md` names every fixture and the codes it must raise, held
-against `05_checks.md` by `02_validate/test_manifest.py`; sixty-one of the tickets files it names
-exist — one clean file over the Plaid snapshot, one zero-ticket clean file over the same, one
-refusal built from its header, and at least one mutation per row of the seven written phases and the two
-warnings that read `Unmapped` — beside eight snapshots, of which one is the fetched Plaid file and
-seven were built by hand from it.
+claiming two of them both fail. `02_validate/run_fixtures.py` runs the corpus, prints the four counts a whole corpus holds at zero,
+and fails on any of them. `02_validate/00_fixtures/manifest.md` names every fixture and the codes it
+must raise, held against `05_checks.md` by `02_validate/test_manifest.py`; all sixty-four of the
+tickets files it names exist — three clean files, one of each shape, over the Plaid snapshot, one
+file in the mode with no line numbers, and at least one mutation per row of every phase and of the
+three warnings — beside eight snapshots, of which one is the fetched Plaid file and seven were
+built by hand from it, and one input text, the Plaid body as pasted.
 `identity.md` says what Idem is, takes, returns and refuses; `rules.md` is the first-draft
 procedure — six numbered steps, each naming the file and the section it depends on, the self-check
 of FR-27 before the emit step, and the prohibitions under them — and it says where it is still a

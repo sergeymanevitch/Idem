@@ -12,7 +12,7 @@ two modes, one for a numbered snapshot and one for pasted text with no line numb
 says which (FR-25, AD-10).
 
 This file is the one definition of all three. The translator writes by it, `tickets.py` parses by
-it, the validator will enforce it, and a judge reads it to know what the output was supposed to
+it, the validator enforces it, and a judge reads it to know what the output was supposed to
 be. Five tables below hold everything enumerable about it — the fields, the constants, the header
 items, the refusal reasons and the classes of line a file may hold. All five are in the catalogue,
 so a tool loads them; none of them is copied into any tool (AD-1).
@@ -20,16 +20,17 @@ so a tool loads them; none of them is copied into any tool (AD-1).
 The grammar here is **described and read**. `lib/idemlib/tickets.py` is the one reader and the one
 writer of a tickets file: it takes every field name, count, literal and pattern from the five tables
 below, gives back a data model and a list of findings, and writes a model back as the bytes of a
-canonical file. What a **cell holds** is the validator's, and the validator now reads most of it:
-the two row states, the shape of the `source` row and what it names, the form of a line cell, a
-range that runs backwards, the reason of a refusal, the size limit, the substring rule of a `copied`
-field and the list that fills the `listed` field are enforced in either mode, and a quote against
-the body line it cites is enforced under `line_numbers: snapshot` — under `line_numbers: none` no
-quote is held against any text, because the check that would search one in the supplied input is
-not built. A citation against the range it is allowed — inside its own ticket's `source` range, or
-an ancestor line its field's `ancestor` cell allows — and the shape of those ranges are enforced
-under `line_numbers: snapshot`, where there are numbers to compare. The coverage of the body is not
-enforced at all.
+canonical file. What a **cell holds** is the validator's, and the validator reads all of it that a
+key names: the header values against the mode and the body, the two row states, the shape of the
+`source` row and what it names, the form of a line cell, a range that runs backwards, the reason of
+a refusal, the size limit, the substring rule of a `copied` field and the list that fills the
+`listed` field are enforced in either mode; a quote is held against the body line it cites under
+`line_numbers: snapshot`, and against the whole of the input text the run was given under
+`line_numbers: none`, where there is no line to cite. A citation against the range it is allowed —
+inside its own ticket's `source` range, or an ancestor line its field's `ancestor` cell allows —
+the shape of those ranges and the coverage of the body by `Unmapped` are enforced under
+`line_numbers: snapshot`, where there are numbers to compare; under `line_numbers: none` they are
+not, and the validator's warning says so on every such run.
 
 ## The eight fields
 
@@ -183,7 +184,8 @@ bare number `12` and never `12-12` (AD-8). The pattern carries that last rule it
 hyphen it refuses a second number equal to the first, by naming the first group again. The pattern
 also spells the sentinel out rather than citing `schema-constants`, because a pattern cannot cite a
 cell; a test holds the two spellings together. What the pattern does not carry is that the first
-number is below the second — `12-1` passes it — and that is named as debt in `reference/CONTEXT.md`.
+number is below the second — `12-1` passes it — and that the last is a line the body has; both are
+`header_value`'s, read by the validator beside the pattern, and `05_checks.md` says how.
 
 A refusal has a header like any other file, and what each item reads there follows from the rule
 above rather than from a rule of its own. This table is illustration, and no tool reads it:
@@ -330,8 +332,8 @@ findings of the reader, and a file that breaks one of them has no model. Most of
 the two row states, the refusal reason, `unnumbered` under one mode only, the first number of a
 range lying below the second in an `Unmapped` range and in a `source` row's line cell, and the
 substring rule of a `copied` field, which is read against the row's own quote and in every mode.
-One is still enforced by nothing: that the first number of `body_range` lies below its second.
-That an `Unmapped` range stands for a run of consecutive, non-blank, uncited lines is held by the
+That the first number of `body_range` lies below its second is `header_value`'s, beside the pattern
+of that item. That an `Unmapped` range stands for a run of consecutive, non-blank, uncited lines is held by the
 coverage phase — `unmapped_missing`, `unmapped_cited`, `unmapped_blank` and `unmapped_phantom`
 between them read the snapshot beside the tickets file — and is enforced. What is left is listed as
 debt in `reference/CONTEXT.md`, where the key it was given is named beside it.
@@ -593,7 +595,9 @@ cell a filled line takes in the mode with no line numbers, the size limit and th
 values of them and no fourth — the two readings of `kind` and the one reading of `ancestor`, granted
 above — and it asks for `fields`
 through `tickets.py`'s own address, because that table's id reads the same as a key of `checks` and
-no tool writes one of those.
+no tool writes one of those. And it holds a file's header values against the mode they select, by
+the names of the items it asks a header for: in the mode with no line numbers the four items that
+name a snapshot read the sentinel, and in the other the three that name it do not.
 
 `refusal-reasons` is read by the validator and by nothing else. The reader carries a refusal's
 reason as written and never compares it with that list — a reason that is not one of the four is a

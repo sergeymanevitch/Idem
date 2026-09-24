@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """One tickets file and the snapshot it names, to pass or to coded failures.
 
-    python3 02_validate/validate.py [--snapshots DIR] <tickets>
+    python3 02_validate/validate.py [--snapshots DIR] [--input FILE] <tickets>
 
-This is the frame every check drops into, and one row of the frame is still empty. Every row of
-the checks table is registered here under its key; the forty-five that are written report
-something, and the one that is not is registered as a callable that reads nothing and finds
-nothing. That is deliberate and it is the order the whole folder is built in: the list of what can be wrong was written before
-any tool could find one of them, so that no check is ever invented to describe code already
-written.
+This is the frame every check drops into, and every row of the frame is filled. Every row of the
+checks table is registered here under its key, and the forty-six that are written report
+something; a row with nothing behind it would be registered all the same, as a callable that reads
+nothing and finds nothing, so that it stays visible rather than absent. That is the order the whole
+folder is built in: the list of what can be wrong was written before any tool could find one of
+them, so that no check is ever invented to describe code already written.
 
 WHAT IT DOES TODAY
 
@@ -16,14 +16,24 @@ The contract is loaded and the registry is built and reconciled with the table b
 is opened once and read once, by the one reader of the format. Then nine phases run in the fixed
 order (AD-6): the tool's own failures, reading the file, pairing it with its snapshot, canonical
 form and grammar, row states, quotes and values, ranges and ancestors, coverage, and the warnings.
-Reading, pairing, canonical form and grammar, the row states, the quotes and values, the ranges
-and ancestors, coverage and the three warnings are written, but for the one row of quotes and
-values which searches a quote in a supplied input text and has no argument to read one from yet.
+All nine are written. Which of them run is decided by the header alone (AD-10): a refusal runs the
+reading, the grammar and the warnings and nothing else; a file with no ticket skips the row states,
+the quotes and the ranges; and a file written from text with no line numbers skips pairing, the
+ranges and the two checks that read a quote on a numbered line, and has its quotes searched in the
+input text instead.
+
+THE TWO FLAGS
+
+`--snapshots DIR` names the folder a snapshot is looked for in. `--input FILE` names the text a file
+in the mode with no line numbers was written from: that mode owes it for the tickets shape, the
+numbered mode refuses it, and either way the header decides - the flag never chooses the mode. Each
+is taken at most once and each takes a value; there is no third.
 
 HOW A PHASE RUNS
 
 Checks of one phase run in the row order of the table, and a check with nothing to read does not
-run - it is not a pass and it is not a failure, there was no material for it. Five checks end their
+run - it is not a pass and it is not a failure, there was no material for it; the skips of AD-10 are
+that rule for a whole phase, or for one check of one. Five checks end their
 phase outright, because everything after them in it would have nothing to read. Every failure of
 the **first** phase that fails is printed, in file order, and the phases after it are suppressed.
 The warnings are the exception: they run on every run that got past the contract and the open,
@@ -42,7 +52,8 @@ fields are flattened, so neither a path nor a message holding a tab can fake a f
 
 Exit 0 when nothing was printed but warnings, 1 when a failure was, and 2 when the tool could not
 run at all: an interpreter below the floor, bad usage, a contract that cannot be read, a registry
-that disagrees with the table, a file that cannot be opened, or an uncaught exception - which
+that disagrees with the table, a file that cannot be opened, an input text that cannot be read, or
+an uncaught exception - which
 becomes one line naming this file and the line in it, and never a traceback.
 
 WHAT IS WRITTEN HERE AS A LITERAL
@@ -53,7 +64,8 @@ for among them; the names of the four header items it asks a tickets file for
 - the snapshot, the digest, the URL and the mode - two of which are also the names of the snapshot
 header fields they are compared against; the three schema constants it asks for beyond the ones the
 format module already names; the folder a snapshot is looked for in when none is named;
-the flag; the word that opens a warning line; the prefix a check's function name carries; the
+the two flags; the word that opens a warning line; the prefix a check's function name carries and
+the names of the attributes a check carries; the
 opening words of the cell that tells a warning row from a failure row; and the names of the two
 columns of the fields table it reads by. **Three values, and three only**: the two readings of the
 `kind` column of the fields table that a check of the quotes and values phase asks a row by - the
@@ -113,6 +125,13 @@ CHECK_PREFIX = "check_"
 #: ends that phase. Neither is a cell of any table - a phase is an ordering of the run.
 PHASE = "phase"
 ENDS_PHASE = "ends_phase"
+#: Two more attributes, carried by three checks. A check that reads a quote on a numbered body line
+#: is **line-bound**, and the mode with no line numbers skips it inside a phase that otherwise runs
+#: (AD-10). And a check that has a sub-rule needing what a later phase reads carries the phase it
+#: is called again after: the header values are read in the reading stage, and whether the body
+#: range runs past the body can only be read once pairing has put the snapshot on the run.
+LINE_BOUND = "line_bound"
+ALSO_AFTER = "also_after"
 
 # --- the header items this tool asks a tickets file for ---------------------------------------------
 
@@ -197,9 +216,14 @@ SNAPSHOTS = "00_snapshots"
 
 DASH = "-"
 FLAG = "--snapshots"
-USAGE = ("usage: python3 02_validate/validate.py [--snapshots DIR] <tickets> - one tickets file, "
-         "and a directory of snapshots that is there; the snapshots written by the fetch step are "
-         "used when no directory is named")
+#: The second flag and the last: the text a file in the mode with no line numbers was written from.
+INPUT_FLAG = "--input"
+USAGE = ("usage: python3 02_validate/validate.py [--snapshots DIR] [--input FILE] <tickets> - one "
+         "tickets file, and a directory of snapshots that is there; the snapshots written by the "
+         "fetch step are used when no directory is named. --input names the text a file whose "
+         "header says its input carried no line numbers was written from: such a file of tickets "
+         "needs it, a file whose header says its lines are numbered refuses it, and the header "
+         "alone decides which")
 
 #: One thing a check found: where in the tickets file, and what to say about it. No code - what a
 #: finding is called is read from the contract by the caller that prints the line.
@@ -224,6 +248,10 @@ class Run(object):
     the snapshot, and read by the phases that ask what class a cited line or a range's edge is. A
     check never classifies a line of its own, for the reason a check never reads a file of its own.
 
+    `input` is the text a file in the mode with no line numbers was written from, decoded and put
+    through the one normaliser of the snapshot format - byte-order marks off, every line ending a
+    line feed - or None where no text was given. `main` sets it; one check reads it.
+
     `reached` is the last phase that ran **before the warnings**, and it is here for the warnings.
     Two of the three read a line of the unmapped list against a ticket's range, so the contract
     prints them only on a run that **reaches coverage**: a file that failed at grammar gets
@@ -241,6 +269,7 @@ class Run(object):
         self.snapshot = None
         self.classified = None
         self.reached = None
+        self.input = None
 
 
 # --- reading the table ---------------------------------------------------------------------------
@@ -505,17 +534,134 @@ check_header.ends_phase = True
 
 
 def check_header_value(run):
-    """A header value is not of the form its item takes.
+    """A header value is not of the form its item takes, disagrees with the mode, or gives a body
+    range that runs backwards or past the last body line (FR-33, AD-10).
 
-    Every defect of a header value is this one row. Three of its sub-rules wait for the story that
-    searches a quote in pasted text: a range whose first number is not below its second, a range
-    past the last body line, and a value that disagrees with the mode. What is reported today is
-    what the reader finds - the value patterns - and the deferred ledger says so.
+    Every defect of a header value is this one row, and one item is one failure however many of its
+    sub-rules it breaks. Four ways, in the order they are read:
+
+    - the value fails the pattern of its item - the reader's own finding, reported as it made it;
+    - the value disagrees with the mode the header selects. Under the mode with no line numbers
+      there is no snapshot, so the snapshot, the digest, the URL and the body range each read the
+      sentinel; under the numbered mode the first three name the snapshot and never read it, and
+      the body range is a range - unless the file is a refusal, whose body range reads the sentinel
+      in either mode, because a refusal translated no line. This one reads nothing where the mode
+      item itself failed its pattern: a mistyped mode is that value's failure and selects nothing
+      to disagree with;
+    - the body range gives a first number that is not below its second;
+    - the body range runs past the last body line of the snapshot. That needs the snapshot, and
+      the snapshot is read by the pairing phase, a phase after this one.
+
+    So this check is **called twice** (Sergey, 2026-09-24). In the reading stage, with no snapshot
+    on the run, it reads the first three; and once more at the end of the pairing phase, when that
+    phase ends with no failure - the attribute below names the phase - and then it reads the fourth
+    alone. Which call it is, is read off the run: only pairing puts a snapshot on it. One key, one
+    function, one row phase; what the second call finds is a failure of the phase it is made in, so
+    nothing after pairing runs on a file whose body range reaches past the body.
     """
-    return _findings(run, tickets.HeaderValueFinding)
+    if run.snapshot is not None:
+        return _past_the_body(run)
+    found = _findings(run, tickets.HeaderValueFinding)
+    failed = set([failure.line for failure in found])
+    for item, message in _header_defects(run):
+        if item.at in failed:
+            continue
+        failed.add(item.at)
+        found.append(Failure(item.at, message))
+    return sorted(found, key=lambda failure: failure.line)
 
 
 check_header_value.phase = READING
+check_header_value.also_after = PAIRING
+
+
+def _header_defects(run):
+    """(item, sentence) for every header item one of the two reading-stage sub-rules refuses.
+
+    In header order, one per item at most: a value that disagrees with the mode is named for that,
+    and is not read again for running backwards. Nothing where the header block did not read.
+    """
+    if run.parsed.header is None:
+        return []
+    found = []
+    for item in run.parsed.header:
+        message = _disagreement(run, item)
+        if message is None and item.name == tickets.RANGE_ITEM:
+            message = _backwards(item)
+        if message is not None:
+            found.append((item, message))
+    return found
+
+
+def _disagreement(run, item):
+    """What is wrong with one item's value against the mode the header selects, or None.
+
+    Four items can disagree - the three that name a snapshot, and the body range - and the mode item
+    itself cannot, since it is what is agreed with. Nothing where the mode item reads neither mode:
+    it failed its own pattern, and a mode that did not read selects nothing. The rest of the header
+    is read whatever the reader made of the lines after it - a file of a header and nothing else is
+    still held to the mode it names.
+    """
+    shape = run.parsed.shape
+    if item.name not in (SNAPSHOT_ITEM, DIGEST_ITEM, URL_ITEM, tickets.RANGE_ITEM):
+        return None
+    mode = _mode_value(run)
+    empty = item.value == _constant(run, tickets.SENTINEL)
+    if mode == _mode(tickets.unnumbered_mode):
+        if empty:
+            return None
+        return ("this item reads '" + item.value + "', and the header says the input carried no "
+                "line numbers: there was no snapshot, so this item reads the sentinel")
+    if mode != _mode(tickets.numbered_mode):
+        return None
+    if item.name == tickets.RANGE_ITEM and shape == tickets.REFUSAL:
+        if empty:
+            return None
+        return ("this refusal says it translated body lines '" + item.value + "', and a refusal "
+                "translated none, so its body range reads the sentinel")
+    if not empty:
+        return None
+    if item.name == tickets.RANGE_ITEM:
+        return ("this item reads the sentinel, and the header says the input carried line "
+                "numbers: the body range gives the lines this file translated")
+    return ("this item reads the sentinel, and the header says the input carried line numbers: "
+            "a numbered input is a snapshot, and this item gives what that snapshot's header "
+            "gives")
+
+
+def _backwards(item):
+    """The sentence for a body range whose first number is not below its second, or None.
+
+    The two numbers are compared as written and never converted, as every number here is: the
+    item's pattern has already refused a leading zero and a second number equal to the first.
+    """
+    parts = item.value.split(tickets.HYPHEN)
+    if len(parts) != 2 or not _is_number(parts[0]) or not _is_number(parts[1]):
+        return None
+    if _above(parts[1], parts[0]):
+        return None
+    return ("this file says it translated body lines '" + item.value + "', and a range runs from "
+            "its first line to its last")
+
+
+def _past_the_body(run):
+    """The body range's last line past the last body line of the snapshot on the run, as failures.
+
+    The one sub-rule that reads the snapshot, so it is read on the second call alone. A body range
+    reading the sentinel, or one of any other form, has no last line to compare; the numbers are
+    compared as written, so a range of thousands of digits is read on every interpreter.
+    """
+    item = _item(run, tickets.RANGE_ITEM)
+    if item is None:
+        return []
+    parts = item.value.split(tickets.HYPHEN)
+    if len(parts) > 2 or not _is_number(parts[0]) or not _is_number(parts[-1]):
+        return []
+    last = _as_digits(len(run.snapshot.lines))
+    if not _above(parts[-1], last):
+        return []
+    return [Failure(item.at, "this file says it translated body lines '" + item.value + "', and "
+                             "the snapshot it names has " + last + " body lines")]
 
 
 # --- pairing: which snapshot this file is about, and that it is that snapshot (FR-35, FR-36) ----------
@@ -536,22 +682,6 @@ def _mode(reader):
                          "cell the validator reads it out of names none, so nothing can be "
                          "compared with the header")
     return found
-
-
-def pairing_has_material(run):
-    """Whether the pairing phase has anything to read at all.
-
-    Three ways it has not, and in each of them no check of the phase runs rather than passing: the
-    header block did not read, so nothing names a snapshot; the mode is the one with no snapshot
-    (AD-10); or the file is a refusal, which translated nothing and whose header may read the
-    sentinel for its snapshot.
-    """
-    if run.parsed.header is None:
-        return False
-    if run.parsed.shape == tickets.REFUSAL:
-        return False
-    item = _item(run, MODE_ITEM)
-    return item is not None and item.value == _mode(tickets.numbered_mode)
 
 
 def check_snapshot_name(run):
@@ -820,8 +950,9 @@ check_size_limit.phase = GRAMMAR
 # Every check below reads `run.parsed.model` and nothing else, and every one of them returns an
 # empty list where there is no model, or where the block it reads is not there: a refusal carries no
 # ticket and no unmapped list, and a file the grammar refused has no model at all. That is a check
-# with nothing to read and not a pass (`05_checks.md`, "Inside one phase"); the phase skips AD-10
-# names for the refusal and the zero-ticket shapes are a story of their own and are not built here.
+# with nothing to read and not a pass (`05_checks.md`, "Inside one phase"). The frame skips this
+# phase for the refusal and the zero-ticket shapes (AD-10), and the rule inside each check stays
+# beside that skip as a second guard.
 #
 # Two carve-outs keep one code on one row (Sergey, 2026-09-22). `state_sentinel` reads rows of
 # fields 1 to 7 only, because `source_row` owns every defect of the source row's own cells; and
@@ -1104,15 +1235,16 @@ check_range_reversed.phase = STATES
 # A **cited row** is a row of fields 1 to 7 whose value is not the sentinel and whose line cell is a
 # number. The phase above has already refused every other filled row, and a sentinel row carrying a
 # line is `state_sentinel`'s, so nothing here re-reports either. Under the mode with no line numbers
-# a filled line cell reads the unnumbered word, which is no number, so the two checks that read a
-# body line have nothing to read there without asking the mode; the phase skip AD-10 states for that
-# mode is a story of its own and is not built here.
+# a filled line cell reads the unnumbered word, which is no number: the frame skips the two checks
+# that read a body line in that mode (AD-10) - they carry the attribute that says so - and each of
+# them would have nothing to read there anyway, which stays as a second guard. The check between
+# them takes their place, and searches the quote in the input text.
 #
 # Three carve-outs keep one code on one row, and each of them is a reading of a cell that names
 # none of them (Sergey, 2026-09-22). The check of a line past the body reads fields 1 to 7 alone,
 # because the source row cites nothing - it carries a range, and the phase below this one reads the
-# edges of that range; a range reaching past the body is the header's own defect, a sub-rule of the
-# reading stage that is not built yet. The check of a quote against its line passes over a row whose line the
+# edges of that range; a body range reaching past the body is the header's own defect, read at the
+# end of pairing. The check of a quote against its line passes over a row whose line the
 # check above it refused, because a line that is not in the body has no text to search. And the
 # check of the value a quote supports passes over a quote the routine finds to support neither
 # value, because that outcome is no value at all and the row that owns it is the one after it.
@@ -1251,9 +1383,9 @@ def check_line_range(run):
     """A row cites a line past the last body line of the snapshot (FR-29).
 
     Zero and a negative number are no number at all and are the line-form row's, a phase above.
-    The range a source row carries is not a citation - the phase below reads its edges, and a range
-    reaching past the body is the header's own defect, a sub-rule not built yet - so fields 1 to 7
-    are what is read here.
+    The range a source row carries is not a citation - the phase below reads its edges, and a body
+    range reaching past the body is the header's own defect - so fields 1 to 7 are what is read
+    here. The mode with no line numbers skips this check; it would read nothing there either.
 
     Nothing to read where there is no model, no ticket, no snapshot on the run, or no row whose line
     cell is a number: it returns an empty list.
@@ -1271,6 +1403,7 @@ def check_line_range(run):
 
 
 check_line_range.phase = QUOTES
+check_line_range.line_bound = True
 
 
 def check_quote_line(run):
@@ -1290,6 +1423,8 @@ def check_quote_line(run):
     **A header line of the snapshot is no body line.** The number space is the body's alone, so a
     header line quoted under a body line number is simply a quote that is not on the line cited.
 
+    The mode with no line numbers skips this check, and the one after it searches the input instead.
+
     Nothing to read where there is no model, no ticket, no snapshot on the run, or no row whose line
     cell is a number: it returns an empty list.
     """
@@ -1306,6 +1441,48 @@ def check_quote_line(run):
 
 
 check_quote_line.phase = QUOTES
+check_quote_line.line_bound = True
+
+
+def _unbound(run):
+    """Every row of fields 1 to 7 that carries a quote and no line, in file order.
+
+    Filled - a value that is neither empty nor the sentinel, and a quote - with its line cell the
+    one word the mode with no line numbers writes. Each cell is tested rather than left to the row
+    states, as `_cited` tests them, so that no row already refused there is read a second time.
+    Under the numbered mode every filled line cell is a number, so this is empty there without the
+    mode being asked.
+    """
+    sentinel = _constant(run, tickets.SENTINEL)
+    unnumbered = _constant(run, UNNUMBERED_CELL)
+    return [row for row in _rows(run)[0]
+            if row.value != tickets.EMPTY and row.value != sentinel
+            and row.quote != tickets.EMPTY and row.line == unnumbered]
+
+
+def check_quote_input(run):
+    """Under the mode with no line numbers, the quote is nowhere in the input text (FR-25, AD-10).
+
+    It takes the place of the check above in that mode: there is no line to search, so the quote
+    is searched as a substring **anywhere** in the text the run was given - the text as `main` read
+    it, decoded and normalised, and the quote cell as the reader gives it; neither is trimmed and
+    neither is folded. One failure per row whose quote is not there, at the row.
+
+    Nothing to read where no text was given, or where there is no model, no ticket, or no row
+    carrying a quote and the unnumbered word: it returns an empty list.
+    """
+    if run.input is None:
+        return []
+    found = []
+    for row in _unbound(run):
+        if row.quote in run.input:
+            continue
+        found.append(Failure(row.at, "the quote of this row is nowhere in the input text this file "
+                                     "was written from, and a quote is copied out of that text"))
+    return found
+
+
+check_quote_input.phase = QUOTES
 
 
 def check_value_quote(run):
@@ -1401,8 +1578,8 @@ check_breaking_quote.phase = QUOTES
 # no snapshot, no classified line is a check with nothing to read and not a pass. Under the mode with
 # no line numbers every filled line cell reads the unnumbered word, which is no number, and the
 # source row's line cell reads the sentinel, which is no range - so no check here has a row or a
-# range to read there, and none of them asks the mode. The phase skips AD-10 names are a story of
-# their own and are not built here.
+# range to read there, and none of them asks the mode. The frame skips the whole phase in that mode,
+# and for a refusal and a file with no ticket (AD-10); the rule inside each check stays beside it.
 #
 # The validator never segments (AD-2). Nothing below cuts the body into units, decides whether a line
 # is a change, reads the leaf-and-parent test or the narrowing of separator lines: what is read is
@@ -2078,7 +2255,8 @@ def check_warn_unbound(run):
         return []
     return [Failure(item.at, "this file was written from text carrying no line numbers, so no "
                              "quote was held against the line it is on and no range was read; "
-                             "what a reader has instead is the unmapped list")]
+                             "each quote was searched anywhere in the input text instead, and the "
+                             "unmapped list was held to nothing")]
 
 
 check_warn_unbound.phase = WARNINGS
@@ -2173,34 +2351,47 @@ def _in_phase(checks, phase):
             if getattr(function, PHASE, None) == phase]
 
 
-def _has_material(phase, run):
-    """Whether this phase has anything to read at all.
+def _has_material(phase, run, function=None):
+    """Whether this phase has anything to read at all - or, given a check of it, whether that check.
 
-    **Pairing is the only skip the frame implements**, and the contract names four more that it
-    does not. "What each mode skips" of the checks file says: a refusal runs the contract stage,
-    the reading of the file and the grammar, and nothing after them - no row states, no quotes, no
-    ranges, no coverage; a zero-ticket file skips the same except coverage, which is the whole
-    point of that shape; and the unnumbered mode skips the line and range checks, with the search
-    of a quote in the input taking the place of the search on a line. None of those is built.
+    **The skips of AD-10 live here and nowhere else**, read from the shape the reader gave the file
+    and from the mode its header selects (`05_checks.md`, "What each mode skips"):
 
-    What stands in for the first two today is the rule inside each check of the row-states phase:
-    every one of them reads the model, and a shape that carries no ticket and no unmapped list
-    leaves each of them with nothing to read. The difference is visible to nobody - a check with
-    nothing to read is neither a pass nor a failure either way - and it is a rule about a phase, so
-    the story that owns AD-10 moves it here. What stands in for the third is the material rule
-    inside the two checks that read a body line, and inside every check of ranges and ancestors:
-    under that mode every filled line cell reads the unnumbered word, which is no number, and the
-    source row's line cell reads the sentinel, which is no range, so none of them has a row or a
-    range to read. What stands in for it in the coverage phase is the same rule: under that mode
-    every entry of the unmapped list is text alone with no number, and there is no snapshot on the
-    run, so no check of that phase has a line to read.
+    - pairing runs only where the header block read, the mode is the numbered one and the file is
+      no refusal - there is no snapshot to pair with otherwise;
+    - a **refusal**, in either mode, runs the reading of the file, the grammar and the warnings,
+      and nothing between them: no row states, no quotes, no ranges, no coverage;
+    - a **file with no ticket** skips the row states, the quotes and the ranges, and keeps
+      coverage, which is the whole point of that shape;
+    - the **mode with no line numbers** skips the ranges, and inside the quotes phase the two checks
+      that read a quote on a numbered line - each carries the attribute that says so - while the
+      search of a quote in the input takes their place. Coverage runs in that mode and reads
+      nothing: every entry is text alone, and there is no snapshot on the run.
+
+    The two shapes and the mode combine: a file with no ticket in the mode with no line numbers
+    skips pairing and the ranges for the mode and the row states and the quotes for the shape.
+    Everything else has material. The rule inside each check, that one with nothing to read returns
+    an empty list, stays beside all of this as a second guard.
 
     A phase this returns False for does not run at all: its checks are not called, so the run
     records nothing for them and `run.reached` does not move past the phase before it - which is
-    what a warning reads to know how far the run got.
+    what a warning reads to know how far the run got. A check it returns False for is not called,
+    and the rest of its phase runs.
     """
+    shape = run.parsed.shape
+    unnumbered = _mode_value(run) == _mode(tickets.unnumbered_mode)
+    if function is not None and unnumbered and getattr(function, LINE_BOUND, False):
+        return False
     if phase == PAIRING:
-        return pairing_has_material(run)
+        if run.parsed.header is None or shape == tickets.REFUSAL:
+            return False
+        return _mode_value(run) == _mode(tickets.numbered_mode)
+    if shape == tickets.REFUSAL and phase in (STATES, QUOTES, RANGES, COVERAGE):
+        return False
+    if shape == tickets.TICKETS_NONE and phase in (STATES, QUOTES, RANGES):
+        return False
+    if unnumbered and phase == RANGES:
+        return False
     return True
 
 
@@ -2232,6 +2423,11 @@ def run_phases(run, checks, table):
     and the contract prints them only on a run that reaches coverage; a file that failed at grammar
     gets neither, and that is a warning with nothing to read rather than one suppressed. Both of
     them ask `run.reached` and nothing else does.
+
+    **A check that names a later phase is called once more** when that phase ends with no failure
+    of its own, and what it finds then is reported under its own key as a failure of that phase.
+    It is how a sub-rule that needs what the later phase reads - the body range held to the body
+    the pairing phase opened - stays a sub-rule of the one row that owns it.
     """
     lines = []
     failed = False
@@ -2242,11 +2438,19 @@ def run_phases(run, checks, table):
             continue
         found = []
         for key, function in _in_phase(checks, phase):
+            if not _has_material(phase, run, function):
+                continue
             raised = function(run)
             for failure in raised:
                 found.append((key, failure))
             if raised and getattr(function, ENDS_PHASE, False):
                 break
+        if not [pair for pair in found if not is_warning(table, pair[0])]:
+            for key, function in checks.items():
+                if getattr(function, ALSO_AFTER, None) != phase:
+                    continue
+                for failure in function(run):
+                    found.append((key, failure))
         if phase != WARNINGS:
             run.reached = phase
         found.sort(key=lambda pair: pair[1].line)
@@ -2267,25 +2471,37 @@ def default_directory():
 
 
 def _arguments(argv):
-    """The tickets file and the snapshot directory, or a usage failure.
+    """The tickets file, the snapshot directory and the input text's path or None, or a usage failure.
 
     An unknown flag, a flag with no value, a flag given twice, no file at all, an empty name, a
     second file and a directory that is not there are all the same thing: the tool was not asked
     for something it could do. None of them is a finding about a document and none of them is an
     internal error. A second `--snapshots` is refused rather than quietly taken, because the two
     directories would name two different snapshots and the reader would not be told which was
-    read.
+    read; a second `--input` for the same reason. There are two flags and no third: nothing here
+    chooses a mode or skips a phase, because the header alone does that (AD-10).
+
+    Whether the input was **owed** is not decided here: that is the header's to say, and the header
+    has not been read yet.
     """
     directory = None
+    given = None
     path = None
     index = 0
     while index < len(argv):
         word = argv[index]
-        if word == FLAG:
+        if word in (FLAG, INPUT_FLAG):
             index += 1
-            if index >= len(argv) or directory is not None:
+            if index >= len(argv):
                 raise _Usage()
-            directory = argv[index]
+            if word == FLAG:
+                if directory is not None:
+                    raise _Usage()
+                directory = argv[index]
+            else:
+                if given is not None or not argv[index]:
+                    raise _Usage()
+                given = argv[index]
         elif word.startswith(DASH):
             raise _Usage()
         elif path is not None:
@@ -2299,7 +2515,7 @@ def _arguments(argv):
         directory = default_directory()
     if not os.path.isdir(directory):
         raise _Usage()
-    return path, directory
+    return path, directory, given
 
 
 def _read(path):
@@ -2319,6 +2535,45 @@ def _read(path):
         return None, "this file cannot be read: " + str(unreadable)
 
 
+def _input_owed(run):
+    """True where the header owes an input text, False where it refuses one, None where neither.
+
+    The header decides, never the flag (AD-10). The mode with no line numbers owes the text for the
+    tickets shape, whose quotes are searched in it; a refusal or a file with no ticket in that mode
+    has no quote to search, and takes the text or leaves it. The numbered mode refuses it in every
+    shape: its quotes are held to numbered lines, and a text beside them would be read by nothing.
+    A header that did not read, or one whose mode item reads neither mode - a mistyped mode -
+    neither owes nor refuses it, and the reading stage says what is wrong with the header.
+    """
+    if run.parsed.header is None:
+        return None
+    mode = _mode_value(run)
+    if mode == _mode(tickets.numbered_mode):
+        return False
+    if mode == _mode(tickets.unnumbered_mode) and run.parsed.shape == tickets.TICKET_HEADING:
+        return True
+    return None
+
+
+def _read_input(path):
+    """The input text, decoded and normalised, or (None, one plain line saying why there is none).
+
+    Normalised by the snapshot format's own normaliser - every leading byte-order mark off, every
+    line ending a line feed - because the text a person pasted may carry either, and a quote is
+    compared with the text and not with how its lines were ended. A text that cannot be opened or
+    decoded is not a finding about the tickets file: one plain line, exit 2, no code, as a tickets
+    file that cannot be opened is.
+    """
+    data, unreadable = _read(path)
+    if data is None:
+        return None, unreadable.replace("this file", "the input text", 1)
+    try:
+        return snapshot.normalise(data.decode(snapshot.ENCODING)), None
+    except UnicodeDecodeError as undecodable:
+        return None, ("the input text cannot be read: it is not UTF-8 at byte " +
+                      str(undecodable.start))
+
+
 def main(argv=None, version_info=None):
     if version_info is None:
         version_info = sys.version_info
@@ -2326,7 +2581,7 @@ def main(argv=None, version_info=None):
         contract.emit(contract.version_message(version_info))
         return 2
     try:
-        path, directory = _arguments(list(argv) if argv is not None else [])
+        path, directory, given = _arguments(list(argv) if argv is not None else [])
     except _Usage:
         contract.emit(USAGE)
         return 2
@@ -2355,6 +2610,19 @@ def main(argv=None, version_info=None):
         return 2
     try:
         run = Run(path, data, tickets.parse(data), directory, tables)
+        owed = _input_owed(run)
+    except Exception:
+        contract.emit(contract.internal_line(__file__))
+        return 2
+    if (owed is True and given is None) or (owed is False and given is not None):
+        contract.emit(USAGE)
+        return 2
+    if given is not None:
+        run.input, unreadable = _read_input(given)
+        if run.input is None:
+            contract.emit(unreadable)
+            return 2
+    try:
         lines, failed = run_phases(run, checks, tables[CHECKS_TABLE])
     except Exception:
         contract.emit(contract.internal_line(__file__))

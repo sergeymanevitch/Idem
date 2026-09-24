@@ -35,8 +35,8 @@ fixture exercises. That validator reads three tables of `01_schema.md` for its o
 and which fields may cite an ancestor line, `schema-constants` for the four values a check
 compares against, and `refusal-reasons` for
 the list a reason must be in — and `breaking-terms`, for the two checks that decide what a quote
-supports. The remaining two — `html-elements` and `warn-patterns` — wait for the phases of the
-validator that are not written and for the HTML routine.
+supports; and `warn-patterns`, for the one warning that looks for a date. The remaining one —
+`html-elements` — waits for the HTML routine.
 `02_segmentation.md` holds no table, so the loader never opens it at all. A pattern is the one kind
 of cell the loader looks inside: a column named `pattern`, or ending `_pattern`, is linted and
 compiled as the contract loads, and `00_catalogue.md` states that convention.
@@ -44,14 +44,17 @@ compiled as the contract loads, and `00_catalogue.md` states that convention.
 **Known debt.** A rule stated here that no pattern can carry is enforced by nothing until the tool
 that owns it exists. Story 1.7 closed half of that: `05_checks.md` now gives almost every one of
 these rules a key and a code, so the thing they are waiting for is a tool and no longer a decision.
-**A key is not a check.** `validate.py` is written as a frame and it enforces seven phases of the
-nine and the warnings: reading the file — the encoding, the five header items and the patterns of
-their values; pairing, which is where the rules of AD-5 and FR-35 about the snapshot are; canonical
-form and grammar; the row states; quotes and values, all of it but `quote_input`; ranges and
-ancestors; coverage — the six checks that hold `Unmapped` to the body; and the three warnings, the
-two that read an `Unmapped` line inside a ticket's range printing only on a run that reached
-coverage. One row, `quote_input`, is registered under its key with nothing behind it, and the list
-stays here until each rule below is written and its fixtures pass. There are five groups.
+**A key is not a check**, and today every key has one. `validate.py` enforces all nine phases, with
+the skips the header selects for the three shapes and the two modes (AD-10): reading the file — the
+encoding, the five header items, and their values against their patterns, against the mode, and a
+`body_range` that runs backwards or past the body; pairing, which is where the rules of AD-5 and
+FR-35 about the snapshot are; canonical form and grammar; the row states; quotes and values,
+`quote_input` among them, which searches a quote in the input text a file of the unnumbered mode
+was written from; ranges and ancestors; coverage — the six checks that hold `Unmapped` to the body;
+and the three warnings, the two that read an `Unmapped` line inside a ticket's range printing only
+on a run that reached coverage. No row is registered with nothing behind it, and every row but the
+two exempt ones has a committed fixture. What is below is what a key still does not reach. There are
+five groups.
 
 - `04_snapshot-format.md` — the fence-pairing and open-item rules of `line-classes`, stated in
   `rule` cells, in English. **These get no key, and that is a decision of 2026-09-20**: they are the
@@ -68,21 +71,20 @@ stays here until each rule below is written and its fixtures pass. There are fiv
   each, and `lib/tests/test_tickets.py` holds it to them case by case. **All four are coded failures
   today** (2026-09-22): `header` is a check of the reading stage, and the other three are the first
   three grammar checks, each reporting one class of the reader's findings and nothing else, each
-  with a fixture of its own. What is still enforced by nothing: that the first number of a range
-  lies below the second **in `body_range`**, which is a header value and so `header_value`'s — that
-  one is **keyed, reported and still not enforced**: `check_header_value` is written and reports
-  what the reader finds, which is the value pattern of each item, and the pattern admits a reversed
-  range. The same holds for a `body_range` past the last body line and for a value that disagrees
-  with the mode; all three are in the deferred ledger under Story 3.3's decision 7. The same rule in
-  an `Unmapped` range and in a `source` row's line cell, which has no pattern at all, is
-  `range_reversed`, and that one **is** enforced. And an `Unmapped` range standing for a run of
-  consecutive, non-blank, uncited lines — `unmapped_missing`, `unmapped_cited`, `unmapped_blank` and
-  `unmapped_phantom` between them — **is closed** (2026-09-23): the coverage phase reads the
-  snapshot beside the tickets file. What it leaves is recorded for the story that owns the AD-10
-  skips: a reversed range in a zero-ticket file's `Unmapped` is dropped from the listed set, so its
-  lines come back as missing under `unmapped_missing` and no line names the range itself, and a
-  `body_range` reading the sentinel under `line_numbers: snapshot` gives `unmapped_missing` nothing
-  to read until the `header_value` sub-rule refuses it. Owner: `validate.py`.
+  with a fixture of its own. That the first number of a range lies below the second **in
+  `body_range`**, which is a header value and so `header_value`'s, **is closed** (2026-09-24):
+  `check_header_value` reads it beside the reader's patterns, and so does it read a `body_range` past
+  the last body line — on a second call at the end of pairing — and a value that disagrees with the
+  mode; `05_checks.md` states the three. The same rule in an `Unmapped` range and in a `source` row's
+  line cell, which has no pattern at all, is `range_reversed`, and that one **is** enforced. And an
+  `Unmapped` range standing for a run of consecutive, non-blank, uncited lines — `unmapped_missing`,
+  `unmapped_cited`, `unmapped_blank` and `unmapped_phantom` between them — **is closed**
+  (2026-09-23): the coverage phase reads the snapshot beside the tickets file. What it leaves is
+  stated in `05_checks.md`, "What each mode skips": a reversed range in a zero-ticket file's
+  `Unmapped` is read by no row-states check, which do not run for that shape, and is dropped from the
+  listed set, so its lines come back as missing under `unmapped_missing` and no line names the range
+  itself. A `body_range` reading the sentinel under `line_numbers: snapshot` is now `header_value`'s
+  and never reaches coverage. Owner: `validate.py`.
 - `01_schema.md`, rules about what a cell holds, which the line patterns do not carry. Each now
   has a key, and **two of them are read the same way**: that a `field` cell holds one of the eight
   field names and that a ticket's rows give them in order — `fields` — and that a header item's

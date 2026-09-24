@@ -11,23 +11,22 @@ comp_12: a check invented to describe code already written stands beside the thi
 instead of holding it. So the table was written before `validate.py`, every row names the provision
 it comes from, and every row but the two exempt ones is named by a row of the fixture manifest
 (AD-7). The validator now stands on this table — it registers a check under every key here and
-prints the code that key's row carries — and the fixture corpus is being written one row at a time
-beside it.
+prints the code that key's row carries — and the fixture corpus beside it, written one row at a
+time, is whole.
 
 Three tables live here. `checks` is the validator's list. `fetch-failures` is fetch's, kept apart
 for the reason the next-but-one section gives. `warn-patterns` holds the one pattern a warning looks
 for. All three are in the catalogue, so a tool loads them; none of them is copied into any tool
 (AD-1), with the one exception named under **The two codes that cannot come from a table**.
 
-**Keyed is not the same as enforced.** `validate.py` and `run_fixtures.py` are written, and one row
-below is still a row and no more. Every row is registered under its key as a callable: the checks
+**Keyed is not the same as enforced**, and today every row is both. `validate.py` and
+`run_fixtures.py` are written, and every row is registered under its key as a callable: the checks
 of the reading stage, of the pairing phase, of canonical form and grammar, of the row states, of
 quotes and values, of ranges and ancestors and of coverage are written, and so are the three
-warnings — all of those but `quote_input`, which waits for the argument that supplies an input text
-to search — the two rows the frame itself raises are raised by the frame, and that one row is
-registered with nothing behind it. A row
-here says what the validator will check and under what code, never that anything checks it today —
-and `run_fixtures.py` prints, on every run, how many rows nothing exercises yet, so the distance
+warnings; the two rows the frame itself raises are raised by the frame, and no row is registered
+with nothing behind it. A row here still says what the validator checks and under what code, and
+not that the check is right — and `run_fixtures.py` prints, on every run, how many rows nothing
+exercises, and **fails** unless that number and the three beside it read zero, so the distance
 between this list and what is enforced is a number a reader gets for free rather than a claim
 anybody has to make.
 
@@ -153,8 +152,9 @@ row states refused, or whose range runs backwards, has no range to hold a row to
 rows nor its range are read by any check of this phase. `range_heading`, `range_start` and
 `range_end` read the body, so a range whose last line is past it gives them nothing to read;
 `range_overlap` and `range_body` compare numbers alone and still read it — `range_body` only
-against `body_range`, so a range reaching past the body while inside `body_range` is caught by
-nothing until the sub-rule of `header_value` that holds `body_range` to the body is built — and a
+against `body_range`, and a `body_range` reaching past the body is refused at the end of pairing
+by the sub-rule of `header_value` that holds it to the body, so a range past the body but inside
+`body_range` never reaches this phase — and a
 row citing a line outside a range whose first line is past the body is `cite_range`'s, because such
 a range has no ancestor. A range whose first line is blank has no indent of its own, so it has no
 item ancestor, and its heading ancestors are unchanged; and an empty line inside a fence, which the
@@ -202,34 +202,75 @@ end its phase, and `unmapped_blank` and `unmapped_text` pass over an entry it re
 pattern of `quote_line` after `line_range`. A range whose last line is past the body is compared as
 an interval, so the listed set is built only up to the last body line and no file can hang the
 run. Two readings follow from the header: `body_range` is read literally, so a listed line past
-the body but inside it is `unmapped_phantom`'s today and stays so once the `header_value` sub-rule
-that holds `body_range` to the body fails the header first; and a `body_range` reading the sentinel
+the body is `unmapped_phantom`'s whatever `body_range` says — and a `body_range` that runs past the
+body is itself refused at the end of pairing, by the sub-rule of `header_value` that holds it there,
+so coverage never reads one; and a `body_range` reading the sentinel
 or running backwards gives `unmapped_missing` and the `body_range` half of `unmapped_phantom`
 nothing to read, as it gives `range_body` nothing. Under `line_numbers: none` every entry is text
 alone with no number and there is no snapshot on the run, so no check of the phase has a line to
-read, and the phase asks the mode nothing; the AD-10 skip that will own this is not built. The
-zero-ticket shape **is** read: every non-blank body line stands in its `Unmapped`, and a run over it
-reaches coverage.
+read, and the phase asks the mode nothing. The frame does not skip coverage in that mode: it runs,
+and reads nothing. Whether an entry's text alone should be held to the input text the run was
+given is a question this file leaves open, beside the two about a fenced line; until it is closed,
+`Unmapped` in that mode is held to nothing, and `WARN_UNBOUND` says so. The zero-ticket shape **is**
+read: every non-blank body line stands in its `Unmapped`, and a run over it reaches coverage.
 
 ### What each mode skips
 
 The header selects the mode, and a file cannot opt out of a phase its header does not excuse
-(AD-10).
+(AD-10). No argument chooses a mode or skips a phase: the validator's input flag is a file to check
+against and never a switch, and the header decides whether it was owed.
 
 - **`line_numbers: snapshot`, the tickets shape** — every phase runs.
 - **`line_numbers: none`** — there is no snapshot, so the whole **pairing** phase is skipped:
   `snapshot_name`, `snapshot_missing`, `snapshot_format`, `snapshot_sha256`, `pair_sha256` and
-  `pair_source_url` never run. The **line and range** checks are skipped for the same reason —
-  nothing carries a line number — and `quote_input` takes the place of `quote_line`: a quote is
-  searched anywhere in the input text the run was given. `warn_unbound` says so on every such run.
-  Everything else — reading the file, canonical form and grammar, row states, values, coverage —
-  runs, and where a particular check has nothing to read, the rule above covers it.
-- **The refusal shape** — the contract stage, reading the file, then canonical form and grammar,
-  and that is all. A refusal translated nothing: there are no rows to state, nothing to cover, and
-  its header may read the sentinel for the snapshot, so pairing has nothing to read.
+  `pair_source_url` never run. The **range** checks are skipped for the same reason — nothing
+  carries a line number — and so are the two **line** checks of quotes and values, `line_range`
+  and `quote_line`, while the rest of that phase runs: `quote_input` takes the place of
+  `quote_line`, and a quote is searched anywhere in the input text the run was given, which a file
+  of tickets in this mode must be given. `warn_unbound` says so on every such run. Everything else
+  — reading the file, canonical form and grammar, row states, values, coverage — runs, and where a
+  particular check has nothing to read, the rule above covers it: coverage runs and reads nothing.
+- **The refusal shape**, in either mode — the contract stage, reading the file, then canonical form
+  and grammar, and the warnings, and that is all. A refusal translated nothing: there are no rows to
+  state and nothing to cover, and there is nothing to pair — under `line_numbers: none` its header
+  reads the sentinel for the snapshot, and under `line_numbers: snapshot` it names the snapshot it
+  refused and the refusal is still paired with nothing. A refusal in the unnumbered mode takes the
+  input text or leaves it; it has no quote to search.
 - **The zero-ticket shape** — the same, and **coverage**, which is the whole point of it: every
   non-blank body line stands in `Unmapped`. Coverage reads the snapshot, so pairing runs before it;
-  a zero-ticket header names a real snapshot and there is something to pair.
+  a zero-ticket header names a real snapshot and there is something to pair. A range entry that runs
+  backwards in such a file is read by nothing of the row states, which do not run for it, and
+  coverage drops it from the listed set, so the lines it was meant to cover come back as missing
+  lines under `unmapped_missing` — the one way that defect is reported in this shape.
+- **The zero-ticket shape under `line_numbers: none`** — the skips of both rows above: pairing and
+  the ranges for the mode, the row states and quotes and values for the shape, and coverage runs
+  and reads nothing. This follows this file rather than AD-10, whose list for this shape does not
+  name pairing; with no snapshot there is nothing to pair. Such a file, too, takes the input text
+  or leaves it.
+
+These skips are the frame's, and they live in one place in `validate.py`. The rule that a check
+with nothing to read returns nothing stays inside every check beside them, as a second guard.
+
+### The three sub-rules of `header_value`, and its second call
+
+`header_value`'s cell names four defects of a header value, and one item raises one failure however
+many of them it has (Sergey, 2026-09-24). The first is the reader's: a value fails the
+`value_pattern` of its item. The other three are the validator's:
+
+- **a value that disagrees with the mode.** Under `line_numbers: none` there is no snapshot, so
+  `snapshot`, `sha256`, `source_url` and `body_range` each read the sentinel. Under
+  `line_numbers: snapshot` the first three name the snapshot and never read it, and `body_range` is
+  a range — unless the file is a refusal, whose `body_range` reads the sentinel in either mode,
+  because a refusal translated no line. Where the mode item itself failed its pattern this
+  sub-rule reads nothing: a mistyped mode is that value's failure, selects no mode to disagree
+  with, and is never a usage exit. A header with nothing after it is still held to its mode;
+- **a `body_range` whose first number is not below its second;**
+- **a `body_range` whose last number is past the last body line.** That one needs the snapshot,
+  which the pairing phase reads, so `header_value` is **called a second time at the end of the
+  pairing phase**, when that phase ends with no failure, and on that call it reads this sub-rule
+  alone. What it finds is a failure of that phase: nothing after pairing runs on such a file, and a
+  file whose pairing failed is reported for that and not for its range. The row stays in the
+  reading stage, with one key and one function.
 
 ### Warnings are not a phase that can fail
 
@@ -504,9 +545,10 @@ what tools enforce; the manifest is what a suite expects of files, it lives outs
 `contract.py` reads it through `read_table()` by path — no catalogue row, no both-ways check against
 this folder, no pattern cell linted. A manifest row is a claim about a file; a row here is a rule.
 
-The rows and their expected codes were all written before any of the files they name; the files are
-being written one row at a time, as the checks that read them are built, and `run_fixtures.py`
-counts the rows still waiting.
+The rows and their expected codes were all written before any of the files they name; the files were
+written one row at a time, as the checks that read them were built, and every one is there.
+`run_fixtures.py` fails on a row whose file is missing, and on any of the four counts it prints
+reading above zero.
 
 ## All three of these tables are read
 

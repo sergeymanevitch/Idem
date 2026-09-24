@@ -26,10 +26,20 @@ a file nobody is holding anything to. So is a file of any **other** kind in eith
 neither carries one: a misnamed fixture would otherwise be invisible to that rule, which is the one
 thing this suite exists to keep whole. So is a folder that cannot be listed at all, and a run where
 the manifest has rows and not one of the files they name was there - a suite that reports nothing
-ran and exits 0 has proved nothing and said it passed. The other direction - a row whose file is
-not written yet - is **counted and not failed** today, because the corpus is being written one
-story at a time and the count is what says how far it has got (Sergey, 2026-09-22). The story that
-finishes the corpus makes it a failure.
+ran and exits 0 has proved nothing and said it passed. The other direction is a failure too: a row
+whose file is not on disk is a claim about nothing, and it fails the suite with one line naming the
+row. The corpus is whole, so every one of the four counts printed below it is meant to read zero,
+and **any of them above zero fails the suite** - a row naming a file that is not there, a key
+registered with nothing behind it, a row of the checks table no manifest row names, and one no
+existing fixture names (Sergey, 2026-09-24).
+
+WHICH FLAGS A ROW IS RUN WITH
+
+Every fixture is run with the snapshot folder. A fixture whose own header says its input carried no
+line numbers is run with the input text as well: the file its row's `snapshot` cell names, in that
+same folder, handed to the validator's input flag. The decision is the header's, read with the one
+reader of the format, and made for each row where the row is run; a file whose header cannot be
+read gets no input flag, and the validator says what is wrong with it.
 
 A run is read whole: its exit code, its stdout, and its **standard error**, which is where a
 traceback would go - a run that printed the right code and a traceback beside it has not done what
@@ -40,11 +50,11 @@ so that a validator that hangs cannot hang the suite.
 WHAT IT PRINTS
 
 One line per fixture it ran - the verdict, the file, the exit and the codes - and then the counts:
-how many ran and how many passed, how many rows name a file that is not written, how many keys of
+how many ran and how many passed, how many rows name a file that is not on disk, how many keys of
 the checks table are registered with no check behind them, how many rows of that table no manifest
 row names at all, and how many no *existing* fixture names. The last two are the distance between
 the list of what can be wrong and what is actually exercised, which is the number this whole entry
-is built to drive to zero.
+is built to drive to zero; the suite holds all four there, and fails on any of them.
 
 Exit 0 when nothing failed, 1 when something did, and 2 when the suite could not run: an
 interpreter below the floor, an argument it does not take, a contract or a manifest that cannot be
@@ -56,10 +66,11 @@ WHAT IS WRITTEN HERE AS A LITERAL
 Addresses and forms, never a key and never a code. The id of the checks table and of the manifest
 table, the path of the manifest and the two fixture folders, the positions of the manifest's four
 columns, the two file extensions the folders are read by, the deadline one fixture gets, and the
-words this suite prints as a verdict. The flag the validator takes and the word that opens a
+words this suite prints as a verdict. The two flags the validator takes and the word that opens a
 warning line are **read from the validator** rather than written again here: two copies of either,
 one on each side, would part company the day one of them changed. Every key and every code is read
-out of the contract or out of the manifest, so a row renamed by decision is not typed here as well.
+out of the contract or out of the manifest, so a row renamed by decision is not typed here as well;
+and the mode a header is compared with is read out of the contract by the format module.
 
 This file keeps to syntax that every Python 3 accepts - no f-strings, no annotations - and writes
 nothing: not a report, not a temporary file, not a cached module.
@@ -77,7 +88,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(_HERE), "lib"))
 sys.path.insert(0, _HERE)
 
 import validate  # noqa: E402  - the path has to be set first
-from idemlib import contract  # noqa: E402  - and so does this
+from idemlib import contract, tickets  # noqa: E402  - and so does this
 
 #: Where everything is, from the Idem root. A step folder begins with a digit, so these are paths
 #: and never importable names.
@@ -198,8 +209,10 @@ def emitted(out):
     return found, internal, uncoded
 
 
-def run_one(fixture, snapshots):
+def run_one(fixture, snapshots, given=None):
     """Run the validator on one fixture in a subprocess: (exit, stdout, stderr or the timeout).
+
+    `given` is the input text's path, handed to the validator's input flag, or None for no flag.
 
     A subprocess, and not a call into the module, for two reasons: the exit code is what the
     manifest writes down, and a check that leaves state behind - a snapshot read onto the run, a
@@ -211,9 +224,11 @@ def run_one(fixture, snapshots):
     validator that hangs would hang the suite with nothing printed at all; a run that overruns is
     killed and the row fails with a message saying so.
     """
-    process = subprocess.Popen(
-        [sys.executable, os.path.join(_HERE, VALIDATOR), fixture, validate.FLAG, snapshots],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=contract.idem_root())
+    argv = [sys.executable, os.path.join(_HERE, VALIDATOR), fixture, validate.FLAG, snapshots]
+    if given is not None:
+        argv.extend([validate.INPUT_FLAG, given])
+    process = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               cwd=contract.idem_root())
     try:
         out, err = process.communicate(timeout=TIMEOUT_SECONDS)
     except subprocess.TimeoutExpired:
@@ -225,11 +240,41 @@ def run_one(fixture, snapshots):
             err.decode("utf-8", "replace"))
 
 
+def unbound(path):
+    """Whether the header of this tickets file reads the mode with no line numbers.
+
+    Read with the one reader of the format, which raises on nothing: a file that cannot be read, or
+    whose header block did not read, says no - it gets no input flag, and the validator reports
+    what is wrong with it. The mode is the format module's reading of the contract, never a word
+    written here.
+    """
+    try:
+        handle = open(path, "rb")
+        try:
+            data = handle.read()
+        finally:
+            handle.close()
+    except EnvironmentError:
+        return False
+    mode = tickets.unnumbered_mode()
+    for item in tickets.parse(data).header or ():
+        if item.name == tickets.MODE_ITEM:
+            return mode is not None and item.value == mode
+    return False
+
+
 def check_one(row, snapshots, tickets_folder):
-    """(the line to print, whether it passed) for one manifest row whose file is on disk."""
+    """(the line to print, whether it passed) for one manifest row whose file is on disk.
+
+    The row is run with the input flag where its file's own header reads the mode with no line
+    numbers - the text is the file the row's `snapshot` cell names in the snapshot folder - and
+    with the snapshot folder alone everywhere else.
+    """
     name = row.cells[FIXTURE]
     expected = set(codes_of(row.cells[CODES]))
-    status, out, err = run_one(os.path.join(tickets_folder, name), snapshots)
+    path = os.path.join(tickets_folder, name)
+    given = os.path.join(snapshots, row.cells[SNAPSHOT]) if unbound(path) else None
+    status, out, err = run_one(path, snapshots, given)
     found, internal, uncoded = emitted(out)
     reasons = []
     if str(status) != row.cells[EXIT]:
@@ -264,8 +309,10 @@ def _plural(count, word):
     return str(count) + " " + word + "s"
 
 
-def counts(table, rows, written, checks):
-    """The lines of the summary: what ran, what is not written, and what nothing exercises."""
+def tally(table, rows, written, checks):
+    """The four numbers of the summary, each of which a whole corpus holds at zero: the rows whose
+    file is not on disk, the keys with nothing behind them, the rows of the checks table no manifest
+    row names, and the rows no existing fixture names."""
     exempt = (contract.CODE, contract.INTERNAL)
     named = set()
     by_existing = set()
@@ -286,7 +333,13 @@ def counts(table, rows, written, checks):
             unexercised += 1
     waiting = len([row for row in rows if row.cells[FIXTURE] not in written])
     idle = len([key for key in checks if checks[key] is validate.pending])
-    return ["manifest rows whose fixture file is not written yet: " + str(waiting),
+    return waiting, idle, unnamed, unexercised
+
+
+def counts(numbers):
+    """The lines of the summary, one per number of `tally`, in its order."""
+    waiting, idle, unnamed, unexercised = numbers
+    return ["manifest rows whose fixture file is not on disk: " + str(waiting),
             "keys registered with no check behind them: " + str(idle),
             "rows of the checks table no manifest row names, the two the frame raises left out: " +
             str(unnamed),
@@ -313,6 +366,10 @@ def suite():
     passed = 0
     for row in rows:
         if row.cells[FIXTURE] not in written:
+            lines.append(FAILED + contract.TAB + row.cells[FIXTURE] + contract.TAB +
+                         "this row of the manifest names a fixture file that is not on disk, so "
+                         "it is a claim about nothing")
+            failed = True
             continue
         line, good = check_one(row, snapshots, tickets_folder)
         lines.append(line)
@@ -342,8 +399,11 @@ def suite():
                      "suite proved nothing about anything")
         failed = True
 
+    numbers = tally(table, rows, written, checks)
+    if [number for number in numbers if number > 0]:
+        failed = True
     lines.append(_plural(ran, "fixture") + " ran, " + str(passed) + " passed")
-    lines.extend(counts(table, rows, written, checks))
+    lines.extend(counts(numbers))
     return lines, 1 if failed else 0
 
 
