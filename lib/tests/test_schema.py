@@ -60,6 +60,10 @@ FIELDS = ["change", "affected_surface", "breaking", "entry_date", "effective_dat
 #: Citation scope per field (AD-9). `source` cites nothing, so its cell is empty and never `no`.
 ANCESTOR = {"change": "no", "affected_surface": "yes", "breaking": "yes", "entry_date": "yes",
             "effective_date": "no", "sunset_date": "no", "required_action": "no", "source": ""}
+#: The fields a ticket gives one row and never two.
+ONE_ROW = ("change", "breaking", "source")
+#: The section that holds the table of fields and the paragraph on its `rows` column.
+FIELDS_SECTION = "The eight fields"
 #: How a value relates to its quote.
 KINDS = {"change": "copied", "affected_surface": "copied", "breaking": "listed",
          "entry_date": "copied", "effective_date": "copied", "sunset_date": "copied",
@@ -607,11 +611,21 @@ class TestTheFields(unittest.TestCase):
         self.assertEqual(["breaking"], listed)
         self.assertEqual(["source"], ranged)
 
-    def test_only_the_range_field_takes_exactly_one_row(self):
+    def test_the_change_the_breaking_value_and_the_range_take_exactly_one_row(self):
+        """The mutation: `change` or `breaking` put back to `1+`, so that a ticket giving either a
+        second row passes. The other five copied fields may give several."""
         rows = table("fields").rows
         for field in rows:
-            expected = "1" if rows[field]["kind"] == "range" else "1+"
+            expected = "1" if field in ONE_ROW else "1+"
             self.assertEqual(expected, rows[field]["rows"], field)
+
+    def test_the_rows_paragraph_says_what_one_row_means_and_names_the_two_that_never_take_two(self):
+        body = re.sub(r"\s+", " ", " ".join(section(FIELDS_SECTION)))
+        held = [sentence for sentence in SENTENCE_END.split(body) if "never take two" in sentence]
+        self.assertEqual(1, len(held), body)
+        for words in ("`change`", "`breaking`"):
+            self.assertIn(words, held[0], words)
+        self.assertIn("`1` is one row", body)
 
 
 # --- the constants -------------------------------------------------------------------------------

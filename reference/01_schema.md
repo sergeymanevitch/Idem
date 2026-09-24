@@ -53,11 +53,13 @@ position in this table and never by name. A reading renamed here and not there i
 silent: the fixtures of the quotes-and-values phase stop raising their codes, and the negative suite
 fails on every one of them.
 
-The `rows` column says how many rows one ticket may give the field. `1+` is one row, or several
-consecutive rows when the field has several values or needs several lines: a quote is a contiguous
-span of **one** snapshot line, so a value that needs two lines is two rows, and a field with two
-values is two rows. A multi-value field repeats its own name in the `field` cell of every one of
-them.
+The `rows` column says how many rows one ticket may give the field. `1` is one row, and never two.
+`1+` is one row, or several consecutive rows when the field has several values or needs several
+lines: a quote is a contiguous span of **one** snapshot line, so a value that needs two lines is two
+rows, and a field with two values is two rows. A multi-value field repeats its own name in the
+`field` cell of every one of them. `change` and `breaking` never take two: a change is the one span
+the section **The change span** states, and `breaking` is one value read off one quote, so a ticket
+that gives either a second row fails at that row.
 
 The `ancestor` column is citation scope (AD-9, FR-13). `no` — a row of this field may cite only a
 line inside its own ticket's `source` range. `yes` — it may also cite an **ancestor** line: a
@@ -79,9 +81,9 @@ its code, and the negative suite fails.
 <!-- table: fields -->
 | field | kind | rows | ancestor | holds |
 | --- | --- | --- | --- | --- |
-| change | copied | 1+ | no | what changed: a verbatim span of the source, the one the section The change span of this file states (FR-12) |
+| change | copied | 1 | no | what changed: a verbatim span of the source, the one the section The change span of this file states (FR-12) |
 | affected_surface | copied | 1+ | yes | the endpoint, parameter, method or version the change is about, spelled as it appears |
-| breaking | listed | 1+ | yes | yes, no, or the sentinel. Filled only when the quote holds a phrase of 03_breaking-terms.md, which maps each phrase to its value, read by the routine that file states (FR-14) |
+| breaking | listed | 1 | yes | yes, no, or the sentinel. Filled only when the quote holds a phrase of 03_breaking-terms.md, which maps each phrase to its value, read by the routine that file states (FR-14) |
 | entry_date | copied | 1+ | yes | the date in the dated heading the change sits under (FR-15). It is never copied into effective_date |
 | effective_date | copied | 1+ | no | only a temporal expression the source ties to the change taking effect, copied as written and never resolved or computed (FR-16) |
 | sunset_date | copied | 1+ | no | only a temporal expression the source ties to old behaviour ending, copied as written and never resolved or computed (FR-16) |

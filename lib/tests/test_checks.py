@@ -365,6 +365,17 @@ class TestWhatTheProseRecords(unittest.TestCase):
         unkeyed = [citation for citation in CITED_RE.findall(found[0]) if citation not in keyed]
         self.assertTrue(unkeyed, "the section cites no provision that is keyed by nothing")
 
+    def test_the_fields_check_reads_the_rows_column_for_how_many_rows_a_field_may_give(self):
+        """The `fields` cell names no bound, and a second `change` row is still that code: the
+        section of the table says where the bound is read from."""
+        body = re.sub(r"\s+", " ", sections()["The checks"])
+        held = [sentence for sentence in re.split(r"(?<=\.) ", body) if "`rows` column" in sentence]
+        self.assertEqual(1, len(held), body)
+        code = [row[CODE] for row in cells(CHECKS) if row[KEY] == tickets.FIELDS_TABLE]
+        self.assertEqual(1, len(code))
+        for words in ("`fields`", "`01_schema.md`", "consecutive rows", "`" + code[0] + "`"):
+            self.assertIn(words, held[0], words)
+
     def test_the_file_is_english_only(self):
         self.assertIsNone(CYRILLIC.search(text()))
 

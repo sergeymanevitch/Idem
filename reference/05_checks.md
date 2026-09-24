@@ -339,6 +339,9 @@ Forty-eight rows, and every one of FR-29 to FR-37 is named by at least one of th
 are the exit-2 family and three are warnings; the other forty-three are failures that make the
 validator exit 1.
 
+How many consecutive rows a field may give is read from the `rows` column of `fields` in
+`01_schema.md`, and a row past that number is `FIELDS`, at the first row too many.
+
 ## The two codes that cannot come from a table
 
 `CONTRACT_TABLE` and `INTERNAL` are rows of `checks` like any other, and they are the only two code
@@ -473,7 +476,7 @@ a glance.
 
 ## Rules that get no key
 
-Three rules are written down in this contract and have no row above, so nothing will ever be able to
+Two rules are written down in this contract and have no row above, so nothing will ever be able to
 raise a code for them. Each is named here so that nobody has to discover it by finding a mutation
 that passes.
 
@@ -483,13 +486,6 @@ a change taking effect, or to old behaviour ending, and no requirement holds suc
 one would put a second owner beside FR-16. The architecture spine records it under Deferred, and the
 guard in the meantime is `value_quote` — the date, wherever it is filed, still has to be a substring
 of its own quote — and a reader looking at `Unmapped`.
-
-**Two `breaking` rows of one ticket that disagree.** The lookup of `03_breaking-terms.md` is per
-quote and not per ticket, so one row reading `yes` beside another reading `no` breaks no rule stated
-anywhere: each row is true of its own quote. `breaking_quote` catches disagreement **inside** one
-quote and says nothing about two. This is a named limit rather than a check because the honest
-answer is a rule about which quote a ticket should have cited, and that is segmentation, which the
-validator never re-does (AD-2).
 
 **The forms of the four values fetch invents.** `04_snapshot-format.md` states a form for
 `retrieved`, `routine`, `routine_version` and `sha256`, and no row above holds a header value to it.

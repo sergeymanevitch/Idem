@@ -8,9 +8,9 @@ expected set; a mutation that fails for another reason, or by a crash, is a suit
 AD-7).
 
 **The corpus was written one row at a time, and it is whole.** Every row below was written before
-any of the files it names, which is the order the whole folder is built in. All sixty-four of those
+any of the files it names, which is the order the whole folder is built in. All sixty-six of those
 files exist: the three clean files, one of each shape, the three of the reading stage, the six of
-the pairing phase, the twelve of canonical form and grammar, the eight of the row states, the
+the pairing phase, the fourteen of canonical form and grammar, the eight of the row states, the
 thirteen of quotes and values, the eight of ranges and ancestors, the eight of coverage and the
 three warning fixtures. `run_fixtures.py` fails on a row whose file is not there, and prints on
 every run the four counts a whole corpus holds at zero. Beside that,
@@ -172,6 +172,8 @@ AD-2).
 | fields-01.tickets.md | changelog-01.txt | 1 | FIELDS |
 | fields-02.tickets.md | changelog-01.txt | 1 | FIELDS |
 | fields-03.tickets.md | changelog-01.txt | 1 | FIELDS |
+| fields-04.tickets.md | changelog-01.txt | 1 | FIELDS |
+| fields-05.tickets.md | changelog-01.txt | 1 | FIELDS |
 | refusal_reason-01.tickets.md | changelog-01.txt | 1 | REFUSAL_REASON |
 | unmapped_form-01.tickets.md | changelog-01.txt | 1 | UNMAPPED_FORM |
 | size_limit-01.tickets.md | long-01.txt | 1 | SIZE_LIMIT |
@@ -219,7 +221,7 @@ AD-2).
 | clean-02.tickets.md | changelog-01.txt | 0 |  |
 | clean-03.tickets.md | changelog-01.txt | 0 |  |
 
-Sixty-four rows: forty-six checks covered, sixty-one rows naming at least one code, and **three
+Sixty-six rows: forty-six checks covered, sixty-three rows naming at least one code, and **three
 clean files** that must be accepted with nothing said about them — one of each shape. `clean-01` is
 the tickets shape, `clean-02` a refusal and `clean-03` a zero-ticket file, because a validator that
 accepted only the shape it sees most would pass a suite built out of the other two's mutations.

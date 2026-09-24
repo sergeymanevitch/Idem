@@ -8,8 +8,8 @@ and reconciles those against the manifest both ways. One `*.txt` of `00_snapshot
 at all: `pasted-01.txt` is the input text of the two files in the mode with no line numbers, kept
 beside the snapshots so that the corpus stays in two folders and not three.
 
-**Every row of `manifest.md` is written, and every file it names is here: seventy-three files —
-sixty-four tickets files, eight snapshots and one input text.** The rows were written before any of
+**Every row of `manifest.md` is written, and every file it names is here: seventy-five files —
+sixty-six tickets files, eight snapshots and one input text.** The rows were written before any of
 the files — the order the whole folder is built in, and the answer to a check that stands beside
 the thing it should hold — and `../run_fixtures.py` now fails on a row whose file is missing. The
 three clean files are one of each shape, each accepted with nothing said about it: `clean-01`, a
@@ -18,9 +18,9 @@ with `body_range` reading the sentinel, and one refusal line carrying a reason o
 `clean-03`, the zero-ticket shape over the same snapshot — its header, no ticket, and every
 non-blank body line listed with its text. `warn_unbound-01` is the fourth file that raises no
 failure: `clean-01` rewritten into the mode with no line numbers, which prints the one warning that
-mode always prints. The other sixty are mutations that the reading stage, the pairing phase,
+mode always prints. The other sixty-two are mutations that the reading stage, the pairing phase,
 canonical form and grammar, the row states, quotes and values, ranges and ancestors and coverage
-catch, or that one of the two warnings that read `Unmapped` points at. Forty-nine of those mutate
+catch, or that one of the two warnings that read `Unmapped` points at. Fifty-one of those mutate
 `clean-01`, one mutates `clean-02`, one mutates `clean-03` and one mutates `warn_unbound-01`; the
 three built over `terms-01.txt` mutate `clean-01` moved onto that snapshot, the three built over
 `items-01.txt` mutate `clean-01` moved onto that one, and the two built over `warns-01.txt` mutate

@@ -307,12 +307,12 @@ class TestState(CompareCase):
 class TestRowCount(CompareCase):
 
     def test_two_rows_against_one(self):
-        change = field_names()[0]
+        surface = field_names()[1]
         model = model_of(CLEAN)
-        row = rows_of(model, 0, change)[0]
-        a = self.model_file("a.md", with_rows(model, 0, change, [row, row]))
+        row = rows_of(model, 0, surface)[0]
+        a = self.model_file("a.md", with_rows(model, 0, surface, [row, row]))
         b = self.copy(CLEAN, "b.md")
-        self.assert_lines(a, b, [line_of("ticket 1", change,
+        self.assert_lines(a, b, [line_of("ticket 1", surface,
                                          "2 rows in the first file, 1 in the second")])
 
     def test_rows_are_compared_by_position_up_to_the_shorter_count(self):
@@ -634,14 +634,14 @@ class TestNoncanonical(CompareCase):
         self.assert_lines(a, b, [], 0)
 
     def test_and_a_difference_in_it_is_still_found(self):
-        change = field_names()[0]
+        surface = field_names()[1]
         model = model_of(CLEAN)
-        row = rows_of(model, 0, change)[0]
-        data = tickets.serialise(with_rows(model, 0, change, [row, row])) + b"\n"
+        row = rows_of(model, 0, surface)[0]
+        data = tickets.serialise(with_rows(model, 0, surface, [row, row])) + b"\n"
         self.assertIsInstance(tickets.parse(data).findings[0], tickets.NoncanonicalFinding)
         a = self.write("a.md", data)
         b = self.copy(CLEAN, "b.md")
-        self.assert_lines(a, b, [line_of("ticket 1", change,
+        self.assert_lines(a, b, [line_of("ticket 1", surface,
                                          "2 rows in the first file, 1 in the second")])
 
 

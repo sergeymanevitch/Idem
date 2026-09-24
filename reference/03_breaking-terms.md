@@ -153,10 +153,9 @@ guessing:
 - **The right edge is open, and a longer word is taken.** "breaking changelog" holds "breaking
   change" and reads `yes`. The plural is worth the cost; a word boundary on the right would drop
   "Breaking changes", which is the heading this field is most often filled from.
-- **The rule is per quote, not per ticket.** Two rows of one ticket are read separately, and this
-  file says nothing about what a validator does when two of them disagree. Neither does
-  `05_checks.md`: it names that as a limit with no check, because each row is true of its own quote
-  and the honest answer would be a rule about segmentation.
+- **The rule is per quote, and a ticket gives one.** The `rows` column of `fields` in
+  `01_schema.md` gives `breaking` one row, so two rows of one ticket never stand to be read against
+  each other: a second row is `FIELDS`, whatever the two quotes say.
 - **A vendor's own mark is not a phrase.** `*BREAKING*` holds "breaking" and not "breaking change",
   so a line marked that way and saying nothing more reads the sentinel. Body line 136 of the
   PagerDuty snapshot shipped in `00_fetch/00_snapshots/` is such a line, and every row citing it

@@ -181,9 +181,9 @@ section **Human check**, gives the whole list, mode by mode.
 
     python3 02_validate/run_fixtures.py
 
-The suite runs the validator over 64 committed tickets files, each against the exact set of codes
+The suite runs the validator over 66 fixture tickets files, each against the exact set of codes
 its row of `02_validate/00_fixtures/manifest.md` says it must raise, and fails on a missing code and
-on an unexpected one alike. It prints one line per fixture, then `64 fixtures ran, 64 passed` and
+on an unexpected one alike. It prints one line per fixture, then `66 fixtures ran, 66 passed` and
 four counts, each 0, and exits 0: a manifest row whose file is missing, a check registered with
 nothing behind it, a row of the checks table no manifest row names, and one no existing fixture
 names. Any count above zero fails the suite. The checks table has 48 rows: 46 checks written; the

@@ -13,7 +13,7 @@ URL — and `00_fetch/00_snapshots/` holds the three example snapshots it wrote,
 its key and written — the reading stage, the pairing phase, canonical form and grammar, the row
 states, quotes and values, ranges and ancestors, coverage and the three warnings — and the header
 alone selects which of them run for the three shapes and the two modes. `02_validate/run_fixtures.py`
-runs the whole fixture corpus — seventy-three files, sixty-four tickets files, eight snapshots and
+runs the whole fixture corpus — seventy-five files, sixty-six tickets files, eight snapshots and
 one input text — and fails if any file its manifest names is missing. `02_validate/compare_runs.py`
 is built: it says whether two tickets files of one input have one shape — the ticket count, each
 ticket's range, each row's state — and compares no value.**
@@ -74,7 +74,7 @@ named for its key. Six of the grammar checks report one class of finding of `tic
 nothing else, and a test holds that map both ways, so a class of finding with no check and a check
 claiming two of them both fail. `02_validate/run_fixtures.py` runs the corpus, prints the four counts a whole corpus holds at zero,
 and fails on any of them. `02_validate/00_fixtures/manifest.md` names every fixture and the codes it
-must raise, held against `05_checks.md` by `02_validate/test_manifest.py`; all sixty-four of the
+must raise, held against `05_checks.md` by `02_validate/test_manifest.py`; all sixty-six of the
 tickets files it names exist — three clean files, one of each shape, over the Plaid snapshot, one
 file in the mode with no line numbers, and at least one mutation per row of every phase and of the
 three warnings — beside eight snapshots, of which one is the fetched Plaid file and seven were

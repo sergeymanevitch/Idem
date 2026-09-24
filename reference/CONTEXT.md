@@ -147,8 +147,8 @@ five groups.
 
 `05_checks.md` names two further lists of its own, and they are there rather than here because
 naming them is part of what that file is for. **Rules that get no key**: FR-16's "'Deprecated on X'
-alone fills neither field", which is translator-only prose, and two `breaking` rows of one ticket
-that disagree, which breaks no rule any file states. **Keyed, but not decidable today**: longest at
+alone fills neither field", which is translator-only prose, and the forms of the four values fetch
+invents, which `fetch.py` alone writes. **Keyed, but not decidable today**: longest at
 a position, which `breaking_value` covers although no phrase of the shipped list can exercise it —
 two test files run it on a made-up list that is contract nowhere — and a false `not in source`,
 where what is keyed is the backstop — `unmapped_missing` and the two warnings — and never the

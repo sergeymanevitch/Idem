@@ -50,8 +50,8 @@ COLUMNS = ["fixture", "snapshot", "expected exit", "expected codes"]
 MARKER = "<!-- table: " + MANIFEST + " -->"
 
 #: What the committed corpus comes to. Every one of these is a count and never a value.
-FIXTURES_RUN = 64
-MANIFEST_ROWS = 64
+FIXTURES_RUN = 66
+MANIFEST_ROWS = 66
 PENDING_ROWS = 0
 CLEAN = "clean-01.tickets.md"
 

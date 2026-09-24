@@ -118,7 +118,7 @@ MISSING, CITED, TWICE, PHANTOM, BLANK_LISTED, TEXT = range(6)
 #: The three warnings, by position in their phase: the date, the phrase, and the unbound mode.
 DATE_WARNING, BREAKING_WARNING, UNBOUND_WARNING = range(3)
 #: How many committed fixtures each of the four phases has. More than one key carries several.
-GRAMMAR_FIXTURES = 12
+GRAMMAR_FIXTURES = 14
 STATES_FIXTURES = 8
 QUOTES_FIXTURES = 13
 RANGES_FIXTURES = 8
