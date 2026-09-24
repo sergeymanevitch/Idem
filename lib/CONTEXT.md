@@ -29,13 +29,15 @@ There are **three** commands, and "the tests" means all three. From the Idem roo
     python3 -m unittest discover -s 00_fetch -t 00_fetch
 
 The first is this folder's suite: `idemlib`, one module per written file of `reference/`, and one
-holding `identity.md` and `rules.md` at the Idem root. The second is one file,
-`02_validate/test_manifest.py`, and it holds the **reconciliation between `reference/05_checks.md`
-and `02_validate/00_fixtures/manifest.md`** — every check named by a fixture, every code a fixture
-expects defined as a check (AD-7). The third is one file, `00_fetch/test_fetch.py`, and it holds
-`fetch.py` against a stub server on 127.0.0.1 and a temporary directory — no network, and nothing
-written into the snapshot folder. Nothing under `lib/tests/` runs either of the last two, so a
-person who runs only the first command has run neither.
+holding `identity.md` and `rules.md` at the Idem root. The second is four files under
+`02_validate/`: `test_manifest.py`, which holds the **reconciliation between
+`reference/05_checks.md` and `02_validate/00_fixtures/manifest.md`** — every check named by a
+fixture, every code a fixture expects defined as a check (AD-7) — `test_validate.py`,
+`test_run_fixtures.py` and `test_compare_runs.py`, one per step script of that folder;
+`02_validate/CONTEXT.md` says what each holds. The third is one file, `00_fetch/test_fetch.py`,
+and it holds `fetch.py` against a stub server on 127.0.0.1 and a temporary directory — no
+network, and nothing written into the snapshot folder. Nothing under `lib/tests/` runs either of
+the last two, so a person who runs only the first command has run neither.
 
 `-t lib` puts `lib/` on the path, so a test imports `idemlib` the way a step script does; each of
 the other two files puts `lib/` on the path itself, for the same reason. All three suites are stdlib

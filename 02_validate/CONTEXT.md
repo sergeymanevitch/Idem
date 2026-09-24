@@ -7,20 +7,37 @@ all nine phases are written — the reading stage, the pairing phase, canonical 
 row states, quotes and values, ranges and ancestors, coverage and the three warnings — with the
 skips the header selects for the three shapes and the two modes (AD-10). `run_fixtures.py` runs the
 whole corpus and fails on any row whose file is missing; `00_fixtures/manifest.md` names every
-fixture and `test_manifest.py` holds it against the checks table.
+fixture and `test_manifest.py` holds it against the checks table. `compare_runs.py` is built:
+it says whether two tickets files of one input have one shape.
 
 ## Inputs
 - Working: a tickets file, and the snapshot its header names — or, for a file whose header reads
   `line_numbers: none`, the input text it was written from.
+- Working, for `compare_runs.py`: two tickets files of one input, and nothing else.
 - Reference: the tables of `../reference/`, loaded through `../lib/idemlib/`.
 
 ## Process
 `validate.py` runs nine fixed phases in order and reports every failure of the first phase that
-fails. `compare_runs.py` says whether two tickets files of one input have the same shape; it is not
-written. `run_fixtures.py` runs the negative-fixture suite in `00_fixtures/`.
+fails. `compare_runs.py` says whether two tickets files of one input have the same shape.
+`run_fixtures.py` runs the negative-fixture suite in `00_fixtures/`.
 
     python3 02_validate/validate.py [--snapshots DIR] [--input FILE] <tickets>
+    python3 02_validate/compare_runs.py <first> <second>
     python3 02_validate/run_fixtures.py
+
+**What `compare_runs.py` compares.** It reads both files through `tickets.parse` and nothing else —
+no snapshot, no input text, no check of the validator — and compares their shape: what follows the
+header (tickets, no change, or a refusal and its reason), the ticket count, and per ticket in order
+the `source` row's line cell as written, the number of rows of each of fields 1 to 7, and the state
+of each of those rows by position (filled, the sentinel, or neither). It never compares a value, a
+quote, a line cell of fields 1 to 7 or `Unmapped`, and it never says a file is valid. The three
+header items that name the input (`snapshot`, `sha256`, `source_url`) must be equal as written, or
+it says the headers name different inputs and compares nothing further; a difference of
+`line_numbers` or `body_range` is listed and the comparison goes on. Under `line_numbers: none`
+those three items read `not in source` in every file written from pasted text, so there the input
+is not identified — any two such files count as one input — and every `source` line cell reads the
+sentinel too, so no range is compared. A file that reads with a departure from canonical form is
+compared as its model and nothing is said about it.
 
 **Two flags, and no third.** `--snapshots DIR` names the folder a snapshot is looked for in; the
 fetch step's own folder is used when none is named. `--input FILE` names the text a file in the
@@ -49,6 +66,19 @@ for the checks whose subject is the snapshot — a snapshot is evidence and is n
 so the line to look at is the one that made the claim. Exit 1 when a failure was printed, 0 when
 nothing but warnings was, 2 when the tool could not run at all.
 
+`compare_runs.py` takes the same exit codes and not that line form, because no row of the checks
+table is about a pair of files. It prints nothing when the shapes are equal (exit 0), and otherwise
+one line per difference (exit 1), three fields joined by a tab:
+
+    ticket N<TAB>FIELD<TAB>message     one field of one ticket; the field is `-` for a ticket one file lacks
+    head<TAB>ITEM<TAB>message          a header item
+    file<TAB>PATH<TAB>message          a whole file: it does not parse, or its shape differs
+
+The two files are called "the first file" and "the second file" in argument order. Both files are
+read, and a file that does not parse is reported by its first finding - both are reported when
+neither parses - and ends the comparison; so do headers naming different inputs, a difference of
+shape and a differing refusal reason.
+
 ## What is written and what is not
 
 | Phase | State |
@@ -76,7 +106,7 @@ function name, which `../reference/05_checks.md` records under Sergey's name.
 
 This is the second of Idem's three test commands; neither of the other two —
 `python3 -m unittest discover -s lib/tests -t lib` and
-`python3 -m unittest discover -s 00_fetch -t 00_fetch` — reaches these files. Three modules run
+`python3 -m unittest discover -s 00_fetch -t 00_fetch` — reaches these files. Four modules run
 under it, and like a step script each puts `../lib/` on `sys.path` itself:
 
 - `test_manifest.py` reconciles `00_fixtures/manifest.md` with the `checks` table both ways — every
@@ -93,6 +123,12 @@ under it, and like a step script each puts `../lib/` on `sys.path` itself:
   holds, and each committed fixture against the codes its own manifest row expects.
 - `test_run_fixtures.py` runs the committed corpus through the suite, and proves each way the suite
   has to fail on a temporary corpus written for the test.
+- `test_compare_runs.py` holds `compare_runs.py` to every case of what it compares — equal shapes,
+  a count, a range, a state, a row count, a half-filled row, a shape, a refusal's reason, the mode
+  and range items, headers naming different inputs, the unnumbered mode, a file that does not parse
+  — and to the frame every step script has, on pairs built in a temporary directory out of the
+  committed fixtures; it sweeps the tool's source for any literal the contract owns and holds its
+  imports to `contract` and `tickets`. Nothing under `00_fixtures/` is written.
 
 ## Human check
 

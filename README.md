@@ -24,7 +24,7 @@ run it, what a passing check does and does not prove, and what is not built. An 
 | `reference/` | the contract, in six files: the catalogue that names every table, the schema of a tickets file, what one change is, the list that decides `breaking`, the snapshot format and every check the validator runs, in tables the tools load |
 | `00_fetch/` | step 00: `fetch.py`, one URL to one numbered, hashed snapshot; three shipped snapshots in `00_snapshots/` |
 | `01_translate/` | step 01: the translation, done by Claude; its answers go in `00_tickets/`, which holds no tickets file yet |
-| `02_validate/` | step 02: `validate.py`, one tickets file to pass or coded failures; `run_fixtures.py`, the suite; the fixture corpus in `00_fixtures/` |
+| `02_validate/` | step 02: `validate.py`, one tickets file to pass or coded failures; `compare_runs.py`, whether two tickets files of one input have one shape; `run_fixtures.py`, the suite; the fixture corpus in `00_fixtures/` |
 | `03_examples/` | step 03: not built; the folder holds only its `CONTEXT.md` |
 | `lib/` | shared code: the contract loader, one reader and writer per file format, and the tests |
 | `.claude/` | Claude Code hooks: not built; the folder holds only its `CONTEXT.md` |
@@ -154,6 +154,26 @@ nothing behind it, a row of the checks table no manifest row names, and one no e
 names. Any count above zero fails the suite. The checks table has 48 rows: 46 checks written; the
 table's other two rows are the two codes the tool raises when it cannot run.
 
+    python3 02_validate/compare_runs.py <first> <second>
+
+The run comparer says whether two tickets files of one input have the same shape: the same shape
+after the header (tickets, no change, or a refusal with the same reason), the same number of
+tickets, and for each ticket in order the same `source` line cell, the same number of rows of each
+of fields 1 to 7 and the same state on each of those rows, filled, `not in source` or neither. It
+compares no value, no quote, no line cell of fields 1 to 7 and not `Unmapped`, and it does not
+validate either file. It prints nothing and exits 0 when the shapes are equal; otherwise it prints
+one line per difference, `ticket N<TAB>field<TAB>message`, `head<TAB>item<TAB>message` or
+`file<TAB>path<TAB>message`, and exits 1; exit 2 means it could not run. If the `snapshot`,
+`sha256` or `source_url` items of the two headers differ, it says the headers name different inputs
+and compares nothing more. Under `line_numbers: none` those three items read `not in source`, so the
+input is not identified and any two such files count as one input, and every `source` line cell
+reads `not in source` too, so no range is compared. Two files of the committed corpus:
+
+    python3 02_validate/compare_runs.py 02_validate/00_fixtures/01_tickets/clean-01.tickets.md 02_validate/00_fixtures/01_tickets/clean-03.tickets.md
+
+prints one line, `file`, the second path and `tickets in the first file, no change in the second`,
+and exits 1; the first file given twice prints nothing and exits 0.
+
 The tests are three commands, and "the tests" means all three:
 
     python3 -m unittest discover -s lib/tests -t lib
@@ -161,7 +181,7 @@ The tests are three commands, and "the tests" means all three:
     python3 -m unittest discover -s 00_fetch -t 00_fetch
 
 Run on 2026-09-24 from a fresh clone: on 3.9.6 and on 3.14.4 alike, 645 tests OK with 2 skipped,
-386 OK and 134 OK. The second command takes about two minutes. The two skipped tests need 3.11 or
+452 OK and 134 OK. The second command takes about two minutes. The two skipped tests need 3.11 or
 later and skip below it. Nobody has run 3.10 to 3.13. The third needs no network: it runs `fetch.py`
 against a stub server on 127.0.0.1. `python3 lib/idemlib/contract.py` loads the contract on its own
 and prints `15 tables, 174 rows, named by reference/00_catalogue.md` last, with exit 0.
@@ -211,12 +231,13 @@ runs, in separate chats, each gave a complete answer of 64 tickets, with the sam
 same `Unmapped` list; 46 tickets differed between the two in a value only, in the span of a value
 inside its quote and in whether a noun phrase is an `affected_surface`. Neither answer was
 validated, because the validator did not exist yet; run through today's validator, both stop at
-line 1 with `HEADER_VALUE`, because their snapshot reads `not in source`. The record of that run,
+line 1 with `HEADER_VALUE`, because their snapshot reads `not in source`. Compared on 2026-09-24
+by `02_validate/compare_runs.py`, the two answers have the same 64 ranges, and five tickets differ
+in the state or the row count of `affected_surface`. The record of that run,
 its input and both answers are not in this repository.
 
 ## What is not built
 
-- The run comparer, which would say whether two answers for one input have the same shape.
 - The Claude Code hooks: nothing validates a tickets file or guards the snapshots automatically, so
   the validator is run by hand everywhere, Claude Code included.
 - The examples: `examples.md` is a placeholder, and the script in `03_examples/` that would assemble

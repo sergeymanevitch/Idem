@@ -14,7 +14,9 @@ its key and written — the reading stage, the pairing phase, canonical form and
 states, quotes and values, ranges and ancestors, coverage and the three warnings — and the header
 alone selects which of them run for the three shapes and the two modes. `02_validate/run_fixtures.py`
 runs the whole fixture corpus — seventy-three files, sixty-four tickets files, eight snapshots and
-one input text — and fails if any file its manifest names is missing.**
+one input text — and fails if any file its manifest names is missing. `02_validate/compare_runs.py`
+is built: it says whether two tickets files of one input have one shape — the ticket count, each
+ticket's range, each row's state — and compares no value.**
 `reference/00_catalogue.md` states the strict-table grammar and names every contract table;
 `reference/01_schema.md` holds the five tables of the ticket schema — the eight fields, the
 constants and the canonical form, the header items, the refusal reasons, the classes of line — with
@@ -116,13 +118,15 @@ Three commands, and "the tests" means all three. From this folder:
     python3 -m unittest discover -s 00_fetch -t 00_fetch
 
 The first covers `lib/idemlib/`, every written file of `reference/`, and `identity.md` and
-`rules.md` together. The second is three files — `02_validate/test_manifest.py`, which holds the
+`rules.md` together. The second is four files — `02_validate/test_manifest.py`, which holds the
 reconciliation between `reference/05_checks.md` and `02_validate/00_fixtures/manifest.md`;
 `02_validate/test_validate.py`, which holds the validator against the same checks file and against
-the committed corpus; and `02_validate/test_run_fixtures.py`, which runs that corpus through the
-suite and proves each way the suite has to fail. The third is `00_fetch/test_fetch.py` alone, and it
-holds `fetch.py` against a stub server on 127.0.0.1 — no network, and every snapshot in a temporary
-directory. Discovery under `lib/tests/` reaches neither of the last two. `lib/CONTEXT.md` says more.
+the committed corpus; `02_validate/test_run_fixtures.py`, which runs that corpus through the
+suite and proves each way the suite has to fail; and `02_validate/test_compare_runs.py`, which
+holds the run comparer to every case of what it compares, on pairs built in a temporary directory.
+The third is `00_fetch/test_fetch.py` alone, and it holds `fetch.py` against a stub server on
+127.0.0.1 — no network, and every snapshot in a temporary directory. Discovery under `lib/tests/`
+reaches neither of the last two. `lib/CONTEXT.md` says more.
 
 ## If you have no shell
 
