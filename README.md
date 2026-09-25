@@ -778,7 +778,8 @@ are not in this repository.
   Claude Code session that wrote the shipped tickets files first tried to generate its file with a
   script of its own, and what stopped it was the headless session's permissions and the hook's
   guess at the shell, not a rule; in an interactive session, decline the prompt to run such a
-  script.
+  script. A fresh session of 2026-09-25 that followed this README with an open shell and no hook
+  wrote its tickets file with the `Write` tool and tried no script.
 - **Nothing runs in a claude.ai Project.** There, `rules.md` and the reference files carry the
   contract alone, and nothing is checked until the answer is validated in a clone.
 
