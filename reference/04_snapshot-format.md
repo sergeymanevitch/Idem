@@ -101,8 +101,8 @@ There is no pattern column here, and that is deliberate. What a value must *look
 timestamp is written, how many characters a digest has — is a rule something would have to check,
 and a check needs a key and a code in `05_checks.md`. That table is written, and it keys the two
 checks a snapshot faces — that the file can be read as a snapshot at all, and that its body matches
-its own digest — but the form of a header value belongs to the story that writes `fetch.py`, which
-produces it. So this table says what each field holds, and stops there.
+its own digest — but the form of a header value belongs to `fetch.py`, which produces it. So this
+table says what each field holds, and stops there.
 
 **Three things a header cannot be written from, and they are refusals rather than checks** (Sergey,
 2026-09-21). A value holding a line feed or a carriage return: a header value is one line, and a

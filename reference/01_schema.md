@@ -391,7 +391,7 @@ Three items have no `value_pattern`, and that is deliberate. What a digest, a UR
 must *look* like is a rule pairing enforces (FR-35), and a check needs a key and a code in
 `05_checks.md`. That table now has them — the pairing phase keys the snapshot name, the digest and
 the URL as three separate checks — and what each value must look like is still settled where it is
-produced, by the story that writes `fetch.py`. So those three rows say what the item holds, and stop
+produced, by `fetch.py`. So those three rows say what the item holds, and stop
 there.
 
 `body_range` is a range and never a count: `12-40` is lines 12 to 40 inclusive, and one line is the
@@ -651,7 +651,7 @@ any real API.
 **What the bytes of one are.** The file is the lines between the line that opens the fence and the
 line that closes it, each of them ended by one LF, the last line included. The two fence lines and
 the `text` after the opening backticks are how a fence is written in Markdown and are no part of the
-file; nothing else is stripped, added or reflowed. So a reader — or Story 3.2 — takes those lines,
+file; nothing else is stripped, added or reflowed. So a reader — or `tickets.py` — takes those lines,
 joins them with LF, appends one, and has the file byte for byte.
 
 The first example cites an invented snapshot of twelve body lines. That snapshot is not reproduced,

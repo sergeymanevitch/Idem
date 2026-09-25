@@ -598,7 +598,7 @@ taken from another line holding the same text inside that range or on a line its
 above it, a `not in source` where the source does state the value, or a ticket made of a unit that
 states no change, such as a lead-in. Read `Unmapped`, the warning lines and every `not in source`
 row by eye before the tickets are used. `02_validate/CONTEXT.md`, section **Human check**, gives
-the list, mode by mode; a ticket made of a lead-in is not yet on it.
+the list, mode by mode; a ticket made of a lead-in is on it.
 
 ### 4. The suite and the tests
 
@@ -679,8 +679,11 @@ alone, and the answer is validated afterwards, in a clone.
 1. **Upload these eight files**, flat, as they are named; they cite one another by bare name:
    `identity.md`, `rules.md`, `00_catalogue.md`, `01_schema.md`, `02_segmentation.md`,
    `03_breaking-terms.md`, `04_snapshot-format.md`, `05_checks.md`. The last six are the files of
-   `reference/`. Together they are 235,711 bytes, measured on 2026-09-25; it changes when those
-   files change. `examples.md` is **not** uploaded, although `rules.md` names it: generated, it is
+   `reference/`. Together they are 235,900 bytes, measured on 2026-09-25; it changes when those
+   files change. The recorded Project runs below read these files as they stood before
+   wording-only edits made later on 2026-09-25 — references to the build plan reworded, one
+   spelling, a lead-in added to what nothing checks — and no rule, table or row changed.
+   `examples.md` is **not** uploaded, although `rules.md` names it: generated, it is
    366,814 bytes, which with the other eight would put the set at or past a 200,000-token window,
    where a Project stops reading files whole and switches to retrieval, and it carries the whole
    answer for the PagerDuty snapshot — the input of the recorded run — which an answer must not copy

@@ -79,7 +79,7 @@ off that line. Where a range was given beside the input, the span is that range'
 held to the same ceiling: a range longer than it is refused for the same reason a whole input would
 be. A range already given is also what stops the third refusal firing on the whole of the input —
 it is the remedy that refusal asks for, and the translation then runs inside it. An input carrying
-no numbers gets no size judgment at all: there is nothing to compare, the translator does not count
+no numbers gets no size judgement at all: there is nothing to compare, the translator does not count
 lines, and the remedy the requirement offers is a range of body lines, which nobody could give for a
 text that carries no numbers (FR-25, FR-26).
 

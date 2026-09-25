@@ -175,8 +175,8 @@ row by that value.
 The catalogue now names itself, the five tables of the ticket schema, the phrases that decide
 `breaking`, the six tables of the snapshot format and the three tables of `05_checks.md` — every
 validator check with its code, the fetch failures with theirs, and the pattern a warning looks for.
-That is the whole of the enumerable contract Epic 1 set out to write, and the loader that reads it
-is written and tested. A table is usable by a tool on the day its row appears here, and not before.
+That is the whole of the enumerable contract, and the loader that reads it is written and tested.
+A table is usable by a tool on the day its row appears here, and not before.
 
 Listed is not the same as used. Every table above loads today, and each is read by a tool of its
 own: `snapshot-header`, `snapshot-constants` and `line-classes`, by `snapshot.py`;

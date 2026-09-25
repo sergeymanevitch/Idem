@@ -24,7 +24,7 @@ it waits on later work; what it leaves unsettled is named where it arises, besid
 
 Segmentation is two questions and they are not the same one. **Structure fixes where a unit starts
 and ends. Content decides only whether that unit is a change.** No boundary depends on what a
-sentence says; no boundary is a judgment.
+sentence says; no boundary is a judgement.
 
 A **unit** is one of exactly two things:
 
@@ -126,7 +126,7 @@ leaves under one dated heading:
 
 Line 90 states a change and is a ticket. Line 91 qualifies it — the old name goes on working — and
 states no change of its own, so it is cited by nothing, lands in `Unmapped`, and the qualification
-is lost to the ticket. Reading the second leaf as part of the first would be a judgment about what
+is lost to the ticket. Reading the second leaf as part of the first would be a judgement about what
 two sentences mean to each other, made while translating, which is what this file exists to
 refuse. Every recorded run on that snapshot left line 91 unmapped.
 
@@ -386,7 +386,7 @@ ancestor of 1: 3
 ### A change mentioned twice
 
 One change, written twice on one page: once in a summary list and once in a detail paragraph. They
-are two units, so they are **two tickets**. Merging them would be a judgment about whether two
+are two units, so they are **two tickets**. Merging them would be a judgement about whether two
 sentences are the same change, which is what FR-9 refuses to leave to the model.
 
 The headings show the level rule at work. Line 3 is an ancestor of both tickets: the headings
@@ -724,7 +724,11 @@ passes:
   any of the three questions of the checklist;
 - **the fence block after a leaf**, which `range_end` reads by two classes alone: a range that stops
   before an indented fence block its leaf carries is passed, because the next non-blank line is
-  neither a `continuation` nor an `item_start`. Named, and not settled.
+  neither a `continuation` nor an `item_start`. Named, and not settled;
+- **that a lead-in is never a change** — a ticket made of a paragraph standing directly before a
+  list, which states no change of its own, can pass every check above: nothing reads whether a unit
+  states a change.
 
-Every one of these is named as debt in `reference/CONTEXT.md`. A rule stated here that no key
-covers is a rule the translator keeps because it is written down, and for no other reason.
+Every one of these but the last is named as debt in `reference/CONTEXT.md`. A rule stated here
+that no key covers is a rule the translator keeps because it is written down, and for no other
+reason.

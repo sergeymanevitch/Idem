@@ -145,12 +145,15 @@ what no row can name. What it says is: nothing the phases its header selects cou
 date filed under the wrong field inside its own ticket's range — `effective_date` where the source
 ties it to old behaviour ending — a quote taken from another line holding the same text when that
 line lies inside the range or is an ancestor of it, and a ticket saying the source states nothing
-while the source states it — the false `not in source` of FR-37 — every one of those exits 0 and
-says nothing: no check reads which field a date belongs to, and nothing mechanical can tell what a
-source does not say. What a reader has instead is `Unmapped`, which a run now holds to exactly the
-non-blank lines inside `body_range` that no row cites, each verbatim, and the `WARN_DATE` and
-`WARN_BREAKING` lines that point at a listed line inside a ticket's range worth looking at first.
-Read those lines, every citation inside a range and every `not in source` row by eye.
+while the source states it — the false `not in source` of FR-37 — and a ticket made of a unit
+that states no change, such as a lead-in, a paragraph standing directly before a list — every one
+of those exits 0 and says nothing: no check reads which field a date belongs to or whether a unit
+states a change, and nothing mechanical can tell what a source does not say. What a reader has
+instead is `Unmapped`, which a run now holds to exactly the non-blank lines inside `body_range`
+that no row cites, each verbatim, and the `WARN_DATE` and `WARN_BREAKING` lines that point at a
+listed line inside a ticket's range worth looking at first. Read by eye those lines, every citation
+inside a range, every `not in source` row and every ticket made of a paragraph standing directly
+before a list.
 
 What exit 0 **is** good for: it says the file is UTF-8, its header is the five items in order with
 values of the right form, and it is about the snapshot it names — that snapshot is there, it is a

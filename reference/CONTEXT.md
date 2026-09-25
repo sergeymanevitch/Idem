@@ -43,7 +43,7 @@ of cell the loader looks inside: a column named `pattern`, or ending `_pattern`,
 compiled as the contract loads, and `00_catalogue.md` states that convention.
 
 **Known debt.** A rule stated here that no pattern can carry is enforced by nothing until the tool
-that owns it exists. Story 1.7 closed half of that: `05_checks.md` now gives almost every one of
+that owns it exists. The checks table closed half of that: `05_checks.md` now gives almost every one of
 these rules a key and a code, so the thing they are waiting for is a tool and no longer a decision.
 **A key is not a check**, and today every key has one. `validate.py` enforces all nine phases, with
 the skips the header selects for the three shapes and the two modes (AD-10): reading the file — the
@@ -144,7 +144,7 @@ five groups.
   open-item rule — which proves the examples against the rule the file states and never that a tool
   implements it. That helper now has a tool beside it: `snapshot.classify` reads the same table and
   the same rules, and until the helper is replaced by it two readings of one rule stand side by
-  side. Owner of that debt: the story that replaces it.
+  side. Owner of that debt: the change that replaces the helper.
 
 `05_checks.md` names two further lists of its own, and they are there rather than here because
 naming them is part of what that file is for. **Rules that get no key**: FR-16's "'Deprecated on X'

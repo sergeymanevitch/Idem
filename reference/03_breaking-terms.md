@@ -2,7 +2,7 @@
 
 `breaking` is the one field of a ticket whose value is not a span of its own quote. The other seven
 either copy their value out of the source or carry a line range; this one reads `yes` or `no`, and
-neither word has to stand anywhere in the changelog. That is the field a judgment could get into,
+neither word has to stand anywhere in the changelog. That is the field a judgement could get into,
 and FR-14 and FR-30 are the rule against it: the value is decided by a closed list of phrases,
 written here and nowhere else, read against the quote by the routine below. That routine is the
 only rule there is for filling the field; no tool holds another. A quote holding no phrase of the
@@ -39,8 +39,8 @@ gives as the section heading "Breaking changes"; "non-breaking"; and "not a brea
 other six — "non breaking", "nonbreaking", "no breaking change", "not breaking change", "not be a
 breaking change" and "not considered a breaking change" — are named by no source, and each was
 added by a decision of the owner recorded on 2026-09-20. That is the only way a phrase gets onto
-this list: a requirement names it, or a person does, on a date. No story adds one because it found
-a sentence it would like to catch.
+this list: a requirement names it, or a person does, on a date. No later change adds one because it
+found a sentence it would like to catch.
 
 **What each one is for.** "breaking change" is the phrase a vendor writes when it is warning you —
 as a heading, "Breaking changes", and as a sentence, "This is a breaking change" — and it is the

@@ -7,7 +7,7 @@ and a rule nobody gave a key here is a rule nothing enforces.
 
 The list is derived from the requirements — FR-2, FR-29 to FR-37, FR-40, and AD-2, AD-3, AD-5, AD-6,
 AD-9, AD-10 — and **not** from what is built. That order is deliberate and it is the lesson of
-comp_12: a check invented to describe code already written stands beside the thing it should hold
+an earlier project: a check invented to describe code already written stands beside the thing it should hold
 instead of holding it. So the table was written before `validate.py`, every row names the provision
 it comes from, and every row but the two exempt ones is named by a row of the fixture manifest
 (AD-7). The validator now stands on this table — it registers a check under every key here and
