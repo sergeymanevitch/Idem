@@ -827,6 +827,12 @@ inputs and the nine answers are not in this repository.
   hook's guess at the shell, not a rule; in an interactive session, decline the prompt to run such a
   script. A fresh session of 2026-09-25 that followed this README with an open shell and no hook
   wrote its tickets file with the `Write` tool and tried no script.
+- **No test holds the ten tickets files of `01_translate/00_tickets/`.** The suite validates only
+  the three example pairs `03_examples/examples-manifest.md` names. That `02_validate/validate.py`
+  exits 0 on the other seven was shown by a run by hand on 2026-09-25, not by a test, so a later
+  change to the contract or the validator that made one of them fail would fail no command of
+  § The suite and the tests. A test over the whole folder would also fail on a reader's own
+  translation saved there, so it is not built; run the validator on each file by hand.
 - **Nothing runs in a claude.ai Project.** There, `rules.md` and the reference files carry the
   contract alone, and nothing is checked until the answer is validated in a clone.
 
