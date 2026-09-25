@@ -8,7 +8,11 @@ row states, quotes and values, ranges and ancestors, coverage and the three warn
 skips the header selects for the three shapes and the two modes (AD-10). `run_fixtures.py` runs the
 whole corpus and fails on any row whose file is missing; `00_fixtures/manifest.md` names every
 fixture and `test_manifest.py` holds it against the checks table. `compare_runs.py` is built:
-it says whether two tickets files of one input have one shape.
+it says whether two tickets files of one input have one shape. The suite also holds the examples:
+every pair `../03_examples/examples-manifest.md` names passes the validator with nothing printed,
+its tickets header names the row's snapshot, and the committed `../examples.md` is byte for byte
+what `../03_examples/build_examples.py` writes — regenerated into a temporary directory, compared
+whole, the directory deleted; nothing is written into the repository.
 
 ## Inputs
 - Working: a tickets file, and the snapshot its header names — or, for a file whose header reads
@@ -19,7 +23,9 @@ it says whether two tickets files of one input have one shape.
 ## Process
 `validate.py` runs nine fixed phases in order and reports every failure of the first phase that
 fails. `compare_runs.py` says whether two tickets files of one input have the same shape.
-`run_fixtures.py` runs the negative-fixture suite in `00_fixtures/`.
+`run_fixtures.py` runs the negative-fixture suite in `00_fixtures/`, then the three examples
+checks above — one line per pair and one for `../examples.md`, after the fixture lines and before
+the counts, a `fail` among them failing the suite like a fixture's.
 
     python3 02_validate/validate.py [--snapshots DIR] [--input FILE] <tickets>
     python3 02_validate/compare_runs.py <first> <second>
@@ -104,10 +110,11 @@ function name, which `../reference/05_checks.md` records under Sergey's name.
 
     python3 -m unittest discover -s 02_validate -t 02_validate
 
-This is the second of Idem's four test commands; none of the other three —
+This is the second of Idem's five test commands; none of the other four —
 `python3 -m unittest discover -s lib/tests -t lib`,
-`python3 -m unittest discover -s 00_fetch -t 00_fetch` and
-`python3 -m unittest discover -s .claude/hooks -t .claude/hooks` — reaches these files. Four
+`python3 -m unittest discover -s 00_fetch -t 00_fetch`,
+`python3 -m unittest discover -s .claude/hooks -t .claude/hooks` and
+`python3 -m unittest discover -s 03_examples -t 03_examples` — reaches these files. Four
 modules run under it, and like a step script each puts `../lib/` on `sys.path` itself:
 
 - `test_manifest.py` reconciles `00_fixtures/manifest.md` with the `checks` table both ways — every
@@ -123,7 +130,11 @@ modules run under it, and like a step script each puts `../lib/` on `sys.path` i
   `../reference/03_breaking-terms.md` against the reading of that prose which `../lib/tests/`
   holds, and each committed fixture against the codes its own manifest row expects.
 - `test_run_fixtures.py` runs the committed corpus through the suite, and proves each way the suite
-  has to fail on a temporary corpus written for the test.
+  has to fail on a temporary corpus written for the test — the fixtures, and the examples on a
+  temporary copy of the three pairs, a manifest written for the test and a file generated from
+  them: one character edited by hand, a row's file missing, a header naming another snapshot, a
+  pair the validator rejects or warns on, an exception inside the regeneration, and that nothing
+  is written into the tree.
 - `test_compare_runs.py` holds `compare_runs.py` to every case of what it compares — equal shapes,
   a count, a range, a state, a row count, a half-filled row, a shape, a refusal's reason, the mode
   and range items, headers naming different inputs, the unnumbered mode, a file that does not parse

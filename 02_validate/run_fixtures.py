@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
-"""The negative-fixture suite: every committed tickets file against what the manifest says of it.
+"""The suite: every committed fixture against what the manifest says of it, every shipped pair of
+the examples manifest against the validator, and the committed examples.md against a fresh one.
 
     python3 02_validate/run_fixtures.py
 
 It takes no argument. What it reads is fixed by the folder, not chosen by a caller: the manifest
 beside the fixtures, the tickets files of `00_fixtures/01_tickets/` and the snapshots of
-`00_fixtures/00_snapshots/`, every path resolved from the Idem root and never from the working
-directory.
+`00_fixtures/00_snapshots/`; and the examples manifest of `03_examples/`, the shipped snapshots
+and tickets files it names, and `examples.md` at the root - every path resolved from the Idem root
+and never from the working directory.
 
 WHY THE SET HAS TO BE EQUAL
 
@@ -47,9 +49,29 @@ AD-6 says. A line of stdout with no field separator in it carries no code, and i
 not treated as one. And a run that does not finish inside its deadline is killed and fails the row,
 so that a validator that hangs cannot hang the suite.
 
+THE EXAMPLES
+
+After the corpus, the suite reads the examples manifest of `03_examples/` - two columns, a shipped
+snapshot and the tickets file written for it - and holds three things. Each row's two files are on
+disk, and the tickets file's own header names the row's snapshot: the validator resolves the
+snapshot from the header and never from a manifest, so without that comparison a row could show
+one snapshot beside a passing file written for another. Each pair passes the validator run as a
+fixture is run, with the shipped snapshot folder, and exits 0 having **printed nothing**: a
+warning is output, and a shipped pair carries none. A shipped pair is numbered - its header names
+its snapshot - so a tickets file whose header reads the mode with no line numbers fails its row
+with one reason and is run with no input flag. And the committed `examples.md` is byte for byte what `03_examples/build_examples.py`
+writes from that manifest: the suite writes a fresh one into a temporary directory, compares the
+two whole, names the first differing byte and the line it falls in, and deletes the directory
+whatever happened. A hand edit of one character fails the suite that way. Nothing is written into
+the repository. A row whose file is not on disk fails naming the row, and then nothing is
+regenerated - one line for `examples.md` says why. The other direction is not held: a tickets file
+of `01_translate/00_tickets/` that no row names is the product, new every run, and no failure.
+
 WHAT IT PRINTS
 
-One line per fixture it ran - the verdict, the file, the exit and the codes - and then the counts:
+One line per fixture it ran - the verdict, the file, the exit and the codes - then one line per
+row of the examples manifest in the same shape and one for `examples.md` - the verdict, the file,
+its size and whether it equals the regeneration - and then the counts:
 how many ran and how many passed, how many rows name a file that is not on disk, how many keys of
 the checks table are registered with no check behind them, how many rows of that table no manifest
 row names at all, and how many no *existing* fixture names. The last two are the distance between
@@ -66,28 +88,44 @@ WHAT IS WRITTEN HERE AS A LITERAL
 Addresses and forms, never a key and never a code. The id of the checks table and of the manifest
 table, the path of the manifest and the two fixture folders, the positions of the manifest's four
 columns, the two file extensions the folders are read by, the deadline one fixture gets, and the
-words this suite prints as a verdict. The two flags the validator takes and the word that opens a
-warning line are **read from the validator** rather than written again here: two copies of either,
-one on each side, would part company the day one of them changed. Every key and every code is read
-out of the contract or out of the manifest, so a row renamed by decision is not typed here as well;
-and the mode a header is compared with is read out of the contract by the format module.
+words this suite prints as a verdict, and the exit a shipped pair must give. The two flags the
+validator takes, the word that opens a
+warning line and the name of the header item that names a snapshot are **read from the validator**
+rather than written again here, and the examples manifest's file name and table id, the two shipped
+folders and the root file's name are read from the examples script the same way: two copies of
+any of them, one on each side, would part company the day one of them changed. The one address of
+the examples this file holds of its own is the step folder it imports that script from, which no
+import can read from the module it has not yet imported; a test pins it to the script's own. Every
+key and every code is read out of the contract or out of the manifest, so a row renamed by decision
+is not typed here as well; and the mode a header is compared with is read out of the contract by
+the format module.
 
 This file keeps to syntax that every Python 3 accepts - no f-strings, no annotations - and writes
-nothing: not a report, not a temporary file, not a cached module.
+nothing into the repository: not a report, not a cached module; its one temporary directory, where
+the examples file is regenerated, is deleted before it returns.
 """
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 
 #: A cached module is still a write into the repository. Set before the library is imported, which
 #: is the only point at which it has any effect; the validator sets it for its own subprocesses.
 sys.dont_write_bytecode = True
 
+#: The folder the examples script is imported from - the one address of that step written here,
+#: because a module cannot be asked for its folder before it is imported. A test holds it equal
+#: to the script's own STEP.
+EXAMPLES_STEP = "03_examples"
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(_HERE), "lib"))
+sys.path.insert(0, os.path.join(os.path.dirname(_HERE), EXAMPLES_STEP))
 sys.path.insert(0, _HERE)
 
-import validate  # noqa: E402  - the path has to be set first
+import build_examples  # noqa: E402  - the path has to be set first
+import validate  # noqa: E402  - and so does this
 from idemlib import contract, tickets  # noqa: E402  - and so does this
 
 #: Where everything is, from the Idem root. A step folder begins with a digit, so these are paths
@@ -119,10 +157,16 @@ SEPARATOR = ", "
 #: on each side, would turn every warning into a surprise code the day one of them changed.
 WARNING_FIELD = validate.WARNING_FIELD
 
+#: The name of the header item that names a snapshot, read from the validator for the same reason.
+SNAPSHOT_ITEM = validate.SNAPSHOT_ITEM
+
 #: How long one fixture may take before the suite gives up on it. Not a limit of the contract: a
 #: validator that hangs would otherwise hang the suite with nothing printed and nothing to read,
 #: and a fixture of this corpus runs in well under a second.
 TIMEOUT_SECONDS = 60
+
+#: The exit a shipped pair must give: a pass, with nothing printed beside it.
+CLEAN_EXIT = "0"
 
 PASSED = "pass"
 FAILED = "fail"
@@ -137,6 +181,19 @@ def manifest_path():
 
 def folder(name):
     return os.path.join(contract.idem_root(), STEP, FIXTURES, name)
+
+
+def examples_manifest_path():
+    return os.path.join(contract.idem_root(), build_examples.STEP, build_examples.MANIFEST_FILE)
+
+
+def shipped(name):
+    """One of the two shipped folders the examples script reads: its SNAPSHOTS or its TICKETS."""
+    return os.path.join(contract.idem_root(), name)
+
+
+def examples_path():
+    return os.path.join(contract.idem_root(), build_examples.OUTPUT)
 
 
 class _Unreadable(Exception):
@@ -263,6 +320,29 @@ def unbound(path):
     return False
 
 
+def _run_reasons(status, expected_exit, internal, uncoded, err):
+    """The reasons a run fails that do not depend on what the row expects it to raise."""
+    reasons = []
+    if str(status) != expected_exit:
+        reasons.append("it exited " + str(status) + " and the manifest says " + expected_exit)
+    if internal:
+        reasons.append("it reported a defect in the validator itself")
+    if uncoded:
+        reasons.append("it printed a line carrying no code, so it did not run as a check of a "
+                       "document at all")
+    if err.strip() != "":
+        reasons.append("it wrote to standard error: " + err.strip().split("\n")[0])
+    return reasons
+
+
+def _line(name, status, found, reasons):
+    line = (FAILED if reasons else PASSED) + contract.TAB + name + contract.TAB + str(status) + \
+        contract.TAB + _listed(found)
+    if reasons:
+        line = line + contract.TAB + "; ".join(reasons)
+    return line
+
+
 def check_one(row, snapshots, tickets_folder):
     """(the line to print, whether it passed) for one manifest row whose file is on disk.
 
@@ -276,25 +356,140 @@ def check_one(row, snapshots, tickets_folder):
     given = os.path.join(snapshots, row.cells[SNAPSHOT]) if unbound(path) else None
     status, out, err = run_one(path, snapshots, given)
     found, internal, uncoded = emitted(out)
-    reasons = []
-    if str(status) != row.cells[EXIT]:
-        reasons.append("it exited " + str(status) + " and the manifest says " + row.cells[EXIT])
-    if internal:
-        reasons.append("it reported a defect in the validator itself")
-    if uncoded:
-        reasons.append("it printed a line carrying no code, so it did not run as a check of a "
-                       "document at all")
-    if err.strip() != "":
-        reasons.append("it wrote to standard error: " + err.strip().split("\n")[0])
+    reasons = _run_reasons(status, row.cells[EXIT], internal, uncoded, err)
     if found != expected:
         reasons.append("it raised " + _listed(found) + " and the manifest says " +
                        _listed(expected))
-    verdict = FAILED if reasons else PASSED
-    line = (verdict + contract.TAB + name + contract.TAB + str(status) + contract.TAB +
-            _listed(found))
-    if reasons:
-        line = line + contract.TAB + "; ".join(reasons)
-    return line, not reasons
+    return _line(name, status, found, reasons), not reasons
+
+
+def _named_snapshot(path):
+    """The snapshot the header of this tickets file names, through the one reader of the format,
+    or None where the file or its header block cannot be read."""
+    try:
+        handle = open(path, "rb")
+        try:
+            data = handle.read()
+        finally:
+            handle.close()
+    except EnvironmentError:
+        return None
+    for item in tickets.parse(data).header or ():
+        if item.name == SNAPSHOT_ITEM:
+            return item.value
+    return None
+
+
+def check_pair(snapshot_name, tickets_name, snapshots, tickets_folder):
+    """(the line to print, whether it passed) for one row of the examples manifest whose two files
+    are on disk: the header names the row's snapshot, and the validator, run with the shipped
+    snapshot folder, exits 0 and prints nothing - a warning is output, and a shipped pair carries
+    none. A shipped pair is numbered, so a header reading the mode with no line numbers is one
+    reason more, and the file is run with no input flag: its snapshot item could only read the
+    sentinel, and the snapshot is no pasted text."""
+    path = os.path.join(tickets_folder, tickets_name)
+    reasons = []
+    if unbound(path):
+        reasons.append("its header reads the mode with no line numbers, and a shipped pair is "
+                       "numbered")
+    named = _named_snapshot(path)
+    if named != snapshot_name:
+        reasons.append("its header names the snapshot " +
+                       (named if named is not None else "nothing that could be read") +
+                       " and the row names " + snapshot_name)
+    status, out, err = run_one(path, snapshots)
+    found, internal, uncoded = emitted(out)
+    reasons.extend(_run_reasons(status, CLEAN_EXIT, internal, uncoded, err))
+    if found:
+        reasons.append("it raised " + _listed(found) + " and a shipped pair raises nothing")
+    return _line(tickets_name, status, found, reasons), not reasons
+
+
+def _read_bytes(path):
+    handle = open(path, "rb")
+    try:
+        return handle.read()
+    finally:
+        handle.close()
+
+
+def regenerate(manifest, snapshots, tickets_folder):
+    """(the line to print, whether it passed) for the committed examples.md against a fresh one
+    written into a temporary directory, which is deleted whatever happened. The two are compared
+    whole; the line names the first differing byte and the line it falls in."""
+    directory = tempfile.mkdtemp()
+    try:
+        fresh_path = os.path.join(directory, build_examples.OUTPUT)
+        try:
+            build_examples.build(manifest, snapshots, tickets_folder, fresh_path)
+        except build_examples.Missing as missing:
+            return (FAILED + contract.TAB + build_examples.OUTPUT + contract.TAB +
+                    "not regenerated" + contract.TAB + str(missing)), False
+        fresh = _read_bytes(fresh_path)
+    finally:
+        shutil.rmtree(directory, True)
+    try:
+        committed = _read_bytes(examples_path())
+    except EnvironmentError as absent:
+        return (FAILED + contract.TAB + build_examples.OUTPUT + contract.TAB + "not on disk" +
+                contract.TAB + "the committed file cannot be read: " +
+                (absent.strerror or type(absent).__name__)), False
+    size = _plural(len(committed), "byte")
+    if committed == fresh:
+        return (PASSED + contract.TAB + build_examples.OUTPUT + contract.TAB + size +
+                contract.TAB + "equal to the script's output, regenerated"), True
+    offset = 0
+    shortest = min(len(committed), len(fresh))
+    while offset < shortest and committed[offset] == fresh[offset]:
+        offset += 1
+    line = committed[:offset].count(b"\n") + 1
+    return (FAILED + contract.TAB + build_examples.OUTPUT + contract.TAB + size + contract.TAB +
+            "the committed file is not the script's output: it differs at byte offset " +
+            str(offset) + " counted from 0, on line " + str(line) + " (the regeneration is " +
+            _plural(len(fresh), "byte") +
+            "); run the script again and commit what it writes"), False
+
+
+def examples():
+    """The lines for the examples manifest's pairs and for examples.md, and whether all passed.
+
+    A row whose file is missing fails naming the row, and then nothing is regenerated: the script
+    would refuse the same row, and a comparison against nothing proves nothing.
+    """
+    manifest = examples_manifest_path()
+    snapshots = shipped(build_examples.SNAPSHOTS)
+    tickets_folder = shipped(build_examples.TICKETS)
+    try:
+        pairs = build_examples.read_manifest(manifest)
+    except build_examples.Missing as wrong:
+        return [FAILED + contract.TAB + build_examples.OUTPUT + contract.TAB + "not regenerated" +
+                contract.TAB + str(wrong)], False
+    lines = []
+    good = True
+    whole = True
+    for snapshot_name, tickets_name in pairs:
+        absent = [name for name, directory in ((snapshot_name, snapshots),
+                                               (tickets_name, tickets_folder))
+                  if not os.path.isfile(os.path.join(directory, name))]
+        if absent:
+            lines.append(FAILED + contract.TAB + tickets_name + contract.TAB +
+                         "this row of the examples manifest names a file that is not on disk: " +
+                         ", ".join(absent))
+            good = False
+            whole = False
+            continue
+        line, passed = check_pair(snapshot_name, tickets_name, snapshots, tickets_folder)
+        lines.append(line)
+        good = good and passed
+    if not whole:
+        lines.append(FAILED + contract.TAB + build_examples.OUTPUT + contract.TAB +
+                     "not regenerated" + contract.TAB + "a row of the examples manifest names a "
+                     "file that is not on disk, so the script would refuse it and there is nothing "
+                     "to compare the committed file with")
+        return lines, False
+    line, passed = regenerate(manifest, snapshots, tickets_folder)
+    lines.append(line)
+    return lines, good and passed
 
 
 def _listed(codes):
@@ -397,6 +592,11 @@ def suite():
         lines.append(FAILED + contract.TAB + MANIFEST_FILE + contract.TAB +
                      "the manifest has rows and not one of the files they name was run, so this "
                      "suite proved nothing about anything")
+        failed = True
+
+    example_lines, examples_good = examples()
+    lines.extend(example_lines)
+    if not examples_good:
         failed = True
 
     numbers = tally(table, rows, written, checks)

@@ -159,5 +159,5 @@ defect itself.
 - **Written by:** a person. Nothing here is generated.
 - **Human check:** a rule stated here is the rule the validator enforces; no tool holds a copy.
 
-In a Claude project these six files are uploaded beside `identity.md`, `rules.md` and
-`examples.md`, and every file is cited by bare name.
+In a Claude project these six files are uploaded beside `identity.md` and `rules.md`, and every
+file is cited by bare name; `examples.md` is not uploaded, and the README says why.

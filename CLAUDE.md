@@ -16,7 +16,9 @@ alone selects which of them run for the three shapes and the two modes. `02_vali
 runs the whole fixture corpus — seventy-five files, sixty-six tickets files, eight snapshots and
 one input text — and fails if any file its manifest names is missing. `02_validate/compare_runs.py`
 is built: it says whether two tickets files of one input have one shape — the ticket count, each
-ticket's range, each row's state — and compares no value.**
+ticket's range, each row's state — and compares no value. `03_examples/build_examples.py` is built
+and `examples.md` at the root is its output: three pairs, every embedded file a byte copy, and the
+suite regenerates it and requires byte equality.**
 `reference/00_catalogue.md` states the strict-table grammar and names every contract table;
 `reference/01_schema.md` holds the five tables of the ticket schema — the eight fields, the
 constants and the canonical form, the header items, the refusal reasons, the classes of line — with
@@ -101,8 +103,14 @@ and hands its lines back; `Stop` runs it over every such file and a failing one 
 once per turn, with its lines. The wrapper exits 0 or 2 and holds no check.
 `.claude/hooks/test_idem_hook.py` is its negative test; the file-tool deny, `PostToolUse` and
 `Stop` and the `Bash` deny all fired live in Claude Code sessions on 2026-09-24.
-Nothing else below is built — each folder's `CONTEXT.md` says
-what it will hold.
+`03_examples/build_examples.py` is the fourth step script and the one writer of `examples.md`: it
+assembles the file whole from the strict table `03_examples/examples-manifest.md` — a shipped
+snapshot and the tickets file written for it, three rows — each embedded file a byte copy inside
+a fence of backticks longer than any run inside it, `extract(embed(b)) == b`; it imports the
+contract loader alone and validates nothing. `02_validate/run_fixtures.py` holds the file: it
+regenerates it into a temporary directory, requires byte equality with the committed one, and
+validates every pair the manifest names, so `examples.md` is never edited by hand — a change to
+the script or the manifest means running the script again. Every step folder is built.
 
 ## To translate a snapshot
 
@@ -129,7 +137,7 @@ Code a hook denies the file tools that folder, and every `*.input.txt` under
 | `00_fetch/` | step 00 — URL to numbered, hashed snapshot | `00_fetch/CONTEXT.md` |
 | `01_translate/` | step 01 — snapshot to tickets, by Claude under `rules.md` | `01_translate/CONTEXT.md` |
 | `02_validate/` | step 02 — tickets plus snapshot to pass or coded failures | `02_validate/CONTEXT.md` |
-| `03_examples/` | step 03 — assemble `examples.md` from validated files | `03_examples/CONTEXT.md` |
+| `03_examples/` | step 03 — assemble `examples.md` from the shipped pairs, by script; never by hand | `03_examples/CONTEXT.md` |
 | `lib/` | the one parser per format and the contract loader | `lib/CONTEXT.md` |
 | `.claude/` | Claude Code hooks: deny writes to snapshots, run the validator on tickets files | `.claude/CONTEXT.md` |
 
@@ -137,12 +145,13 @@ The pipeline on one screen: `CONTEXT.md`.
 
 ## Running the tests
 
-Four commands, and "the tests" means all four. From this folder:
+Five commands, and "the tests" means all five. From this folder:
 
     python3 -m unittest discover -s lib/tests -t lib
     python3 -m unittest discover -s 02_validate -t 02_validate
     python3 -m unittest discover -s 00_fetch -t 00_fetch
     python3 -m unittest discover -s .claude/hooks -t .claude/hooks
+    python3 -m unittest discover -s 03_examples -t 03_examples
 
 The first covers `lib/idemlib/`, every written file of `reference/`, and `identity.md` and
 `rules.md` together. The second is four files — `02_validate/test_manifest.py`, which holds the
@@ -154,8 +163,10 @@ holds the run comparer to every case of what it compares, on pairs built in a te
 The third is `00_fetch/test_fetch.py` and `00_fetch/test_html_text.py`, and it holds `fetch.py`
 and the HTML routine against a stub server on 127.0.0.1 — no network, and every snapshot in a temporary directory. The fourth is
 `.claude/hooks/test_idem_hook.py` alone, the negative test of the hook wrapper, run under `sh` and
-under `dash` when it is on PATH, every case in a temporary root. Discovery under `lib/tests/`
-reaches none of the last three. `lib/CONTEXT.md` says more.
+under `dash` when it is on PATH, every case in a temporary root. The fifth is
+`03_examples/test_build_examples.py` alone: the script that assembles `examples.md`, every output
+in a temporary directory. Discovery under `lib/tests/` reaches none of the last four.
+`lib/CONTEXT.md` says more.
 
 ## If you have no shell
 

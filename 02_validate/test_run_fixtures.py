@@ -2,11 +2,15 @@
 
     python3 -m unittest discover -s 02_validate -t 02_validate
 
-Two things are proved here. That the committed corpus passes, with the counts the suite prints -
-which is the acceptance run of this folder, and it spawns one subprocess per fixture. And that the
+Three things are proved here. That the committed corpus passes, with the counts the suite prints -
+which is the acceptance run of this folder, and it spawns one subprocess per fixture. That the
 suite fails for each of the things it is supposed to fail for, which is proved on a **temporary
 corpus**: a manifest written for the test beside copies of the committed fixtures, so that a
-mutation of a claim can be made without touching a file anybody else reads.
+mutation of a claim can be made without touching a file anybody else reads. And that the suite
+holds the examples: every pair of the examples manifest validates, its header names the row's
+snapshot, and the committed `examples.md` is byte for byte what the script writes - proved on a
+temporary copy of the three pairs, a manifest written for the test and a file generated from them,
+so that a hand edit can be made without touching the committed one.
 
 A suite that only ever passes proves nothing about the corpus it runs. Each failing case below
 changes exactly one thing in the temporary manifest or in its folders, and the case above it says
@@ -17,7 +21,8 @@ WHAT IS WRITTEN HERE AS A LITERAL
 Addresses and forms, and no key and no code of the checks table: every code a temporary manifest
 row expects is copied out of the committed manifest, and the codes the counts are about are read
 out of the contract. What is written is the columns by position, the two extensions, the words the
-suite prints as a verdict, and the counts this story fixes.
+suite prints as a verdict, and the counts the corpus comes to - among them how many pairs the
+examples manifest names.
 """
 import io
 import os
@@ -34,6 +39,8 @@ sys.path.insert(0, HERE)
 import run_fixtures  # noqa: E402  - the path has to be set first
 import validate  # noqa: E402  - and so does this
 from idemlib import contract, tickets  # noqa: E402
+
+build_examples = run_fixtures.build_examples
 
 #: The suite's own runner, kept before any test replaces it for the length of that test.
 _original_run_one = run_fixtures.run_one
@@ -53,7 +60,15 @@ MARKER = "<!-- table: " + MANIFEST + " -->"
 FIXTURES_RUN = 66
 MANIFEST_ROWS = 66
 PENDING_ROWS = 0
+#: The pairs the examples manifest names, and the one line the suite prints for `examples.md`.
+PAIRS = 3
+EXAMPLES_LINES = PAIRS + 1
 CLEAN = "clean-01.tickets.md"
+
+#: The examples manifest's columns, by position, and the header a manifest written for a test has.
+PAIR_SNAPSHOT, PAIR_TICKETS = 0, 1
+PAIR_COLUMNS = ["snapshot", "tickets"]
+PAIR_MARKER = "<!-- table: " + build_examples.MANIFEST_TABLE + " -->"
 
 SHIPPED = {}
 ROWS = []
@@ -81,6 +96,28 @@ def table_line(cells):
     return "| " + " | ".join(cells) + " |"
 
 
+def read(path):
+    handle = open(path, "rb")
+    try:
+        return handle.read()
+    finally:
+        handle.close()
+
+
+def write(path, data):
+    handle = open(path, "wb")
+    try:
+        handle.write(data)
+    finally:
+        handle.close()
+
+
+def shipped_pairs():
+    return [list(pair) for pair in
+            build_examples.read_manifest(os.path.join(ROOT, build_examples.STEP,
+                                                      build_examples.MANIFEST_FILE))]
+
+
 class SuiteCase(unittest.TestCase):
     """A temporary corpus: a manifest written here, beside copies of the committed fixtures."""
 
@@ -100,6 +137,29 @@ class SuiteCase(unittest.TestCase):
                 shutil.copy(os.path.join(SNAPSHOTS_FOLDER, entry),
                             os.path.join(self.snapshots, entry))
         self.path = os.path.join(self.directory, "manifest.md")
+        # The examples: a copy of the three shipped pairs, a manifest for them, a generated file.
+        self.shipped = {build_examples.SNAPSHOTS: os.path.join(self.directory, "shipped_snapshots"),
+                        build_examples.TICKETS: os.path.join(self.directory, "shipped_tickets")}
+        for folder in self.shipped.values():
+            os.mkdir(folder)
+        self.pairs = shipped_pairs()
+        for snapshot, tickets_file in self.pairs:
+            shutil.copy(os.path.join(ROOT, build_examples.SNAPSHOTS, snapshot),
+                        os.path.join(self.shipped[build_examples.SNAPSHOTS], snapshot))
+            shutil.copy(os.path.join(ROOT, build_examples.TICKETS, tickets_file),
+                        os.path.join(self.shipped[build_examples.TICKETS], tickets_file))
+        self.pairs_path = os.path.join(self.directory, "examples-manifest.md")
+        self.examples = os.path.join(self.directory, "examples.md")
+
+    def write_examples_manifest(self):
+        lines = [PAIR_MARKER, table_line(PAIR_COLUMNS), table_line(["---"] * len(PAIR_COLUMNS))]
+        for pair in self.pairs:
+            lines.append(table_line(pair))
+        write(self.pairs_path, ("\n".join(lines) + "\n").encode("utf-8"))
+
+    def generate_examples(self):
+        build_examples.build(self.pairs_path, self.shipped[build_examples.SNAPSHOTS],
+                             self.shipped[build_examples.TICKETS], self.examples)
 
     def write_manifest(self):
         lines = [MARKER, table_line(COLUMNS), table_line(["---"] * len(COLUMNS))]
@@ -111,15 +171,25 @@ class SuiteCase(unittest.TestCase):
         finally:
             handle.close()
 
-    def patched(self):
-        """Point the suite at the temporary corpus for one test, and put it back afterwards."""
+    def patched(self, generate=True):
+        """Point the suite at the temporary corpus for one test, and put it back afterwards: the
+        fixture manifest and its two folders, and the examples manifest, the two shipped folders
+        and the generated file, which is written here unless a test writes its own."""
         self.write_manifest()
-        keep_path, keep_folder = run_fixtures.manifest_path, run_fixtures.folder
+        self.write_examples_manifest()
+        if generate:
+            self.generate_examples()
+        keep = {}
+        for name in ("manifest_path", "folder", "examples_manifest_path", "shipped",
+                     "examples_path"):
+            keep[name] = getattr(run_fixtures, name)
+            self.addCleanup(setattr, run_fixtures, name, keep[name])
         run_fixtures.manifest_path = lambda: self.path
         run_fixtures.folder = lambda name: (
             self.tickets if name == run_fixtures.TICKETS_FOLDER else self.snapshots)
-        self.addCleanup(setattr, run_fixtures, "manifest_path", keep_path)
-        self.addCleanup(setattr, run_fixtures, "folder", keep_folder)
+        run_fixtures.examples_manifest_path = lambda: self.pairs_path
+        run_fixtures.shipped = lambda name: self.shipped[name]
+        run_fixtures.examples_path = lambda: self.examples
 
     def run_suite(self):
         lines, status = run_fixtures.suite()
@@ -134,6 +204,14 @@ class SuiteCase(unittest.TestCase):
             if row[FIXTURE] == name:
                 return row
         raise AssertionError("no row for " + name)
+
+    def line_for(self, lines, name):
+        found = [line for line in lines if line.split(contract.TAB)[1:2] == [name]]
+        self.assertEqual(1, len(found), "\n".join(lines))
+        return found[0]
+
+    def all_pass(self):
+        return [run_fixtures.PASSED] * (len(self.rows) + EXAMPLES_LINES)
 
 
 # --- the committed corpus -------------------------------------------------------------------------
@@ -160,18 +238,51 @@ class TestTheCommittedCorpus(unittest.TestCase):
         self.assertEqual(0, code, "\n".join(lines))
         ran = [line for line in lines
                if line.split(contract.TAB)[0] == run_fixtures.PASSED]
-        self.assertEqual(FIXTURES_RUN, len(ran), "\n".join(lines))
+        self.assertEqual(FIXTURES_RUN + EXAMPLES_LINES, len(ran), "\n".join(lines))
         self.assertEqual([], [line for line in lines
                               if line.split(contract.TAB)[0] == run_fixtures.FAILED])
 
-    def test_it_prints_one_line_per_fixture_and_then_the_counts(self):
+    def test_it_prints_one_line_per_fixture_then_the_examples_and_then_the_counts(self):
         _code, lines = self.run_main([])
-        self.assertEqual(FIXTURES_RUN + 1 + 4, len(lines), "\n".join(lines))
-        self.assertIn(str(FIXTURES_RUN), lines[FIXTURES_RUN])
+        self.assertEqual(FIXTURES_RUN + EXAMPLES_LINES + 1 + 4, len(lines), "\n".join(lines))
+        self.assertIn(str(FIXTURES_RUN), lines[FIXTURES_RUN + EXAMPLES_LINES])
+        named = [line.split(contract.TAB)[1] for line in lines[FIXTURES_RUN:FIXTURES_RUN +
+                                                                    EXAMPLES_LINES]]
+        self.assertEqual([pair[PAIR_TICKETS] for pair in shipped_pairs()] +
+                         [build_examples.OUTPUT], named)
+
+    def test_the_committed_examples_file_is_the_scripts_output(self):
+        """The one check that makes a hand edit of `examples.md` fail something: the suite writes
+        a fresh one into a temporary directory and requires byte equality."""
+        _code, lines = self.run_main([])
+        line = [text for text in lines
+                if text.split(contract.TAB)[1:2] == [build_examples.OUTPUT]][0]
+        self.assertEqual(run_fixtures.PASSED, line.split(contract.TAB)[0], line)
+
+    def test_the_suite_writes_nothing_into_the_repository(self):
+        """AD-5: the regeneration goes to a temporary directory and is deleted. The tree's file
+        list and every mtime are the same after the run as before it, and nothing new is under
+        the root - bytecode folders left out, which `.gitignore` covers and this test does not."""
+        before = self.listing()
+        code, _lines = self.run_main([])
+        self.assertEqual(0, code)
+        self.assertEqual(before, self.listing())
+
+    def listing(self):
+        found = {}
+        for directory, folders, names in os.walk(ROOT):
+            folders[:] = [name for name in folders if name not in (".git", "__pycache__")]
+            for name in names:
+                if name.endswith(".pyc"):
+                    continue
+                path = os.path.join(directory, name)
+                found[path] = (os.path.getmtime(path), os.path.getsize(path))
+        return found
 
     def test_the_counts_are_the_ones_the_corpus_comes_to(self):
         _code, lines = self.run_main([])
-        counts = [int(line.rsplit(": ", 1)[1]) for line in lines[FIXTURES_RUN + 1:]]
+        counts = [int(line.rsplit(": ", 1)[1])
+                  for line in lines[FIXTURES_RUN + EXAMPLES_LINES + 1:]]
         self.assertEqual(4, len(counts), lines)
         waiting, idle, unnamed, unexercised = counts
         self.assertEqual(MANIFEST_ROWS - FIXTURES_RUN, waiting)
@@ -245,7 +356,7 @@ class TestEachFailure(SuiteCase):
         self.patched()
         status, lines = self.run_suite()
         self.assertEqual(0, status, "\n".join(lines))
-        self.assertEqual([run_fixtures.PASSED] * len(self.rows), self.verdicts(lines))
+        self.assertEqual(self.all_pass(), self.verdicts(lines))
 
     def test_a_row_expecting_the_wrong_exit_fails(self):
         row = self.row_for(CLEAN)
@@ -360,7 +471,8 @@ class TestEachFailure(SuiteCase):
         failed = [line for line in lines if line.startswith(run_fixtures.FAILED)]
         self.assertEqual(1, len(failed), failed)
         self.assertIn("clean-98.tickets.md", failed[0])
-        self.assertEqual(len(self.rows) - 1, self.verdicts(lines).count(run_fixtures.PASSED))
+        self.assertEqual(len(self.rows) - 1 + EXAMPLES_LINES,
+                         self.verdicts(lines).count(run_fixtures.PASSED))
         self.assertEqual(1, int(lines[-4].rsplit(": ", 1)[1]))
 
     def test_a_committed_file_removed_fails_the_suite_naming_its_row(self):
@@ -386,7 +498,7 @@ class TestEachFailure(SuiteCase):
         self.patched()
         status, lines = self.run_suite()
         self.assertEqual(1, status, "\n".join(lines))
-        self.assertEqual([run_fixtures.PASSED] * len(self.rows), self.verdicts(lines))
+        self.assertEqual(self.all_pass(), self.verdicts(lines))
         self.assertEqual(1, int(lines[-3].rsplit(": ", 1)[1]))
 
     def test_a_row_no_fixture_names_fails_the_suite(self):
@@ -400,7 +512,7 @@ class TestEachFailure(SuiteCase):
         self.patched()
         status, lines = self.run_suite()
         self.assertEqual(1, status, "\n".join(lines))
-        self.assertEqual([run_fixtures.PASSED] * len(self.rows), self.verdicts(lines))
+        self.assertEqual(self.all_pass(), self.verdicts(lines))
         self.assertEqual([1, 1], [int(line.rsplit(": ", 1)[1]) for line in lines[-2:]])
 
     def test_a_row_in_the_unnumbered_mode_is_run_with_the_input_its_row_names(self):
@@ -581,6 +693,308 @@ class TestEachFailure(SuiteCase):
         raised = set(line.split(contract.TAB)[3].split(", "))
         self.assertTrue(raised & set([validate._cell(SHIPPED["checks"], key, 1)
                                       for key in warning]), line)
+
+
+# --- the examples ---------------------------------------------------------------------------------
+
+
+class TestTheExamples(SuiteCase):
+    """The pairs of the examples manifest and the generated file, on the temporary copy.
+
+    The fixture rows of the temporary corpus are not run here: `check_one` is replaced for the
+    length of each test by a stub that passes every row without a subprocess, because what these
+    cases hold is the examples, and the corpus is held by the classes above on the real runner.
+    The three pairs are still run through the real validator.
+    """
+
+    def setUp(self):
+        SuiteCase.setUp(self)
+        keep = run_fixtures.check_one
+        run_fixtures.check_one = lambda row, snapshots, tickets_folder: (
+            run_fixtures.PASSED + contract.TAB + row.cells[FIXTURE] + contract.TAB +
+            row.cells[EXIT] + contract.TAB + run_fixtures._listed(
+                run_fixtures.codes_of(row.cells[CODES])), True)
+        self.addCleanup(setattr, run_fixtures, "check_one", keep)
+        self.made = []
+        original_mkdtemp = run_fixtures.tempfile.mkdtemp
+
+        def record():
+            path = original_mkdtemp()
+            self.made.append(path)
+            return path
+
+        run_fixtures.tempfile.mkdtemp = record
+        self.addCleanup(setattr, run_fixtures.tempfile, "mkdtemp", original_mkdtemp)
+
+    def test_the_generated_file_equals_the_regeneration_and_every_pair_passes(self):
+        self.patched()
+        status, lines = self.run_suite()
+        self.assertEqual(0, status, "\n".join(lines))
+        for pair in self.pairs:
+            line = self.line_for(lines, pair[PAIR_TICKETS])
+            self.assertEqual([run_fixtures.PASSED, pair[PAIR_TICKETS], "0", "nothing"],
+                             line.split(contract.TAB), line)
+        line = self.line_for(lines, build_examples.OUTPUT)
+        self.assertEqual(run_fixtures.PASSED, line.split(contract.TAB)[0], line)
+        self.assertEqual(4, len(line.split(contract.TAB)), line)
+
+    def test_the_examples_lines_come_after_the_fixture_lines_and_before_the_counts(self):
+        self.patched()
+        _status, lines = self.run_suite()
+        start = len(self.rows)
+        self.assertEqual([pair[PAIR_TICKETS] for pair in self.pairs] + [build_examples.OUTPUT],
+                         [line.split(contract.TAB)[1] for line in
+                          lines[start:start + EXAMPLES_LINES]])
+        self.assertIn("ran", lines[start + EXAMPLES_LINES])
+        self.assertEqual(4, len(lines) - start - EXAMPLES_LINES - 1)
+
+    def test_one_character_edited_by_hand_fails_naming_the_byte(self):
+        self.patched()
+        data = read(self.examples)
+        offset = len(data) // 2
+        edited = data[:offset] + (b"x" if data[offset:offset + 1] != b"x" else b"y") + \
+            data[offset + 1:]
+        write(self.examples, edited)
+        status, lines = self.run_suite()
+        self.assertEqual(1, status, "\n".join(lines))
+        line = self.line_for(lines, build_examples.OUTPUT)
+        self.assertEqual(run_fixtures.FAILED, line.split(contract.TAB)[0], line)
+        self.assertIn("byte offset " + str(offset) + " ", line)
+        self.assertIn("line " + str(data[:offset].count(b"\n") + 1), line)
+        for pair in self.pairs:
+            self.assertEqual(run_fixtures.PASSED,
+                             self.line_for(lines, pair[PAIR_TICKETS]).split(contract.TAB)[0])
+
+    def test_one_character_appended_by_hand_fails(self):
+        self.patched()
+        data = read(self.examples)
+        write(self.examples, data + b"x")
+        status, lines = self.run_suite()
+        self.assertEqual(1, status)
+        line = self.line_for(lines, build_examples.OUTPUT)
+        self.assertEqual(run_fixtures.FAILED, line.split(contract.TAB)[0], line)
+        self.assertIn("byte offset " + str(len(data)) + " ", line)
+
+    def test_the_file_missing_altogether_fails(self):
+        self.patched(generate=False)
+        status, lines = self.run_suite()
+        self.assertEqual(1, status)
+        line = self.line_for(lines, build_examples.OUTPUT)
+        self.assertEqual(run_fixtures.FAILED, line.split(contract.TAB)[0], line)
+
+    def missing_file(self, cell):
+        """A row naming a file that is not on disk fails naming the row, and the file is not
+        regenerated - no temporary directory is made, one `fail` line says why - so no line of the
+        run says the examples pass."""
+        self.pairs[1][cell] = "absent" + os.path.splitext(self.pairs[1][cell])[1]
+        self.patched(generate=False)
+        write(self.examples, b"# Examples\n")
+        status, lines = self.run_suite()
+        self.assertEqual(1, status, "\n".join(lines))
+        named = self.line_for(lines, self.pairs[1][PAIR_TICKETS])
+        self.assertEqual(run_fixtures.FAILED, named.split(contract.TAB)[0], named)
+        self.assertIn(self.pairs[1][cell], named)
+        regenerated = self.line_for(lines, build_examples.OUTPUT)
+        self.assertEqual(run_fixtures.FAILED, regenerated.split(contract.TAB)[0], regenerated)
+        self.assertNotIn("byte", regenerated)
+        self.assertIn("not on disk", regenerated)
+        self.assertEqual([], self.made)
+        others = [pair[PAIR_TICKETS] for pair in self.pairs if pair is not self.pairs[1]]
+        for name in others:
+            self.assertEqual(run_fixtures.PASSED,
+                             self.line_for(lines, name).split(contract.TAB)[0])
+
+    def test_a_row_whose_snapshot_is_missing_fails_and_nothing_is_regenerated(self):
+        self.missing_file(PAIR_SNAPSHOT)
+
+    def test_a_row_whose_tickets_file_is_missing_fails_and_nothing_is_regenerated(self):
+        self.missing_file(PAIR_TICKETS)
+
+    def test_a_pair_whose_header_names_another_snapshot_fails(self):
+        """`validate.py` resolves the snapshot from the header and never from the manifest, so a
+        row could show snapshot A beside a passing file written for snapshot C: the suite requires
+        the header's snapshot item to equal the row's cell."""
+        self.pairs[0][PAIR_SNAPSHOT], self.pairs[1][PAIR_SNAPSHOT] = (
+            self.pairs[1][PAIR_SNAPSHOT], self.pairs[0][PAIR_SNAPSHOT])
+        self.patched()
+        status, lines = self.run_suite()
+        self.assertEqual(1, status, "\n".join(lines))
+        for index in (0, 1):
+            line = self.line_for(lines, self.pairs[index][PAIR_TICKETS])
+            self.assertEqual(run_fixtures.FAILED, line.split(contract.TAB)[0], line)
+            self.assertIn(self.pairs[index][PAIR_SNAPSHOT], line)
+            self.assertIn(self.pairs[1 - index][PAIR_SNAPSHOT], line)
+        self.assertEqual(run_fixtures.PASSED,
+                         self.line_for(lines, self.pairs[2][PAIR_TICKETS]).split(contract.TAB)[0])
+        self.assertEqual(run_fixtures.PASSED,
+                         self.line_for(lines, build_examples.OUTPUT).split(contract.TAB)[0])
+
+    def test_a_pair_the_validator_rejects_fails_with_the_reason(self):
+        name = self.pairs[2][PAIR_TICKETS]
+        path = os.path.join(self.shipped[build_examples.TICKETS], name)
+        data = read(path)
+        write(path, data.replace(b"\n## Ticket 1\n", b"\n## Ticket 1\n\n", 1))
+        self.assertNotEqual(data, read(path))
+        self.patched()
+        status, lines = self.run_suite()
+        self.assertEqual(1, status, "\n".join(lines))
+        line = self.line_for(lines, name)
+        fields = line.split(contract.TAB)
+        self.assertEqual(run_fixtures.FAILED, fields[0], line)
+        self.assertEqual("1", fields[2], line)
+        self.assertNotEqual("nothing", fields[3], line)
+        self.assertIn("exited 1", fields[4])
+
+    def test_a_pair_the_validator_warns_on_fails(self):
+        """A warning counts as output: a shipped pair must exit 0 and print nothing."""
+        name = self.pairs[2][PAIR_TICKETS]
+        path = os.path.join(self.shipped[build_examples.TICKETS], name)
+        original = run_fixtures.run_one
+        code = row_named("warn_unbound-01.tickets.md").cells[CODES]
+
+        def warned(fixture, snapshots, given=None):
+            status, out, err = original(fixture, snapshots, given)
+            if os.path.basename(fixture) == name:
+                out = (run_fixtures.WARNING_FIELD + contract.TAB + code + contract.TAB +
+                       name + ":1" + contract.TAB + "a warning composed for the test\n")
+            return status, out, err
+
+        run_fixtures.run_one = warned
+        self.addCleanup(setattr, run_fixtures, "run_one", original)
+        self.patched()
+        status, lines = self.run_suite()
+        self.assertEqual(1, status, "\n".join(lines))
+        line = self.line_for(lines, name)
+        fields = line.split(contract.TAB)
+        self.assertEqual(run_fixtures.FAILED, fields[0], line)
+        self.assertEqual("0", fields[2], line)
+        self.assertEqual(code, fields[3], line)
+        self.assertTrue(os.path.isfile(path))
+
+    def test_a_pair_that_writes_to_standard_error_or_reports_a_defect_fails(self):
+        name = self.pairs[0][PAIR_TICKETS]
+        original = run_fixtures.run_one
+        self.addCleanup(setattr, run_fixtures, "run_one", original)
+        for status, out, err in ((0, "", "Traceback (most recent call last):\n"),
+                                 (2, contract.INTERNAL + contract.TAB + "x:1" + contract.TAB +
+                                  "m\n", ""),
+                                 (0, "a line with no separator\n", "")):
+            run_fixtures.run_one = lambda fixture, snapshots, given=None, _r=(status, out, err): _r
+            line, good = run_fixtures.check_pair(
+                self.pairs[0][PAIR_SNAPSHOT], name, self.shipped[build_examples.SNAPSHOTS],
+                self.shipped[build_examples.TICKETS])
+            self.assertFalse(good, line)
+            self.assertEqual(run_fixtures.FAILED, line.split(contract.TAB)[0])
+            self.assertEqual(name, line.split(contract.TAB)[1])
+
+    def test_a_pair_is_run_with_no_input_flag_and_an_unnumbered_header_fails_it(self):
+        """A shipped pair is numbered. A numbered header gets no input flag and passes; a header
+        reading the mode with no line numbers is a reason of its own, and the file is still run
+        with no input flag - its snapshot item could only read the sentinel, and the snapshot is
+        no pasted text."""
+        heard = []
+        original = run_fixtures.run_one
+        self.addCleanup(setattr, run_fixtures, "run_one", original)
+        run_fixtures.run_one = lambda fixture, snapshots, given=None: (
+            heard.append(given) or (0, "", ""))
+        line, good = run_fixtures.check_pair(
+            self.pairs[0][PAIR_SNAPSHOT], self.pairs[0][PAIR_TICKETS],
+            self.shipped[build_examples.SNAPSHOTS], self.shipped[build_examples.TICKETS])
+        self.assertTrue(good, line)
+        keep = run_fixtures.unbound
+        run_fixtures.unbound = lambda path: True
+        self.addCleanup(setattr, run_fixtures, "unbound", keep)
+        line, good = run_fixtures.check_pair(
+            self.pairs[0][PAIR_SNAPSHOT], self.pairs[0][PAIR_TICKETS],
+            self.shipped[build_examples.SNAPSHOTS], self.shipped[build_examples.TICKETS])
+        self.assertFalse(good, line)
+        self.assertIn("no line numbers", line)
+        self.assertEqual([None, None], heard)
+
+    def test_a_tickets_file_no_row_names_is_not_a_failure(self):
+        """The tickets folder is the product, new every run: a translation made tomorrow must
+        not fail the suite until somebody edits the manifest."""
+        shutil.copy(os.path.join(self.shipped[build_examples.TICKETS], self.pairs[0][PAIR_TICKETS]),
+                    os.path.join(self.shipped[build_examples.TICKETS], "tomorrow.tickets.md"))
+        self.patched()
+        status, lines = self.run_suite()
+        self.assertEqual(0, status, "\n".join(lines))
+        self.assertEqual([], [line for line in lines if "tomorrow" in line])
+
+    def test_an_examples_manifest_with_the_wrong_header_fails_the_file_and_runs_no_pair(self):
+        self.patched()
+        write(self.pairs_path, read(self.pairs_path).replace(
+            table_line(PAIR_COLUMNS).encode("utf-8"),
+            table_line(list(reversed(PAIR_COLUMNS))).encode("utf-8")))
+        status, lines = self.run_suite()
+        self.assertEqual(1, status, "\n".join(lines))
+        line = self.line_for(lines, build_examples.OUTPUT)
+        self.assertEqual(run_fixtures.FAILED, line.split(contract.TAB)[0], line)
+        for pair in self.pairs:
+            self.assertEqual([], [text for text in lines if pair[PAIR_TICKETS] in text])
+
+    def test_an_unreadable_examples_manifest_is_exit_two_and_coded_lines(self):
+        self.patched()
+        write(self.pairs_path, b"no marker\n")
+        out = io.StringIO()
+        keep = sys.stdout
+        sys.stdout = out
+        try:
+            code = run_fixtures.main([])
+        finally:
+            sys.stdout = keep
+        lines = out.getvalue().splitlines()
+        self.assertEqual(2, code, lines)
+        self.assertEqual(1, len(lines), lines)
+        self.assertEqual(contract.CODE, lines[0].split(contract.TAB)[0])
+
+    def test_an_exception_inside_the_regeneration_is_internal_and_the_directory_is_gone(self):
+        made = self.made
+
+        def explode(*_args):
+            raise RuntimeError("injected")
+
+        self.patched()
+        keep = build_examples.build
+        build_examples.build = explode
+        self.addCleanup(setattr, build_examples, "build", keep)
+        out = io.StringIO()
+        keep_stdout = sys.stdout
+        sys.stdout = out
+        try:
+            code = run_fixtures.main([])
+        finally:
+            sys.stdout = keep_stdout
+        lines = out.getvalue().splitlines()
+        self.assertEqual(2, code, lines)
+        self.assertEqual(1, len(lines), lines)
+        self.assertEqual(contract.INTERNAL, lines[0].split(contract.TAB)[0])
+        self.assertEqual(1, len(made))
+        self.assertFalse(os.path.exists(made[0]))
+
+    def test_the_regeneration_directory_is_gone_after_a_pass_and_after_an_edit(self):
+        made = self.made
+        self.patched()
+        self.run_suite()
+        write(self.examples, read(self.examples) + b"x")
+        self.run_suite()
+        self.assertEqual(2, len(made))
+        for path in made:
+            self.assertFalse(os.path.exists(path))
+
+    def test_the_addresses_of_the_examples_are_read_from_the_script(self):
+        """One owner for each name: the suite reaches the step folder, the manifest, the two
+        shipped folders and the root file through the script's constants, and the one literal it
+        holds of its own - the folder it imports the script from - is pinned to the script's."""
+        self.assertEqual(build_examples.STEP, run_fixtures.EXAMPLES_STEP)
+        self.assertEqual(os.path.join(ROOT, build_examples.STEP, build_examples.MANIFEST_FILE),
+                         run_fixtures.examples_manifest_path())
+        self.assertEqual(os.path.join(ROOT, build_examples.OUTPUT), run_fixtures.examples_path())
+        self.assertEqual(os.path.join(ROOT, build_examples.SNAPSHOTS),
+                         run_fixtures.shipped(build_examples.SNAPSHOTS))
+        self.assertEqual(os.path.join(ROOT, build_examples.TICKETS),
+                         run_fixtures.shipped(build_examples.TICKETS))
+        self.assertEqual(validate.SNAPSHOT_ITEM, run_fixtures.validate.SNAPSHOT_ITEM)
 
 
 class _Row(object):

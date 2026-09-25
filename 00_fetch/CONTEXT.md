@@ -92,7 +92,7 @@ interpreters itself, so one page gives one text on 3.9.6 and 3.14.4.
 request goes to a stub server on 127.0.0.1 and every snapshot into a temporary directory. Two
 files: `test_fetch.py` holds the tool, `test_html_text.py` the HTML routine, page by page and by the
 fixture page of `01_fixtures/`, whose expected text it compares byte for byte. One of
-the four commands the repository's tests are made of; `../CLAUDE.md` lists all four.
+the five commands the repository's tests are made of; `../CLAUDE.md` lists all five.
 
 ## A note on the interpreter
 A `python3` installed from python.org on macOS ships without root certificates, and every fetch
