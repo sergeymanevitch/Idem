@@ -166,25 +166,26 @@ row by that value.
 | snapshot-constants | 04_snapshot-format.md | constant, value, meaning | constant |
 | line-classes | 04_snapshot-format.md | class, pattern, rule | class |
 | html-elements | 04_snapshot-format.md | element, parsing, output, marker | element |
+| content-kinds | 04_snapshot-format.md | kind, media_types, signatures, routine, rule | kind |
 | fetch-limits | 04_snapshot-format.md | limit, value, meaning | limit |
 | checks | 05_checks.md | key, code, what it checks, FR | key |
 | fetch-failures | 05_checks.md | key, code, what it reports, FR | key |
 | warn-patterns | 05_checks.md | name, pattern | name |
 
 The catalogue now names itself, the five tables of the ticket schema, the phrases that decide
-`breaking`, the five tables of the snapshot format and the three tables of `05_checks.md` — every
+`breaking`, the six tables of the snapshot format and the three tables of `05_checks.md` — every
 validator check with its code, the fetch failures with theirs, and the pattern a warning looks for.
 That is the whole of the enumerable contract Epic 1 set out to write, and the loader that reads it
 is written and tested. A table is usable by a tool on the day its row appears here, and not before.
 
-Listed is not the same as used. Every table above loads today, and all but two are read by a tool
+Listed is not the same as used. Every table above loads today, and all but one are read by a tool
 of their own: `snapshot-header`, `snapshot-constants` and `line-classes`, by `snapshot.py`;
-`fetch-limits` and `fetch-failures`, by `00_fetch/fetch.py`; `fields`, `schema-constants`,
-`header-items` and `ticket-lines`, by `tickets.py`; and `checks`, `fields`, `schema-constants`,
-`refusal-reasons` and `breaking-terms`, by `02_validate/validate.py`, which reads `line-classes` as
-well, through `snapshot.classify`. Two wait: `html-elements`, for the routine that reduces an HTML
-page, and `warn-patterns`, for the two warnings of the coverage phase. A row here says a tool *may*
-read that table, never that one does.
+`content-kinds`, `fetch-limits` and `fetch-failures`, by `00_fetch/fetch.py`; `fields`,
+`schema-constants`, `header-items` and `ticket-lines`, by `tickets.py`; and `checks`, `fields`,
+`schema-constants`, `refusal-reasons`, `breaking-terms` and `warn-patterns`, by
+`02_validate/validate.py`, which reads `line-classes` as well, through `snapshot.classify`. One
+waits: `html-elements`, for the routine that reduces an HTML page. A row here says a tool *may* read
+that table, never that one does.
 
 One table Idem ships is deliberately **not** listed here: the fixture manifest of
 `02_validate/00_fixtures/`. It is written in the same grammar and read by the same reader, through

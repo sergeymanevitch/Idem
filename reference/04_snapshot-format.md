@@ -25,9 +25,10 @@ because a converted file could not be written back byte for byte (AD-3): turning
 into LF is done to the body as the server sent it, before anything is written, and never to a
 snapshot file already on disk (Sergey, 2026-09-21).
 
-Five tables below hold everything enumerable about that shape — the header fields, the format
-constants, the line classes, the HTML routine's element lists and the limits fetch works inside. All
-five are in the catalogue, so a tool loads them; none of them is copied into any tool (AD-1).
+Six tables below hold everything enumerable about that shape — the header fields, the format
+constants, the line classes, the HTML routine's element lists, the kinds of content fetch stores or
+refuses, and the limits fetch works inside. All six are in the catalogue, so a tool loads them; none
+of them is copied into any tool (AD-1).
 
 ## The shape of one
 
@@ -50,14 +51,16 @@ sha256: f79ab20d4abfa9d297a92c64036194bc9b53e2dff3e29e8c5a96187150c998ca
 **The four values fetch invents have these forms** (Sergey, 2026-09-21). `retrieved` is the time of
 the fetch in UTC, written `YYYYMMDDTHHMMSSZ` — four digits of year, two of month, two of day, the
 letter `T`, two digits each of hour, minute and second, the letter `Z` — and the same string stands
-in the file name. `routine` is the name of the routine that turned the response into the body,
-`as-served` when the bytes are stored as they came, whatever the response called them.
-`routine_version` is that routine's version as a bare number, `1` today. `sha256` is 64 lower-case
+in the file name. `routine` is the name of the routine that turned the response into the body: the
+`routine` cell of the row of `content-kinds` the response was classified as, below — `as-served`
+when the bytes are stored as they came. `routine_version` is that routine's version as a bare
+number, `1` today. `sha256` is 64 lower-case
 hexadecimal characters. The other four are not invented at all — the URL as it was asked for, the
 URL the body was read from, the status of the response that carried it, and the Content-Type header
 as served, folded lines joined by one space and **empty when the response carried none** — in which
-case the body is stored all the same, because what the server called the bytes is recorded and what
-they are is the reader's judgment. The forms get no check key, and that
+case the body is classified by its bytes alone, and stored when they are a kind fetch stores:
+what the server called the bytes is recorded, and what they are is read from the bytes and the
+kinds below. The forms get no check key, and that
 is a decision rather than an omission: nothing but `fetch.py` writes a snapshot, so a value of the
 wrong form here would be a defect in that tool and not a finding about a document.
 `00_fetch/test_fetch.py` holds this paragraph and what `fetch.py` produces together, so the two
@@ -259,6 +262,64 @@ One thing about this table is not a row of it and cannot be: what happens to an 
 lists. Every other element is normal and kept — its tags go, its text stays — and that is the whole
 of FR-7's "removes markup". This table is the exceptions, not an inventory of HTML.
 
+## What fetch stores, and what it refuses
+
+Every response that arrives whole is classified before it is stored, and its **kind** decides two
+things: whether fetch stores it at all, and under which routine (FR-6). A kind with a name in the
+`routine` cell is stored, and that name is what the snapshot's `routine` field records; a kind whose
+`routine` cell is empty is unsupported, and a response of it is the failed URL `unsupported_type`
+of `05_checks.md` — no snapshot, and the rest of the URLs carry on.
+
+The `media_types` and `signatures` cells are lists, separated by a comma and a space as the
+catalogue separates column names. A media type is written lower-case and is listed by one row
+only. A **signature** is the first bytes of a body, written as upper-case hexadecimal, two
+characters a byte; a signature is never empty. The `rule` cell says in prose what decides the row.
+
+The kind is decided in this order. The first of steps 1 to 3 that decides ends them, and step 4
+runs after them for every body whose kind so far is stored, or not yet found:
+
+1. **A signature decides first.** A signature of any row matched at byte 0 of the body as received
+   decides, whatever the media type says: a PDF served as `text/plain; charset=latin-1` is a PDF.
+2. **Else the media type** — the Content-Type before its first `;`, trimmed of spaces and tabs and
+   lower-cased — decides when a row lists it. So JSON served as `text/plain` is `text`, and stored.
+3. **Else a parse.** When the first byte after a UTF-8 byte-order mark and any leading spaces, tabs,
+   carriage returns and line feeds is `{` or `[`, and the bytes as received parse as JSON whole,
+   the kind is `json`. A body that begins with a bracket and does not parse — a Markdown link on
+   the first line, or brackets nested deeper than the parser goes — is not JSON.
+4. **Then a NUL.** The kind becomes `binary` when the bytes hold a NUL and the response declared
+   no charset, or when the text decoded by the charset it declared holds U+0000 — whatever a
+   listed media type said, so a stored body never holds U+0000 and a tar served as `text/plain` is
+   caught. The `binary` row's `routine` cell then decides, as every row decides its own. So UTF-16
+   with its charset declared is stored, and UTF-16 with none is refused as `binary` and not as
+   `undecodable`.
+5. **Else `text`**, which is what a body nothing above claims is: any other media type whose bytes
+   decode and hold no NUL is stored as `text`.
+
+Steps 1 to 3 and the first half of step 4 read the bytes before they are decoded; the second half
+of step 4 reads the decoded text. So for one URL the refusals come in this order: the status, a
+control character in a header value, a content encoding nobody asked for, the size cap, a body
+shorter than its Content-Length, the kind by bytes, the decode, the kind by text, and an empty body.
+A PDF over the size cap is `too_large`; an empty body served as JSON is `unsupported_type`.
+
+<!-- table: content-kinds -->
+| kind | media_types | signatures | routine | rule |
+| --- | --- | --- | --- | --- |
+| markdown | text/markdown, text/x-markdown |  | as-served | Decided by a media type this row lists. Stored as it was served, one physical line one body line. |
+| text | text/plain |  | as-served | Decided by the media type this row lists, and what a body that nothing else claims is: no signature at byte 0, no listed media type, not JSON by a parse and no NUL. Stored as it was served. |
+| rss | application/rss+xml, application/rdf+xml |  | as-served | Decided by a media type this row lists. A feed is stored as it was served, one physical line one body line however long, and is never reduced. |
+| atom | application/atom+xml |  | as-served | Decided by the media type this row lists, and stored as a feed is. |
+| html | text/html, application/xhtml+xml |  | as-served | Decided by a media type this row lists, and stored as it was served until the routine that reduces a page to text is built. No signature: the sniff that would choose that routine is decided with it, so a page served under no listed media type is text. |
+| pdf | application/pdf | 255044462D |  | Decided by its signature at byte 0, whatever the media type says, or by the media type this row lists. The routine cell is empty: unsupported. |
+| archive | application/zip, application/gzip, application/x-gzip, application/x-tar, application/x-bzip2, application/x-xz, application/x-7z-compressed, application/vnd.rar, application/zstd | 504B0304, 504B0506, 504B0708, 1F8B, 425A68, FD377A585A00, 377ABCAF271C, 526172211A07, 28B52FFD |  | Decided by a signature at byte 0 or by a media type this row lists: zip, an empty zip and a spanned zip, gzip, bzip2, xz, 7z, RAR 4 and RAR 5, and zstd. A tar has no signature at byte 0 and is caught by its NULs, as binary. The routine cell is empty: unsupported. |
+| json | application/json, text/json, application/ld+json, application/problem+json |  |  | Decided by a media type this row lists, or by a parse, which is why the signatures cell is empty: a body whose first character after a byte-order mark and leading white space is an opening brace or bracket, and that parses as JSON whole. The routine cell is empty: unsupported. |
+| binary |  |  |  | Decided by a NUL, which is why the media types and signatures cells are empty: a body that holds a NUL byte and declares no charset, or whose text decoded by the charset it declares holds U+0000. The routine cell is empty: unsupported. |
+
+`fetch.py` reads this table as the contract loads and checks it before any URL is asked for: every
+non-empty `routine` cell names a routine the tool implements and every routine it implements is
+named by a row, every media type is lower-case and listed by one row only, and every signature is
+upper-case hexadecimal of an even length. A cell that fails is a defect of the contract as fetch
+reads it, one `INTERNAL` line at `00_fetch/fetch.py` and exit 2, and nothing is fetched.
+
 ## What fetch will not exceed
 
 These four fix the envelope fetch works inside (AD-12). The unit is in the name and never in the
@@ -278,23 +339,28 @@ a crash, and never a snapshot of the part that arrived in time.
 
 ## What reads these tables
 
-`contract.py` loads all five with the rest of the contract and lints the patterns. **Four of them
+`contract.py` loads all six with the rest of the contract and lints the patterns. **Five of them
 are read by a tool.** `snapshot-header`, `snapshot-constants` and `line-classes` are `snapshot.py`'s,
 which writes a snapshot, reads one back, numbers its lines and classifies them, and holds no field
-name, no count, no separator and no pattern of its own. `fetch-limits` is `00_fetch/fetch.py`'s,
-which asks inside that envelope — the timeout on every network operation, the redirect cap, the
-size cap counted as received, and the User-Agent every request carries — and holds none of the four
-values. The fifth waits for the tool that owns it: `html-elements` is fetch's too, and the routine
-that reads it is not written.
+name, no count, no separator and no pattern of its own. `fetch-limits` and `content-kinds` are
+`00_fetch/fetch.py`'s, which asks inside that envelope — the timeout on every network operation, the
+redirect cap, the size cap counted as received, and the User-Agent every request carries — and
+classifies every response by the kinds, holding none of the four values, no media type and no
+signature. The sixth waits for the tool that owns it: `html-elements` is fetch's too, and the
+routine that reads it is not written.
 
 A number, a name or a pattern that appears in a tool's source as well as in this file is a defect
-and not a convenience (AD-1). There are three exceptions and no more. The strict-table grammar
+and not a convenience (AD-1). There are four exceptions and no more. The strict-table grammar
 `contract.py` must hold in order to read `reference/` at all, which is about the shape of these
 files and never about the shape of a snapshot body. The seven class names `snapshot.py` must hold
-in order to state a condition about more than one line. And **the eight field names of
+in order to state a condition about more than one line. **The eight field names of
 `snapshot-header`, which `fetch.py` must hold** in order to hand a value over for each of them: a
 writer that supplies the values cannot ask without naming the fields, where a reader is handed
-them (Sergey, 2026-09-21). All three are tested from the other side: a test reads the source back
-and fails if anything else of these tables is written in it, and the fetch tests hold those eight
-names against the rows above, both ways, so a field renamed by decision fails there rather than
-quietly writing a header nothing can read.
+them (Sergey, 2026-09-21). And **the name and the version of each routine `fetch.py` implements**
+— today `as-served` and `1` — because a version describes code, and a tool that runs a routine
+cannot ask for it without naming it (Sergey, 2026-09-25); the `routine` cells of `content-kinds`
+are held against those names both ways as the contract loads. All four are tested from the other
+side: a test reads the source back and fails if anything else of these tables is written in it —
+no limit, no media type and no signature, as a string or as bytes — and the fetch tests hold the
+eight field names and the routine names against the rows above, both ways, so a field or a routine
+renamed by decision fails there rather than quietly writing a header nothing can read.

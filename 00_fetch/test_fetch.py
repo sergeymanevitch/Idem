@@ -1,4 +1,4 @@
-"""Tests for 00_fetch/fetch.py - one URL to one numbered, hashed snapshot.
+"""Tests for 00_fetch/fetch.py - one URL, or a file of them, to numbered, hashed snapshots.
 
     python3 -m unittest discover -s 00_fetch -t 00_fetch
 
@@ -11,17 +11,21 @@ and not about `idemlib`. Like a step script, this file puts `lib/` on `sys.path`
 
 WHAT IS WRITTEN HERE AS A LITERAL
 
-Addresses and forms, never a value of a table. The ids of the two tables fetch reads and the names
-of the columns it reads them by; the failure keys, which are what the tool asks by; the eight header
-field names, which are asserted below to be the rows of `snapshot-header` both ways; the forms of
-the four values fetch invents - the timestamp, the routine name, its version and the digest's
-length - which `04_snapshot-format.md` states in prose and which this file holds that file and the
-tool to together. The timeout, the redirect cap, the size cap and the User-Agent are read from
-`fetch-limits`, and every code is read from `fetch-failures`, so a limit or a code changed by
-decision is not typed here either. The last class reads the tool's source back and fails if one of
-them is typed there.
+Addresses and forms, never a value of a table. The ids of the three tables fetch reads and the
+names of the columns it reads them by; the eleven failure keys, which are what the tool asks by;
+the three kinds of `content-kinds` the tool asks by name; the eight header field names, which are
+asserted below to be the rows of `snapshot-header` both ways; the forms of the four values fetch
+invents - the timestamp, the routine name, its version and the digest's length - which
+`04_snapshot-format.md` states in prose and which this file holds that file and the tool to
+together. The timeout, the redirect cap, the size cap and the User-Agent are read from
+`fetch-limits`, every code from `fetch-failures`, and every media type and signature from
+`content-kinds`, so a value changed by decision is not typed here either: a body built to carry a
+signature is built from the cell. Two classes read the tool's source back and fail if one of them
+is typed there. The bodies below that are not built from a cell - a PDF head, a UTF-16 text - are
+what a server sends, and the class that serves them says which row they must land on.
 """
 import ast
+import copy
 import datetime
 import email.message
 import http.server
@@ -47,9 +51,19 @@ sys.path.insert(0, HERE)
 import fetch  # noqa: E402  - the path has to be set first
 from idemlib import contract, snapshot  # noqa: E402  - and so does this
 
-#: The two tables fetch reads, and the columns it reads them by. Addresses, not values.
+#: The three tables fetch reads, and the columns it reads them by. Addresses, not values.
 LIMITS = "fetch-limits"
 FAILURES = "fetch-failures"
+KINDS = "content-kinds"
+MEDIA_TYPES = "media_types"
+SIGNATURES = "signatures"
+ROUTINE_CELL = "routine"
+#: The three kinds the tool asks for by name: what a body nothing claims is, what a parse decides
+#: and what a NUL decides. Keys, and so addresses.
+TEXT = "text"
+JSON = "json"
+BINARY = "binary"
+PDF = "pdf"
 #: The table whose rows are the eight header fields.
 HEADER = "snapshot-header"
 VALUE = "value"
@@ -61,8 +75,7 @@ MAX_REDIRECTS = "max_redirects"
 MAX_BYTES = "max_bytes"
 USER_AGENT = "user_agent"
 
-#: The ten failure keys this tool can raise. `unsupported_type` is the eleventh row of the table and
-#: is not taken here: whatever decodes is stored as served.
+#: The eleven failure keys this tool can raise: every row of the table.
 HTTP_STATUS = "http_status"
 TIMEOUT = "timeout"
 CERTIFICATE = "certificate"
@@ -75,7 +88,7 @@ SNAPSHOT_EXISTS = "snapshot_exists"
 UNREACHABLE = "unreachable"
 UNSUPPORTED_TYPE = "unsupported_type"
 EVERY_KEY = [HTTP_STATUS, TIMEOUT, CERTIFICATE, TOO_LARGE, TOO_MANY_REDIRECTS, UNDECODABLE,
-             EMPTY_BODY, BAD_SCHEME, SNAPSHOT_EXISTS, UNREACHABLE]
+             EMPTY_BODY, BAD_SCHEME, SNAPSHOT_EXISTS, UNREACHABLE, UNSUPPORTED_TYPE]
 
 #: The eight header fields, in the order the table writes them. Asserted below to be its rows, both
 #: ways: fetch hands a value over for each of them, so it cannot ask without naming them.
@@ -132,6 +145,18 @@ def codes():
     """The shipped failure codes: key to code."""
     rows = table(FAILURES).rows
     return dict([(name, rows[name][CODE]) for name in rows])
+
+
+def kinds():
+    """The shipped kinds, as fetch reads them."""
+    return fetch._kinds(SHIPPED)
+
+
+def cell_list(cell):
+    """A list cell of `content-kinds`, split on the catalogue's separator; an empty cell is none."""
+    if cell == "":
+        return []
+    return cell.split(", ")
 
 
 def when(second=0):
@@ -242,7 +267,7 @@ class FetchCase(unittest.TestCase):
 
     def fetch(self, url, now=None, opener=None, directory=None):
         return fetch.fetch_one(url, self.directory if directory is None else directory,
-                               self.limits, when() if now is None else now, opener)
+                               self.limits, when() if now is None else now, opener, kinds())
 
     def fails(self, url, **keywords):
         """The failure fetching this URL raises, or a test failure if it does not raise."""
@@ -382,7 +407,8 @@ class TestOneUrlGivesOneSnapshot(FetchCase):
         self.assertEqual("text/plain", read.header["content_type"])
 
     def test_html_is_stored_as_served_and_is_not_an_unsupported_type(self):
-        """No content classification here: whatever decodes is stored under the one routine."""
+        """The html row names the as-served routine until the routine that reduces a page is
+        built, so a page is stored as it came."""
         url = self.stub.at("/page.html", serve(b"<p>one</p>\n", content_type="text/html"))
         read = snapshot.read(self.read(os.path.basename(self.fetch(url))))
         self.assertEqual("<p>one</p>\n", read.body)
@@ -676,14 +702,16 @@ class TestEveryFailureIsOneCodedLine(FetchCase):
         self.assertEqual(contract.flatten("ftp://example.com/a\tb"), line.split("\t")[1])
         self.assertEqual(contract.flatten("one\ttwo\nthree\r\nfour"), line.split("\t")[2])
 
+    def test_an_unsupported_type_carries_its_code(self):
+        url = self.stub.at("/data.json", serve(b'{"a": 1}\n', content_type="application/json"))
+        fields = self.line_for(url)
+        self.assertEqual(codes()[UNSUPPORTED_TYPE], fields[0])
+        self.assertIn(JSON, fields[2])
+
     def test_every_code_it_can_print_is_a_row_of_the_table(self):
         for key in EVERY_KEY:
             self.assertIn(key, table(FAILURES).rows, key)
-
-    def test_the_one_row_it_never_raises(self):
-        """`unsupported_type` belongs to the tool that classifies content; nothing here takes it."""
-        self.assertIn(UNSUPPORTED_TYPE, table(FAILURES).rows)
-        self.assertNotIn(UNSUPPORTED_TYPE, EVERY_KEY)
+        self.assertEqual(sorted(table(FAILURES).rows), sorted(EVERY_KEY))
 
 
 class TestTheFailuresThemselves(FetchCase):
@@ -961,6 +989,457 @@ class TestTheFailuresThemselves(FetchCase):
         self.assertEqual([], self.files())
 
 
+# --- content is classified by the kinds of the table ---------------------------------------------
+
+
+class TestContentIsClassified(FetchCase):
+    """Given each kind served by the stub, then a stored kind gives a snapshot under the routine its
+    row names, and a refused kind gives the unsupported-type failure and no file. Every media type
+    and every signature is read from the table: a row added by decision is tested here the day it
+    is added."""
+
+    def refused(self, path, body, content_type=None):
+        """The failure this reply raises, which must be the unsupported type, and no file."""
+        url = self.stub.at(path, serve(body, content_type=content_type))
+        failure = self.fails(url)
+        self.assertEqual(UNSUPPORTED_TYPE, failure.key, path + " " + failure.message)
+        self.assertEqual([], self.files())
+        return failure
+
+    def stored(self, path, body, content_type=None, second=0):
+        """The snapshot this reply gives. `second` is counted past the fixed time rather than set as
+        its second, so a table of any length gives each case a name of its own."""
+        url = self.stub.at(path, serve(body, content_type=content_type))
+        now = when() + datetime.timedelta(seconds=second)
+        return snapshot.read(self.read(os.path.basename(self.fetch(url, now=now))))
+
+    def test_every_stored_media_type_is_stored_under_the_routine_of_its_row(self):
+        rows = table(KINDS).rows
+        second = 0
+        tried = 0
+        for kind in rows:
+            if rows[kind][ROUTINE_CELL] == "":
+                continue
+            for media_type in cell_list(rows[kind][MEDIA_TYPES]):
+                second += 1
+                read = self.stored("/stored" + str(second), b"- one\n", media_type, second)
+                self.assertEqual("- one\n", read.body, media_type)
+                self.assertEqual(rows[kind][ROUTINE_CELL], read.header["routine"], media_type)
+                self.assertEqual(fetch.ROUTINES[rows[kind][ROUTINE_CELL]],
+                                 read.header["routine_version"], media_type)
+                tried += 1
+        self.assertTrue(tried)
+
+    def test_every_refused_media_type_is_the_unsupported_type(self):
+        rows = table(KINDS).rows
+        tried = 0
+        for kind in rows:
+            if rows[kind][ROUTINE_CELL] != "":
+                continue
+            for media_type in cell_list(rows[kind][MEDIA_TYPES]):
+                tried += 1
+                failure = self.refused("/refused" + str(tried), b"- one\n", media_type)
+                self.assertIn(kind, failure.message, media_type)
+                self.assertIn(media_type, failure.message)
+        self.assertTrue(tried)
+
+    def test_every_signature_is_the_unsupported_type_whatever_follows(self):
+        """One body per signature cell, built from the cell: no Content-Type, the signature at byte
+        0, then a line of text, so that nothing but the signature can decide."""
+        rows = table(KINDS).rows
+        tried = 0
+        for kind in rows:
+            for signature in cell_list(rows[kind][SIGNATURES]):
+                tried += 1
+                failure = self.refused("/signature" + str(tried),
+                                       bytes.fromhex(signature) + b"- one\n")
+                self.assertIn(kind, failure.message, signature)
+                self.assertIn(signature, failure.message)
+        self.assertTrue(tried)
+
+    def test_a_signature_decides_whatever_the_media_type_says(self):
+        """A PDF served as Latin-1 text is a PDF, and not a failed decode or a stored text."""
+        signature = cell_list(table(KINDS).rows[PDF][SIGNATURES])[0]
+        failure = self.refused("/pdf-as-text", bytes.fromhex(signature) + b"-1.7\n\xe2\xe3\xcf\xd3\n",
+                               "text/plain; charset=latin-1")
+        self.assertIn(PDF, failure.message)
+
+    def test_a_signature_decides_under_a_markdown_type_too(self):
+        signature = cell_list(table(KINDS).rows[PDF][SIGNATURES])[0]
+        self.refused("/pdf-as-md", bytes.fromhex(signature) + b"-1.7\n", MARKDOWN)
+
+    def test_json_by_its_media_type(self):
+        failure = self.refused("/by-header", b'{"a": 1}\n', "application/json")
+        self.assertIn(JSON, failure.message)
+        self.assertIn("application/json", failure.message)
+
+    def test_a_media_type_is_read_before_its_first_parameter(self):
+        """A body no parse and no signature claims, so that the media type alone decides."""
+        self.refused("/parameter", b"- one\n", "application/json; charset=utf-8")
+
+    def test_a_media_type_is_read_in_lower_case(self):
+        self.refused("/case", b"- one\n", "Application/JSON")
+
+    def test_a_media_type_is_trimmed_before_its_parameters(self):
+        self.refused("/padded", b"- one\n", "application/json  ; charset=utf-8")
+
+    def test_a_media_type_is_one_of_the_list_and_not_a_part_of_it(self):
+        """Cut short by one character, a listed media type is listed by nobody: text."""
+        rows = table(KINDS).rows
+        tried = 0
+        for kind in rows:
+            if rows[kind][ROUTINE_CELL] != "":
+                continue
+            for media_type in cell_list(rows[kind][MEDIA_TYPES]):
+                tried += 1
+                read = self.stored("/part" + str(tried), b"- one\n", media_type[:-1], tried)
+                self.assertEqual("- one\n", read.body, media_type)
+        self.assertTrue(tried)
+
+    def test_a_signature_decides_at_byte_zero_and_nowhere_else(self):
+        signature = cell_list(table(KINDS).rows[PDF][SIGNATURES])[0]
+        read = self.stored("/later", b"- one\n" + bytes.fromhex(signature) + b"-1.7\n")
+        self.assertEqual(2, len(read.lines))
+
+    def test_a_json_text_that_is_not_an_object_or_an_array_is_text(self):
+        """The parse is asked only of a body that opens a brace or a bracket: a year alone on a
+        line, or a quoted phrase, parses as JSON and is a changelog line all the same."""
+        for second, served in ((1, b"2026\n"), (2, b'"quoted"\n'), (3, b"true\n")):
+            read = self.stored("/scalar" + str(second), served, None, second)
+            self.assertEqual(served.decode("utf-8"), read.body)
+
+    def test_the_routine_written_is_the_routine_of_the_row(self):
+        """With a second routine granted, the row decides which name and version the header
+        carries - not the one routine there happens to be today."""
+        original = fetch.ROUTINES
+        fetch.ROUTINES = {ROUTINE: ROUTINE_VERSION, "other-routine": "3"}
+        self.addCleanup(setattr, fetch, "ROUTINES", original)
+        tables = copy.deepcopy(dict(SHIPPED))
+        tables[KINDS].rows[TEXT][ROUTINE_CELL] = "other-routine"
+        url = self.stub.at("/other", serve(b"- one\n", content_type="text/plain"))
+        path = fetch.fetch_one(url, self.directory, self.limits, when(), None,
+                               fetch._kinds(tables))
+        read = snapshot.read(self.read(os.path.basename(path)))
+        self.assertEqual("other-routine", read.header["routine"])
+        self.assertEqual("3", read.header["routine_version"])
+
+    def test_json_by_its_bytes(self):
+        failure = self.refused("/by-bytes", b' {"a": 1}\n')
+        self.assertIn(JSON, failure.message)
+        self.assertIn("parse", failure.message)
+
+    def test_json_after_a_byte_order_mark_and_white_space(self):
+        self.refused("/bom-json", BOM.encode("utf-8") + b"\r\n\t[1, 2]\n")
+
+    def test_json_under_a_listed_text_type_is_text(self):
+        """The media type decides before the parse: JSON served as plain text is stored."""
+        read = self.stored("/json-as-text", b'{"a": 1}\n', "text/plain")
+        self.assertEqual('{"a": 1}\n', read.body)
+        self.assertEqual(ROUTINE, read.header["routine"])
+
+    def test_markdown_that_begins_with_a_bracket_is_text(self):
+        read = self.stored("/link", b"[link](x)\n")
+        self.assertEqual("[link](x)\n", read.body)
+
+    def test_brackets_deeper_than_the_parser_goes_are_text_and_no_traceback(self):
+        read = self.stored("/deep", b"[" * 100000)
+        self.assertEqual(1, len(read.lines))
+
+    def test_octet_stream_that_holds_text_is_text(self):
+        read = self.stored("/octet", b"# Changelog\n\n- one\n", "application/octet-stream")
+        self.assertEqual("# Changelog\n\n- one\n", read.body)
+        self.assertEqual("application/octet-stream", read.header["content_type"])
+
+    def test_a_nul_with_no_charset_is_binary(self):
+        failure = self.refused("/nul", b"abc\x00def\n", "application/octet-stream")
+        self.assertIn(BINARY, failure.message)
+        self.assertIn("NUL", failure.message)
+
+    def test_a_tar_is_caught_by_its_nuls(self):
+        header = b"changelog.md" + b"\x00" * 88 + b"0000644\x00" + b"\x00" * 404
+        failure = self.refused("/tar", header + b"- one\n")
+        self.assertIn(BINARY, failure.message)
+
+    def test_utf16_with_its_charset_declared_is_stored(self):
+        read = self.stored("/utf16", "café\n".encode("utf-16"), "text/x-rst; charset=utf-16")
+        self.assertEqual("café\n", read.body)
+
+    def test_utf16_with_no_charset_is_binary_and_not_undecodable(self):
+        failure = self.refused("/utf16-bare", "café\n".encode("utf-16"))
+        self.assertIn(BINARY, failure.message)
+
+    def test_a_declared_charset_whose_text_holds_u0000_is_binary(self):
+        failure = self.refused("/u0000", b"one\x00two\n", "text/x-rst; charset=utf-8")
+        self.assertIn(BINARY, failure.message)
+
+    def test_a_nul_under_a_listed_text_type_is_binary(self):
+        """A stored body never holds U+0000, whatever the media type said."""
+        for second, content_type in ((1, "text/plain"), (2, MARKDOWN), (3, "text/html")):
+            failure = self.refused("/nul-listed" + str(second), b"one\x00two\n", content_type)
+            self.assertIn(BINARY, failure.message, content_type)
+
+    def test_a_tar_under_a_listed_text_type_is_caught_by_its_nuls(self):
+        header = b"changelog.md" + b"\x00" * 88 + b"0000644\x00" + b"\x00" * 404
+        failure = self.refused("/tar-as-text", header + b"- one\n", "text/plain")
+        self.assertIn(BINARY, failure.message)
+
+    def test_utf16_under_a_listed_type_with_its_charset_declared_is_stored(self):
+        read = self.stored("/utf16-listed", "café\n".encode("utf-16"),
+                           "text/plain; charset=utf-16")
+        self.assertEqual("café\n", read.body)
+
+    def patched_kinds(self, change):
+        tables = copy.deepcopy(dict(SHIPPED))
+        change(tables[KINDS].rows)
+        return fetch._kinds(tables)
+
+    def test_the_binary_row_decides_a_nul_body_as_every_row_decides_its_own(self):
+        """Both NUL paths give the binary kind and let its routine cell decide: a row naming a
+        routine stores the body under it."""
+        def change(rows):
+            rows[BINARY][ROUTINE_CELL] = ROUTINE
+        found = self.patched_kinds(change)
+        for second, (served, content_type) in enumerate((
+                (b"one\x00two\n", "application/octet-stream"),
+                (b"one\x00two\n", "text/plain; charset=utf-8"))):
+            url = self.stub.at("/nul-stored" + str(second), serve(served, content_type=content_type))
+            path = fetch.fetch_one(url, self.directory, self.limits, when(second), None, found)
+            read = snapshot.read(self.read(os.path.basename(path)))
+            self.assertEqual(ROUTINE, read.header["routine"], content_type)
+
+    def test_a_text_row_that_names_no_routine_refuses_what_nothing_claims(self):
+        def change(rows):
+            rows[TEXT][ROUTINE_CELL] = ""
+        found = self.patched_kinds(change)
+        url = self.stub.at("/unclaimed", serve(b"- one\n", content_type=None))
+        try:
+            fetch.fetch_one(url, self.directory, self.limits, when(), None, found)
+            self.fail("an unclaimed body was stored under a text row with no routine")
+        except fetch.FetchFailure as failure:
+            self.assertEqual(UNSUPPORTED_TYPE, failure.key)
+            self.assertIn(TEXT, failure.message)
+        self.assertEqual([], self.files())
+
+    def test_a_body_nothing_claims_is_text(self):
+        read = self.stored("/nothing", b"- one\n", "text/x-rst")
+        self.assertEqual(ROUTINE, read.header["routine"])
+
+    def test_a_refused_kind_over_the_cap_is_too_large(self):
+        """The size cap is read before the kind."""
+        self.patch_limits(max_bytes=10)
+        url = self.stub.at("/big.pdf", serve(b"x" * 11, content_type="application/pdf"))
+        self.assertEqual(TOO_LARGE, self.fails(url).key)
+
+    def test_an_empty_body_under_a_refused_type_is_the_unsupported_type(self):
+        """The kind is read before the body is found empty."""
+        self.refused("/empty.json", b"", "application/json")
+
+    def test_an_empty_body_nothing_claims_is_still_empty(self):
+        url = self.stub.at("/empty-bare", serve(b"", content_type=None))
+        self.assertEqual(EMPTY_BODY, self.fails(url).key)
+
+    def test_a_bad_status_is_read_before_the_kind(self):
+        url = self.stub.at("/gone.json", serve(b"{}", content_type="application/json",
+                                               status=404))
+        self.assertEqual(HTTP_STATUS, self.fails(url).key)
+
+    def test_classify_reads_steps_one_to_three_and_leaves_the_rest_to_the_bytes(self):
+        found = kinds()
+        pdf = bytes.fromhex(cell_list(table(KINDS).rows[PDF][SIGNATURES])[0])
+        self.assertEqual(PDF, fetch.classify(found, "text/plain", pdf)[0].name)
+        self.assertEqual(TEXT, fetch.classify(found, "text/plain", b"{}")[0].name)
+        self.assertEqual(JSON, fetch.classify(found, "", b"{}")[0].name)
+        self.assertEqual((None, None), fetch.classify(found, "", b"- one\n"))
+        self.assertEqual((None, None), fetch.classify(found, "", b"[not json\n"))
+
+
+# --- a file of URLs --------------------------------------------------------------------------------
+
+
+class TestAUrlFile(FetchCase):
+    """Given a file of URLs, every URL is attempted in order and reported in one line; blank and
+    `#` lines are skipped; a repeated URL is fetched once and reported; the exit is the highest
+    code seen."""
+
+    def setUp(self):
+        FetchCase.setUp(self)
+        self.lists = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.lists, True)
+        self.good = self.stub.at("/one.md", serve(b"- one\n"))
+        self.other = self.stub.at("/two.md", serve(b"- two\n"))
+
+    def url_file(self, data, name="urls.txt"):
+        path = os.path.join(self.lists, name)
+        handle = open(path, "wb")
+        try:
+            handle.write(data)
+        finally:
+            handle.close()
+        return path
+
+    def slice_lines(self):
+        return ["# the example sources", self.good, "", "ftp://example.com/x", self.other,
+                self.good]
+
+    def check_the_slice(self, data):
+        code, lines = self.run_main(["--out", self.directory, "--urls", self.url_file(data)])
+        self.assertEqual(1, code, lines)
+        self.assertEqual(4, len(lines), lines)
+        self.assertEqual(os.path.join(self.directory, self.files()[0]), lines[0])
+        self.assertEqual([codes()[BAD_SCHEME], "ftp://example.com/x"], lines[1].split("\t")[:2])
+        self.assertIn("two", lines[2])
+        self.assertEqual(["WARN", self.good, "line 6 repeats line 2; not fetched again"],
+                         lines[3].split("\t"))
+        self.assertEqual(2, len(self.files()))
+        self.assertEqual(["/one.md", "/two.md"], [path for path, _headers in self.stub.seen])
+
+    def test_the_slice(self):
+        self.check_the_slice(("\n".join(self.slice_lines()) + "\n").encode("utf-8"))
+
+    def test_the_slice_with_crlf_and_a_byte_order_mark(self):
+        self.check_the_slice((BOM + "\r\n".join(self.slice_lines()) + "\r\n").encode("utf-8"))
+
+    def test_the_slice_with_lone_carriage_returns_and_no_last_line_ending(self):
+        self.check_the_slice("\r".join(self.slice_lines()).encode("utf-8"))
+
+    def test_spaces_and_tabs_around_a_line_are_stripped_and_an_indented_hash_is_a_comment(self):
+        data = ("  \t# a note\n\t" + self.good + "  \n \t \n").encode("utf-8")
+        code, lines = self.run_main(["--out", self.directory, "--urls", self.url_file(data)])
+        self.assertEqual(0, code, lines)
+        self.assertEqual(1, len(lines))
+        self.assertEqual(1, len(self.files()))
+
+    def test_every_url_good_is_exit_zero(self):
+        data = (self.good + "\n" + self.other + "\n").encode("utf-8")
+        code, lines = self.run_main(["--out", self.directory, "--urls", self.url_file(data)])
+        self.assertEqual(0, code)
+        self.assertEqual(2, len(lines))
+        self.assertEqual(2, len(self.files()))
+
+    def test_a_repeat_is_not_a_failure(self):
+        data = (self.good + "\n" + self.good + "\n").encode("utf-8")
+        code, lines = self.run_main(["--out", self.directory, "--urls", self.url_file(data)])
+        self.assertEqual(0, code)
+        self.assertEqual(["WARN", self.good, "line 2 repeats line 1; not fetched again"],
+                         lines[1].split("\t"))
+        self.assertEqual(1, len(self.stub.seen))
+
+    def test_a_file_that_holds_no_url_is_usage(self):
+        path = self.url_file(b"# nothing here\n\n   \n#\n")
+        code, lines = self.run_main(["--out", self.directory, "--urls", path])
+        self.assertEqual(2, code)
+        self.assertEqual(1, len(lines))
+        self.assertNotIn("\t", lines[0])
+        self.assertIn(path, lines[0])
+        self.assertEqual([], self.stub.seen)
+
+    def test_a_file_that_is_not_there_is_usage(self):
+        path = os.path.join(self.lists, "missing.txt")
+        code, lines = self.run_main(["--out", self.directory, "--urls", path])
+        self.assertEqual(2, code)
+        self.assertEqual(1, len(lines))
+        self.assertIn(path, lines[0])
+        self.assertNotIn("\t", lines[0])
+
+    def test_a_file_that_is_not_utf8_is_usage(self):
+        path = self.url_file(b"\xff\xfe" + self.good.encode("utf-16-le"))
+        code, lines = self.run_main(["--out", self.directory, "--urls", path])
+        self.assertEqual(2, code)
+        self.assertEqual(1, len(lines))
+        self.assertIn(path, lines[0])
+        self.assertEqual([], self.stub.seen)
+
+    def test_a_directory_is_not_a_url_file(self):
+        code, lines = self.run_main(["--out", self.directory, "--urls", self.lists])
+        self.assertEqual(2, code)
+        self.assertIn(self.lists, lines[0])
+
+    def test_a_url_and_a_url_file_together_are_usage(self):
+        path = self.url_file((self.good + "\n").encode("utf-8"))
+        code, lines = self.run_main(["--out", self.directory, "--urls", path, self.other])
+        self.assertEqual(2, code)
+        self.assertTrue(lines[0].startswith("usage"), lines[0])
+        self.assertEqual([], self.stub.seen)
+
+    def test_urls_with_no_value_and_urls_twice_are_usage(self):
+        path = self.url_file((self.good + "\n").encode("utf-8"))
+        for argv in (["--urls"], ["--urls", path, "--urls", path]):
+            code, lines = self.run_main(["--out", self.directory] + argv)
+            self.assertEqual(2, code, argv)
+            self.assertTrue(lines[0].startswith("usage"), lines[0])
+        self.assertEqual([], self.stub.seen)
+
+    def test_one_url_that_crashes_does_not_stop_the_rest(self):
+        third = self.stub.at("/three.md", serve(b"- three\n"))
+        data = (self.good + "\n" + self.other + "\n" + third + "\n").encode("utf-8")
+        original = fetch.fetch_one
+        calls = []
+
+        def second_crashes(url, *arguments):
+            calls.append(url)
+            if len(calls) == 2:
+                raise RuntimeError("injected")
+            return original(url, *arguments)
+
+        fetch.fetch_one = second_crashes
+        self.addCleanup(setattr, fetch, "fetch_one", original)
+        code, lines = self.run_main(["--out", self.directory, "--urls", self.url_file(data)])
+        self.assertEqual(2, code)
+        self.assertEqual(3, len(lines), lines)
+        self.assertEqual(contract.INTERNAL, lines[1].split("\t")[0])
+        self.assertIn("one", lines[0])
+        self.assertIn("three", lines[2])
+        self.assertEqual(2, len(self.files()))
+
+    def test_a_failure_after_an_internal_line_leaves_the_exit_at_two(self):
+        data = (self.good + "\nftp://example.com/x\n").encode("utf-8")
+        original = fetch.fetch_one
+        calls = []
+
+        def first_crashes(url, *arguments):
+            calls.append(url)
+            if len(calls) == 1:
+                raise RuntimeError("injected")
+            return original(url, *arguments)
+
+        fetch.fetch_one = first_crashes
+        self.addCleanup(setattr, fetch, "fetch_one", original)
+        code, lines = self.run_main(["--out", self.directory, "--urls", self.url_file(data)])
+        self.assertEqual(2, code)
+        self.assertEqual(codes()[BAD_SCHEME], lines[1].split("\t")[0])
+
+    def test_two_queries_of_one_path_in_one_second_ask_for_one_name(self):
+        """The slug drops the query, so the second is a name already on disk - a recorded limit."""
+        first = self.stub.at("/p?page=1", serve(b"- one\n"))
+        second = self.stub.at("/p?page=2", serve(b"- two\n"))
+        original = fetch._now
+        fetch._now = lambda: when()
+        self.addCleanup(setattr, fetch, "_now", original)
+        data = (first + "\n" + second + "\n").encode("utf-8")
+        code, lines = self.run_main(["--out", self.directory, "--urls", self.url_file(data)])
+        self.assertEqual(1, code)
+        self.assertEqual(codes()[SNAPSHOT_EXISTS], lines[1].split("\t")[0])
+        self.assertEqual(1, len(self.files()))
+
+    def test_a_single_url_is_taken_as_given(self):
+        """Not stripped and not read as a comment: a `#` given on the command line is a URL that
+        fails, with a code, and not a line skipped."""
+        code, lines = self.run_main(["--out", self.directory, "# not a comment"])
+        self.assertEqual(1, code)
+        self.assertEqual(codes()[BAD_SCHEME], lines[0].split("\t")[0])
+
+    def test_read_url_file_gives_each_url_with_its_line(self):
+        path = self.url_file(BOM.encode("utf-8") + b"# c\r\n a \r\n\r\nb\rb\n")
+        self.assertEqual([(2, "a"), (4, "b"), (5, "b")], fetch.read_url_file(path))
+
+    def test_a_warning_line_is_flattened(self):
+        url = "http://example.com/a\tb"
+        line = fetch.warning_line(url, 3, 1)
+        self.assertEqual(3, len(line.split("\t")))
+        self.assertEqual(["WARN", contract.flatten(url), "line 3 repeats line 1; not fetched again"],
+                         line.split("\t"))
+
+
 # --- the tool that could not run ------------------------------------------------------------------
 
 
@@ -1018,7 +1497,7 @@ class TestTheToolThatCouldNotRun(FetchCase):
 
     def test_the_usage_line_names_the_grammar(self):
         line = self.usage([])
-        for part in ("--out", "<url>", "http"):
+        for part in ("--out", "<url>", "--urls", "http"):
             self.assertIn(part, line, part)
 
     def test_an_interpreter_below_the_floor(self):
@@ -1249,9 +1728,11 @@ class TestTheFormsTheFileStates(FetchCase):
 
 
 class TestTheToolNamesNothingTheTablesOwn(FetchCase):
-    """AD-1 from the other side. The eight header field names are the third sanctioned exception
-    (Sergey, 2026-09-21): fetch hands a value over for each field, so it cannot ask without naming
-    them. Every limit, every User-Agent and every code is read at run time."""
+    """AD-1 from the other side. Fetch holds two sanctioned exceptions: the eight header field names
+    (Sergey, 2026-09-21), because fetch hands a value over for each field and cannot ask without
+    naming them, and the names and versions of the routines it implements (Sergey, 2026-09-25).
+    Every limit, every User-Agent, every code, every media type and every signature is read at run
+    time."""
 
     def source(self):
         handle = io.open(os.path.abspath(fetch.__file__), "r", encoding="utf-8")
@@ -1261,16 +1742,7 @@ class TestTheToolNamesNothingTheTablesOwn(FetchCase):
             handle.close()
 
     def literals(self):
-        strings = []
-        numbers = []
-        for node in ast.walk(ast.parse(self.source())):
-            if isinstance(node, ast.Constant):
-                if isinstance(node.value, str):
-                    strings.append(node.value)
-                elif isinstance(node.value, bool):
-                    continue
-                elif isinstance(node.value, int):
-                    numbers.append(node.value)
+        strings, numbers, _data = tool_literals()
         return strings, numbers
 
     def test_the_eight_names_it_holds_are_the_rows_of_the_table_both_ways(self):
@@ -1278,14 +1750,15 @@ class TestTheToolNamesNothingTheTablesOwn(FetchCase):
         self.assertEqual(sorted(fetch.FIELDS), sorted(table(HEADER).rows))
 
     def test_the_keys_it_asks_by_are_the_rows_of_the_table_both_ways(self):
-        """A key is an address, so the tool may write one - but only one that is there. Ten of the
-        eleven rows: the unsupported content type belongs to the tool that classifies content, and
-        a key written here that no row carries would raise a KeyError on the failure it names."""
+        """A key is an address, so the tool may write one - but only one that is there. All eleven
+        rows: a key written here that no row carries would raise a KeyError on the failure it
+        names, and a row no key asks for would be a failure nothing can raise."""
         asked = set([fetch.HTTP_STATUS, fetch.TIMEOUT, fetch.CERTIFICATE, fetch.TOO_LARGE,
                      fetch.TOO_MANY_REDIRECTS, fetch.UNDECODABLE, fetch.EMPTY_BODY,
-                     fetch.BAD_SCHEME, fetch.SNAPSHOT_EXISTS, fetch.UNREACHABLE])
+                     fetch.BAD_SCHEME, fetch.SNAPSHOT_EXISTS, fetch.UNREACHABLE,
+                     fetch.UNSUPPORTED_TYPE])
         self.assertEqual(set(EVERY_KEY), asked)
-        self.assertEqual(set(table(FAILURES).rows) - set([UNSUPPORTED_TYPE]), asked)
+        self.assertEqual(set(table(FAILURES).rows), asked)
         for key in asked:
             self.assertIn(key, codes())
 
@@ -1389,6 +1862,160 @@ class TestTheToolNamesNothingTheTablesOwn(FetchCase):
         self.assertNotIn("hashlib", text)
 
 
+class TestTheKindsTable(FetchCase):
+    """The table fetch classifies by, from the tool's side: no media type and no signature of it is
+    written in the tool, as a string or as bytes; the kinds the tool asks for by name are rows; the
+    routine names are the seventh exception to AD-1 and are held against the table both ways; and a
+    cell the tool cannot use stops it before any URL is asked for."""
+
+    def test_no_media_type_is_written_in_the_tool(self):
+        strings, _numbers, _data = tool_literals()
+        rows = table(KINDS).rows
+        tried = 0
+        for kind in rows:
+            for media_type in cell_list(rows[kind][MEDIA_TYPES]):
+                tried += 1
+                for literal in strings:
+                    self.assertNotIn(media_type, literal, kind)
+        self.assertTrue(tried)
+
+    def test_no_signature_is_written_in_the_tool_as_hex_or_as_bytes(self):
+        strings, _numbers, data = tool_literals()
+        self.assertTrue(data, "the sweep of bytes literals found none, so it is doing nothing")
+        rows = table(KINDS).rows
+        tried = 0
+        for kind in rows:
+            for signature in cell_list(rows[kind][SIGNATURES]):
+                tried += 1
+                raw = bytes.fromhex(signature)
+                for literal in strings:
+                    self.assertNotIn(signature, literal.upper(), kind)
+                if max(bytearray(raw)) < 128:
+                    ascii_form = raw.decode("ascii")
+                    for literal in strings:
+                        self.assertNotIn(ascii_form, literal, kind + " " + repr(literal))
+                for literal in data:
+                    self.assertFalse(literal.startswith(raw), kind + " " + repr(literal))
+                    self.assertNotIn(raw, literal, kind)
+                    for length in range(2, len(raw) + 1):
+                        self.assertFalse(literal.startswith(raw[:length]),
+                                         kind + " " + repr(literal))
+        self.assertTrue(tried)
+
+    def test_the_kinds_it_asks_for_by_name_are_rows(self):
+        for name in (fetch.TEXT, fetch.JSON, fetch.BINARY):
+            self.assertIn(name, table(KINDS).rows, name)
+        self.assertEqual([TEXT, JSON, BINARY], [fetch.TEXT, fetch.JSON, fetch.BINARY])
+
+    def test_the_routines_it_implements_are_the_routine_cells_both_ways(self):
+        rows = table(KINDS).rows
+        named = set([rows[kind][ROUTINE_CELL] for kind in rows]) - set([""])
+        self.assertEqual(named, set(fetch.ROUTINES))
+        self.assertEqual({ROUTINE: ROUTINE_VERSION}, fetch.ROUTINES)
+
+    def test_the_rows_load_in_the_order_the_table_writes_them(self):
+        found = kinds()
+        self.assertEqual(list(table(KINDS).rows), [kind.name for kind in found.rows])
+        self.assertEqual(TEXT, found.named[TEXT].name)
+
+    def broken(self, change):
+        """Run the tool on a contract whose kinds table this function changed: exit 2, one internal
+        line pointing into the tool, and nothing asked for."""
+        tables = copy.deepcopy(dict(SHIPPED))
+        change(tables[KINDS].rows)
+        original = contract.load
+        contract.load = lambda root=None: tables
+        self.addCleanup(setattr, contract, "load", original)
+        url = self.stub.at("/never.md", serve(b"- one\n"))
+        code, lines = self.run_main(["--out", self.directory, url])
+        self.assertEqual(2, code, lines)
+        self.assertEqual(1, len(lines), lines)
+        fields = lines[0].split("\t")
+        self.assertEqual(contract.INTERNAL, fields[0])
+        self.assertTrue(re.match("^00_fetch/fetch[.]py:[0-9]+$", fields[1]), fields[1])
+        self.assertEqual([], self.stub.seen)
+        self.assertEqual([], self.files())
+        return fields[2]
+
+    def test_a_routine_the_tool_does_not_implement(self):
+        def change(rows):
+            rows[TEXT][ROUTINE_CELL] = "no-such"
+        self.assertIn("no-such", self.broken(change))
+
+    def test_a_routine_the_tool_implements_that_no_row_names(self):
+        def change(rows):
+            for kind in rows:
+                rows[kind][ROUTINE_CELL] = ""
+        self.assertIn(ROUTINE, self.broken(change))
+
+    def test_a_signature_of_odd_length(self):
+        def change(rows):
+            rows[PDF][SIGNATURES] = "255044462"
+        self.assertIn("even length", self.broken(change))
+
+    def test_a_signature_in_lower_case(self):
+        def change(rows):
+            rows[PDF][SIGNATURES] = "255044462d"
+        self.broken(change)
+
+    def test_a_signature_that_is_not_hex(self):
+        def change(rows):
+            rows[PDF][SIGNATURES] = "2550ZZ"
+        self.assertIn("2550ZZ", self.broken(change))
+
+    def test_an_empty_signature_in_a_list(self):
+        def change(rows):
+            rows[PDF][SIGNATURES] = "255044462D, "
+        self.broken(change)
+
+    def test_a_media_type_not_in_lower_case(self):
+        def change(rows):
+            rows[PDF][MEDIA_TYPES] = "application/PDF"
+        self.broken(change)
+
+    def test_a_media_type_listed_by_two_rows(self):
+        def change(rows):
+            rows[PDF][MEDIA_TYPES] = "application/pdf, text/plain"
+        self.assertIn("text/plain", self.broken(change))
+
+    def test_a_media_type_listed_twice_by_one_row(self):
+        def change(rows):
+            rows[PDF][MEDIA_TYPES] = "application/pdf, application/pdf"
+        self.broken(change)
+
+    def test_an_empty_media_type_in_a_list(self):
+        def change(rows):
+            rows[PDF][MEDIA_TYPES] = "application/pdf, "
+        self.broken(change)
+
+    def test_a_kind_the_tool_asks_for_by_name_that_is_gone(self):
+        for name in (TEXT, JSON, BINARY):
+            def change(rows, name=name):
+                del rows[name]
+            self.assertIn(name, self.broken(change), name)
+
+    def test_a_signature_listed_by_two_rows(self):
+        def change(rows):
+            rows[BINARY][SIGNATURES] = cell_list(rows[PDF][SIGNATURES])[0]
+        self.broken(change)
+
+    def test_a_signature_that_is_a_prefix_of_another_rows(self):
+        def change(rows):
+            rows[BINARY][SIGNATURES] = cell_list(rows[PDF][SIGNATURES])[0][:4]
+        self.broken(change)
+
+    def test_a_signature_another_rows_is_a_prefix_of(self):
+        def change(rows):
+            rows[BINARY][SIGNATURES] = cell_list(rows[PDF][SIGNATURES])[0] + "00"
+        self.broken(change)
+
+    def test_a_media_type_holding_a_parameter_a_space_or_a_tab(self):
+        for cell in ("application/pdf;q=1", "application/ pdf", "application/\tpdf"):
+            def change(rows, cell=cell):
+                rows[PDF][MEDIA_TYPES] = cell
+            self.broken(change)
+
+
 # --- small helpers --------------------------------------------------------------------------------
 
 
@@ -1398,6 +2025,22 @@ def text_of(path):
         return handle.read()
     finally:
         handle.close()
+
+
+def tool_literals():
+    """The string, number and bytes constants of `fetch.py`, as three lists."""
+    strings = []
+    numbers = []
+    data = []
+    for node in ast.walk(ast.parse(text_of(os.path.abspath(fetch.__file__)))):
+        if isinstance(node, ast.Constant):
+            if isinstance(node.value, str):
+                strings.append(node.value)
+            elif isinstance(node.value, bytes):
+                data.append(node.value)
+            elif isinstance(node.value, int) and not isinstance(node.value, bool):
+                numbers.append(node.value)
+    return strings, numbers, data
 
 
 def refused_url():

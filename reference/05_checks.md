@@ -387,6 +387,9 @@ carries a code of `checks` all the same, amended into AD-6 by Sergey on 2026-09-
 one field longer than a failure line, with `WARN` first so that nothing has to guess which it is
 reading. A warning's code **counts** in the expected set of a fixture: the manifest says what a file
 raises, and a warning it raised and nobody expected is as much a surprise as a failure would be.
+That form is the validator's. Fetch has one warning of its own, a URL a file of URLs repeats, and
+it is three fields with no code, the second field a URL — the carve-out stated under **Where a
+fetch failure is coded** below.
 
 Three rows of `checks` are warnings — `warn_date`, `warn_breaking` and `warn_unbound` — they stand
 last in the table, and the phase illustration gives them a row of their own. No **column** marks
@@ -456,23 +459,29 @@ against a stub server and a temporary directory, one named test per row.
 | too_large | TOO_LARGE | the body is more bytes than max_bytes, counted as received | FR-2 |
 | too_many_redirects | TOO_MANY_REDIRECTS | the URL redirected more times than max_redirects | FR-2 |
 | undecodable | UNDECODABLE | the response cannot be turned into text as it was served: the bytes do not decode by the charset the response declared, the charset it declared is not one Python knows, a header value holds a control character, or the body came under a Content-Encoding nobody asked for | FR-2 |
-| unsupported_type | UNSUPPORTED_TYPE | the content is JSON, a PDF, an archive or a binary, and no routine turns it into a body | FR-2 |
+| unsupported_type | UNSUPPORTED_TYPE | the response's kind, by the content-kinds table of 04_snapshot-format.md, names no routine — JSON, a PDF, an archive or a binary today | FR-2, FR-6 |
 | empty_body | EMPTY_BODY | the body is empty after reduction, which is what a page needing JavaScript reduces to | FR-2 |
 | bad_scheme | BAD_SCHEME | the URL's scheme is neither http nor https | FR-1 |
 | snapshot_exists | SNAPSHOT_EXISTS | a snapshot of that name is already on disk. Fetch never overwrites one; a refetch is a new file | FR-5 |
 | unreachable | UNREACHABLE | no whole response came back: a URL that cannot be parsed or names no host, a name that does not resolve, a refused connection, a protocol error, a read that broke, or a body shorter than its Content-Length | FR-2 |
 
 Every one of them is a **failed URL**: reported, skipped, no snapshot written, and the remaining
-URLs carry on. Fetch exits non-zero if any URL failed (FR-2). **No tool raises `unsupported_type`
-yet**: `fetch.py` classifies no content and stores whatever decodes as served, so the row waits for
-the classification that would choose a routine. None of them is ever a crash, and none
-of them is ever a snapshot of the part that arrived.
+URLs carry on. Fetch exits non-zero if any URL failed (FR-2). **`fetch.py` raises all eleven**:
+`unsupported_type` is raised for a response whose kind, by the `content-kinds` table of
+`04_snapshot-format.md`, names no routine — decided by a signature at byte 0, by a media type, by a
+parse that finds JSON or by a NUL — and its message names the kind and what decided it. None of them
+is ever a crash, and none of them is ever a snapshot of the part that arrived.
 
 **A fetch failure line points at a URL, not at a line of a file.** Its second field is the URL as it
 was given, flattened like every other field, and carries no `:line` — there is no file to point
 into, because nothing was written (AD-6, amended by Sergey on 2026-09-21). That is the one
 difference from the form the section above states for a check, and it is what tells the two apart at
 a glance.
+
+**A fetch warning is not a failure and carries no code.** A URL that a file of URLs repeats is not
+fetched again, and it is reported as `WARN<TAB>url<TAB>message` — three fields, the URL flattened as
+a failed one is, and no code, because no table has a row for a repeat and nothing failed (AD-6,
+amended by Sergey on 2026-09-25). It leaves the exit where the other URLs put it.
 
 ## Rules that get no key
 
@@ -565,7 +574,7 @@ that appears in a tool's source as well as in this file is a defect and not a co
 excepting `CONTRACT_TABLE` and `INTERNAL`, for the reason stated above.
 
 **A key is an address and a code is a value** (Sergey, 2026-09-21). A tool that asks for a row has
-to name it, so the ten keys of `fetch-failures` that `fetch.py` can raise are written in its
+to name it, so the eleven keys of `fetch-failures` that `fetch.py` can raise are written in its
 source; what stands in the row — the code a person reads in a failure line — is read as the
 contract loads and is written nowhere. The sweep in `lib/tests/test_checks.py` holds both halves:
 no code of either table appears in any tool, no key of `checks` appears in one, and a key of

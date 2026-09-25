@@ -1,11 +1,15 @@
 # 00_fetch — URL to snapshot
 
 One job: fetch a changelog and store it as plain text with every line numbered. `fetch.py` is built
-and takes **one** URL; a file of many URLs is not built yet.
+and takes one URL, or a file of them.
 
 ## Inputs
-- Working: one `http` or `https` URL — `python3 00_fetch/fetch.py [--out DIR] <url>`.
-- Reference: `../reference/04_snapshot-format.md`, for the limits fetch works inside;
+- Working: one `http` or `https` URL, or a file of them one a line —
+  `python3 00_fetch/fetch.py [--out DIR] (<url> | --urls FILE)`. A URL file is UTF-8; spaces and
+  tabs around a line are stripped, an empty line and a line starting `#` are skipped, and a line
+  repeating an earlier URL is not fetched again. A URL on the command line is taken as given.
+- Reference: `../reference/04_snapshot-format.md`, for the limits fetch works inside and the
+  `content-kinds` table that decides what it stores;
   `../reference/05_checks.md`, for the code of every failed URL; `../lib/idemlib/`.
 
 ## Process
@@ -17,29 +21,51 @@ content encoding and ignores proxies, so the bytes counted are the body's. Certi
 is the default and is never relaxed; nothing is ever retried unverified. No model is involved, and
 after decoding nothing is edited, reordered or dropped.
 
-**Whatever decodes is stored as served**, HTML included, under the routine name `as-served`. There
-is no content classification here and no unsupported-type failure: the routine that reduces HTML,
-and the classification that would choose it, are not built. What the response called the bytes is
-recorded in `content_type`, empty when it said nothing, and what they are is the reader's judgment.
+**Every response is classified before it is decoded**, by the `content-kinds` table and in the
+order `04_snapshot-format.md` states: a signature at byte 0 decides whatever the media type says,
+then a media type the table lists, then a parse that finds JSON, then — for every body that would
+be stored — a NUL, in the bytes when no charset was declared, in the decoded text when one was,
+and what is left is text. Markdown, plain text, RSS, Atom and HTML are stored as served, under the
+routine name `as-served`, and so is any other media type whose bytes decode and hold no NUL, as
+`text`; a stored body never holds U+0000. JSON, a PDF, an archive and a binary are the failed URL
+`UNSUPPORTED_TYPE`, whose message names the kind and what
+decided it. HTML is stored as served because the routine that reduces it, and the sniff that would
+choose it, are not built. What the response called the bytes is recorded in `content_type`, empty
+when it said nothing.
 
 ## Outputs
 - `00_snapshots/<host-path-slug>-<retrieved UTC>.txt` — one per URL, created exclusively, never
-  overwritten. Three are there, the shipped examples; `00_snapshots/CONTEXT.md` names them. A refetch is a new file beside the old one; **two fetches of one URL inside one
-  second ask for one name, and the second of them is a failed URL** rather than a name made unique
-  behind a reader's back.
-- Nothing at all for a failed URL: one coded line on stdout, `CODE<TAB>url<TAB>message`, and exit 1.
-  Exit 0 prints the path written — **relative to the Idem root when the file is inside the
-  repository, and whole when it is not**, because a ladder of dots out of the root names a file no
-  better than its own path does. Exit 2 is a tool that could not run — bad usage, an interpreter
-  below the floor, a contract that cannot be read, or an uncaught exception, which is one internal
-  line and never a traceback.
+  overwritten. Three are there, the shipped examples; `00_snapshots/CONTEXT.md` names them. A
+  refetch is a new file beside the old one; **two fetches of one URL inside one second ask for one
+  name, and the second of them is a failed URL** rather than a name made unique behind a reader's
+  back. The slug leaves the query out, so in one URL file, `?page=1`, `?page=2`, … of one path
+  collide when fetched inside one second, and every one after the first is `SNAPSHOT_EXISTS`: the
+  name is host and path by the snapshot format, and a digest of the query in it is not built. The
+  workaround is one file per page, run separately, or no more than one such URL per second. A repeat
+  in a URL file is the line as written, so two spellings of one URL — `Example.com` and
+  `example.com`, or one with a fragment and one without — are two fetches, and the second inside one
+  second is `SNAPSHOT_EXISTS`.
+- One stdout line per URL, in the order given: the path written — **relative to the Idem root when
+  the file is inside the repository, and whole when it is not**, because a ladder of dots out of
+  the root names a file no better than its own path does; for a failed URL, which writes nothing,
+  `CODE<TAB>url<TAB>message`; for a repeated one, `WARN<TAB>url<TAB>line N repeats line M; not
+  fetched again`, which is no failure; and for a URL that met an uncaught exception, one internal
+  line and never a traceback. A failed URL never stops the rest.
+- The exit is the highest seen: 0 when every URL gave a snapshot, 1 when any failed, 2 when one met
+  an internal error — its line is `INTERNAL`, the rest are still fetched and their snapshots are on
+  disk — or the tool could not run at all — bad usage, a URL file that cannot be
+  read, is not UTF-8 or holds no URL, an interpreter below the floor, a contract that cannot be
+  read, or a `content-kinds` cell the tool cannot use.
 
 ## What the tool holds, and what it reads
-Every limit, every User-Agent and every failure code is read from the contract as it loads. Written
-in `fetch.py`: the two table ids and the two column names it reads them by, the ten failure keys it
-asks a row by — a key is an address, the code that row carries is the value — and **the eight
-header field names**, which is the one exception `04_snapshot-format.md` grants it, because a writer
-that supplies a value for each field cannot ask without naming them.
+Every limit, every User-Agent, every failure code, every media type and every signature is read
+from the contract as it loads. Written in `fetch.py`: the three table ids and the column names it
+reads them by, the eleven failure keys it asks a row by — a key is an address, the code that row
+carries is the value — the three kinds it asks for by name, `text`, `json` and `binary`, and two
+exceptions `04_snapshot-format.md` grants it: **the eight header field names**, because a writer
+that supplies a value for each field cannot ask without naming them, and **the name and version of
+each routine it implements**, today `as-served` and `1`, held against the `routine` cells of
+`content-kinds` both ways as the contract loads.
 
 ## Tests
 `python3 -m unittest discover -s 00_fetch -t 00_fetch`, from the Idem root. No network: every

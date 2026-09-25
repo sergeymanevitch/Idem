@@ -22,7 +22,7 @@ run it, what a passing check does and does not prove, and what is not built. An 
 | `rules.md` | the procedure the translator follows, step by step, and what it has not settled |
 | `examples.md` | a placeholder: no example is generated yet, and the script that assembles it is not built |
 | `reference/` | the contract, in six files: the catalogue that names every table, the schema of a tickets file, what one change is, the list that decides `breaking`, the snapshot format and every check the validator runs, in tables the tools load |
-| `00_fetch/` | step 00: `fetch.py`, one URL to one numbered, hashed snapshot; three shipped snapshots in `00_snapshots/` |
+| `00_fetch/` | step 00: `fetch.py`, one URL or a file of them to numbered, hashed snapshots; three shipped snapshots in `00_snapshots/` |
 | `01_translate/` | step 01: the translation, done by Claude; its answers go in `00_tickets/`, which holds the tickets files of the three shipped snapshots |
 | `02_validate/` | step 02: `validate.py`, one tickets file to pass or coded failures; `compare_runs.py`, whether two tickets files of one input have one shape; `run_fixtures.py`, the suite; the fixture corpus in `00_fixtures/` |
 | `03_examples/` | step 03: not built; the folder holds only its `CONTEXT.md` |
@@ -48,7 +48,7 @@ guarded, and the validator is run by hand.
 
 ### 1. Fetch a changelog
 
-    python3 00_fetch/fetch.py [--out DIR] <url>
+    python3 00_fetch/fetch.py [--out DIR] (<url> | --urls FILE)
 
 One `http` or `https` URL gives one snapshot: the text the page served, a header saying where and
 when it came from with the `sha256` of its body, and a number on every body line. The file lands in
@@ -62,19 +62,35 @@ Run as written, this adds a second PagerDuty file beside the shipped one; to try
 adding a file to the clone, name a directory with `--out`. A snapshot fetched into `DIR` is
 validated with `--snapshots DIR`.
 
+`--urls FILE` fetches every URL of a UTF-8 file, one a line, in order, and prints one line for
+each in that order. Spaces and tabs around a line are stripped; empty lines and lines starting
+with `#` are skipped; a URL repeated on a later line is fetched once, and the repeat prints
+`WARN<TAB>url<TAB>line N repeats line M; not fetched again`, which is not a failure. A repeat is
+the line as written, so two spellings of one URL — `Example.com` and `example.com`, or one with a
+fragment and one without — are two fetches, and the second inside one second is
+`SNAPSHOT_EXISTS`. A failed URL never stops the rest. The exit is the highest seen: 0 when every
+URL gave a snapshot, 1 when any failed, 2 when the tool could not run — a URL file that cannot be
+read, is not UTF-8 or holds no URL is usage — or when one URL met an internal error: its line is
+`INTERNAL`, the rest are still fetched and their snapshots are on disk.
+
 A snapshot is created exclusively and never overwritten: a second fetch of one URL is a new file
 beside the first, and two fetches of one URL inside the same second are a failure. Never edit a
 snapshot; it is the evidence every ticket cites.
 
-A URL that fails writes nothing and prints one line, `CODE<TAB>url<TAB>message`, with exit 1; the
-codes are a table of `reference/05_checks.md`. Exit 2 is a tool that could not run, such as bad
+A URL that fails writes nothing and prints one line, `CODE<TAB>url<TAB>message`, and the exit is
+1; the codes are a table of `reference/05_checks.md`. Exit 2 is a tool that could not run, such as bad
 usage. On macOS a `python3` installed from python.org ships without root certificates, and every
 fetch under it fails with `CERTIFICATE`. Run fetch with `/usr/bin/python3`, which reads the system
 trust store, or install the certificates as the failure message says. Fetch never turns
 verification off.
 
-Fetch stores whatever decodes exactly as it was served, HTML included: nothing reduces a web page to
-text yet. Point it at a raw Markdown or plain-text file, as the three shipped snapshots are:
+Fetch classifies every response by the `content-kinds` table of `reference/04_snapshot-format.md`:
+a signature at the first byte decides whatever the Content-Type says, then the media type, then a
+parse that finds JSON, then a NUL byte, and what is left is text. Markdown, plain text, RSS, Atom
+and HTML are stored exactly as they were served — nothing reduces a web page to text yet — and
+so is any other media type whose bytes decode and hold no NUL, as `text`; JSON, a PDF, an archive
+and a binary, a NUL under any media type among them, fail with `UNSUPPORTED_TYPE`. Point it at a raw Markdown or
+plain-text file, as the three shipped snapshots are:
 
 | Vendor | File | Body lines | What it is for |
 | --- | --- | --- | --- |
@@ -220,13 +236,13 @@ The tests are four commands, and "the tests" means all four:
     python3 -m unittest discover -s 00_fetch -t 00_fetch
     python3 -m unittest discover -s .claude/hooks -t .claude/hooks
 
-Run on 2026-09-25 from a fresh clone, on 3.9.6 and on 3.14.4: 720 tests OK, 452 OK, 134 OK and 46
+Run on 2026-09-25 from a fresh clone, on 3.9.6 and on 3.14.4: 720 tests OK, 452 OK, 207 OK and 46
 OK. The second command takes about two minutes. Two of the first command's tests need 3.11 or later
 and are skipped below it. Nobody has run 3.10 to 3.13. The third needs no network: it runs
 `fetch.py` against a stub server on 127.0.0.1. The fourth is the negative test of the hook wrapper:
 it feeds the wrapper hook input in a temporary folder, under `/bin/sh` and under `dash` when it is
 on PATH. `python3 lib/idemlib/contract.py` loads the contract on its own and prints
-`15 tables, 173 rows, named by reference/00_catalogue.md` last, with exit 0.
+`16 tables, 183 rows, named by reference/00_catalogue.md` last, with exit 0.
 
 ## In a claude.ai Project
 
@@ -237,7 +253,7 @@ alone, and the answer is validated afterwards, in a clone.
    `identity.md`, `rules.md`, `examples.md`, `00_catalogue.md`, `01_schema.md`,
    `02_segmentation.md`, `03_breaking-terms.md`, `04_snapshot-format.md`, `05_checks.md`. The last
    six are the files of `reference/`. `examples.md` is a placeholder and is uploaded too, because
-   `rules.md` names it. Together they are 215,269 bytes, measured on 2026-09-25; it changes when
+   `rules.md` names it. Together they are 222,804 bytes, measured on 2026-09-25; it changes when
    those files change.
 2. **Leave out everything else**: `00_fetch/`, `01_translate/`, `02_validate/`, `03_examples/`,
    `lib/`, `.claude/`, `CLAUDE.md`, `README.md`, `.gitignore`, and every `CONTEXT.md`, the one at
@@ -284,7 +300,6 @@ are not in this repository.
 - The examples: `examples.md` is a placeholder, and the script in `03_examples/` that would assemble
   it from validated answers is not written.
 - The routine that reduces an HTML page to text: fetch stores HTML as served.
-- A file of many URLs for fetch: it takes one URL per run.
 
 ## Limits
 
@@ -292,6 +307,11 @@ are not in this repository.
   changed since it was fetched, not that it matches the vendor's page. Whoever edits a body can
   write its new digest into the header, nothing downstream can tell that file from a page served
   that way, and git history is the only tamper record (`00_fetch/00_snapshots/CONTEXT.md`).
+- **A snapshot's name leaves the query out**, so in one URL file, `?page=1`, `?page=2`, … of one
+  path collide when fetched inside one second, and every one after the first is `SNAPSHOT_EXISTS`:
+  the name is host and path by the snapshot format, and a digest of the query in it is not built.
+  The workaround is one file per page, run separately, or no more than one such URL per second
+  (`00_fetch/CONTEXT.md`, **Outputs**).
 - **A false `not in source` cannot be caught mechanically**: nothing mechanical can tell what a
   source does not say. The backstop is `Unmapped`, which must list every non-blank line no ticket
   cites, and the warning lines that point at a listed line inside a ticket's range holding a date

@@ -12,7 +12,7 @@ the validator checks the shape of what that prose produces without ever re-decid
 | `01_schema.md` | written — the eight fields, the sentinel, the grammar, the canonical form, the header, the refusal and zero-ticket shapes, the size limit, in five tables; and the field rules in prose — what a quote is, the one row `change` takes, the four shapes of an affected surface, the spans of the other copied fields, and the date decision table, an unmarked table no tool reads. The tying test of that table is the one reading it leaves |
 | `02_segmentation.md` | written — what one change is: the unit, leaf items and parents, paragraphs, the one narrowing, ancestor lines, the test for "is a changelog" as a checklist of three questions, what a mixed page and a changelog in another language get, and eight worked examples. Prose only, no table. Every limit is stated where it stands — the wrapped line, the qualifying sibling, the setext title, the empty line inside a fence — and no part of it is marked a draft |
 | `03_breaking-terms.md` | written — the closed list of phrases that decide `breaking`, each mapped to `yes` or `no`, in one table; the rule for reading a quote against it, and what the list deliberately does not decide; what scoped and conditional wording yields, which line the field cites — the unit before its headings — and how a "Breaking changes" heading is cited |
-| `04_snapshot-format.md` | written — snapshot header, separator, line prefix, line classes, HTML element lists, fetch limits, in five tables |
+| `04_snapshot-format.md` | written — snapshot header, separator, line prefix, line classes, HTML element lists, the kinds of content fetch stores or refuses and the order that decides a kind, fetch limits, in six tables |
 | `05_checks.md` | written — every validator check as key, code, what it checks and which requirement, in one table; the fetch failures in a second; the pattern the FR-37 warning looks for in a third; the phases, the warnings, the exit-2 family and the rules that get no check |
 
 `00_catalogue.md` also states the grammar of a strict table — what a tool counts as a table, and
@@ -20,11 +20,12 @@ what it never reads — because that grammar is the one thing `contract.py` know
 A table becomes usable by a tool on the day its row appears in the catalogue, and not before: the
 loader reads the catalogue both ways and refuses a marked table nobody listed.
 
-Usable is not used, but it is no longer unused. The five files that hold tables load today; nine
-of their tables are read by a tool — `snapshot-header`, `snapshot-constants` and `line-classes`, by
+Usable is not used, but it is no longer unused. The five files that hold tables load today; all but
+one of their sixteen tables are read by a tool — `snapshot-header`, `snapshot-constants` and `line-classes`, by
 `lib/idemlib/snapshot.py`, which writes and reads a snapshot and classifies its body lines;
-`fetch-limits` and `fetch-failures`, by `00_fetch/fetch.py`, which turns one URL into one snapshot
-inside that envelope and codes every failed URL from that table; and `fields`, `schema-constants`,
+`content-kinds`, `fetch-limits` and `fetch-failures`, by `00_fetch/fetch.py`, which turns one URL,
+or each URL of a file, into one snapshot inside that envelope, stores or refuses each response by
+its kind, and codes every failed URL from that table; and `fields`, `schema-constants`,
 `header-items` and `ticket-lines`, by `lib/idemlib/tickets.py`, which reads a tickets file into a
 data model, writes one back in canonical form and reports every departure it finds. `catalogue` is
 read by the loader itself, on every load, because it is the table that says where the others are.

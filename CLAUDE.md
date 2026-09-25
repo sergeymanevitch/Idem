@@ -6,9 +6,9 @@ written for the person using or judging the folder: how to run it, what a passin
 what is not built; this file is the route for an agent about to work in it. It routes and holds no rule.
 
 **State: `reference/` is written whole and can be read, `identity.md` is written and `rules.md` is
-written, `lib/idemlib/` holds the contract loader and the two format modules — the
-snapshot and the tickets file — the first step script is built — `00_fetch/fetch.py`, for one
-URL — and `00_fetch/00_snapshots/` holds the three example snapshots it wrote, one vendor each.
+written, `lib/idemlib/` holds the contract loader and the two format modules — the snapshot and the
+tickets file — the first step script is built — `00_fetch/fetch.py`, for one URL or a file of them —
+and `00_fetch/00_snapshots/` holds the three example snapshots it wrote, one vendor each.
 `02_validate/validate.py` is built: every check of `reference/05_checks.md` is registered under
 its key and written — the reading stage, the pairing phase, canonical form and grammar, the row
 states, quotes and values, ranges and ancestors, coverage and the three warnings — and the header
@@ -24,8 +24,9 @@ the grammar of a tickets file, the field rules in prose — what a quote is, the
 an affected surface is, the other copied spans and the date decision table — and four complete
 examples of its three shapes; `reference/03_breaking-terms.md` holds the closed list of phrases that
 decide `breaking`, the rule for reading a quote against it, and which line the field cites;
-`reference/04_snapshot-format.md` holds the five tables of the snapshot format — header fields,
-format constants, line classes, HTML elements, fetch limits;
+`reference/04_snapshot-format.md` holds the six tables of the snapshot format — header fields,
+format constants, line classes, HTML elements, the kinds of content fetch stores or refuses, fetch
+limits;
 `reference/05_checks.md` holds every validator check with its key and code, the fetch failures in a
 table of their own, and the pattern a warning looks for; `reference/02_segmentation.md` holds what
 one change is — the unit, leaf items and parents, paragraphs, the one narrowing, ancestor lines,
@@ -38,14 +39,15 @@ it, and classifies every body line, taking the header fields, the constants and 
 patterns from the tables and keeping no copy of them. It is a library and no step script — it opens
 no file and writes nothing to disk.
 `00_fetch/fetch.py` is the first step script and the only writer of evidence: one `http` or `https`
-URL to one numbered, hashed snapshot, written through `snapshot.py` and created exclusively, with
-every limit read from `fetch-limits` and every failed URL coded from `fetch-failures`. It takes one
-URL and no file of URLs, classifies no content — whatever decodes is stored as served — and reduces
-no HTML; `00_fetch/CONTEXT.md` says what it does and what it holds. `00_fetch/00_snapshots/` holds
-three snapshots of public changelogs — PagerDuty, Docker Engine API, Plaid — tidy, messy and
-near-empty; `00_fetch/00_snapshots/CONTEXT.md` names each. Each has its tickets file in
-`01_translate/00_tickets/`, written by the translator in Claude Code with the hooks live, and
-`02_validate/validate.py` exits 0 on each.
+URL, or each URL of a file given with `--urls`, to one numbered, hashed snapshot, written through
+`snapshot.py` and created exclusively, with every limit read from `fetch-limits`, every response
+classified by `content-kinds` — Markdown, plain text, RSS, Atom and HTML stored as served; JSON, a
+PDF, an archive and a binary refused as `unsupported_type` — and every failed URL coded from
+`fetch-failures`, all eleven rows raised. It reduces no HTML; `00_fetch/CONTEXT.md` says what it
+does and what it holds. `00_fetch/00_snapshots/` holds three snapshots of public changelogs —
+PagerDuty, Docker Engine API, Plaid — tidy, messy and near-empty; `00_fetch/00_snapshots/CONTEXT.md`
+names each. Each has its tickets file in `01_translate/00_tickets/`, written by the translator in
+Claude Code with the hooks live, and `02_validate/validate.py` exits 0 on each.
 `lib/idemlib/tickets.py` is the third module and the second format: `parse` reads bytes into a
 data model of a tickets file and a list of findings, `serialise` writes a model back in canonical
 form, and the two agree byte for byte on every canonical file. It reads the eight fields, the

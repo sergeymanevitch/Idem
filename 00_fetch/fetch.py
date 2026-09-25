@@ -1,27 +1,41 @@
 #!/usr/bin/env python3
-"""One http or https URL, to one numbered, hashed snapshot of whatever text it served.
+"""One http or https URL, or a file of them, to numbered, hashed snapshots of the text they served.
 
-    python3 00_fetch/fetch.py [--out DIR] <url>
+    python3 00_fetch/fetch.py [--out DIR] (<url> | --urls FILE)
 
 Fetch is the only writer of evidence. Everything a ticket later points at - a line number, a quote,
 a digest - is true of the file this tool leaves on disk and of nothing else, so what this tool does
-is deliberately small: it asks for one URL inside the envelope the contract fixes, decodes the bytes
-by the charset the response declared, and hands the header values and the body text to the one
-writer of the snapshot format. It numbers nothing, hashes nothing and parses nothing itself.
+is deliberately small: it asks for each URL inside the envelope the contract fixes, reads what kind
+of content came back, decodes the bytes of a kind it stores by the charset the response declared,
+and hands the header values and the body text to the one writer of the snapshot format. It numbers
+nothing, hashes nothing and parses nothing of a body itself.
 
 No model is involved, and after decoding nothing touches the text (FR-8).
 
 WHAT IS READ FROM THE CONTRACT
 
 The timeout, the redirect cap, the size cap and the User-Agent come from the fetch limits; the code
-of every failure comes from the fetch failures; the shape of the file, its field order, its
-separator and its line prefix come from the snapshot module, which reads its own tables. None of
-them is written here (AD-1). What is written here is addresses - the two table ids, the two column
-names, the ten failure keys the tool asks by - and the eight header field names, which are this
-tool's one sanctioned exception: fetch hands a value over for each field, so it cannot ask without
-naming them (Sergey, 2026-09-21). A test reads this source back, holds those eight names against
-the rows of the header table both ways, and fails if any limit value, any User-Agent or any code is
-typed here.
+of every failure comes from the fetch failures; which kinds of content are stored and which are
+refused, by media type and by the bytes a body begins with, comes from the content kinds; the shape
+of the file, its field order, its separator and its line prefix come from the snapshot module,
+which reads its own tables. None of them is written here (AD-1) - no media type and no signature,
+as a string or as bytes. What is written here is addresses - the three table ids, the column names,
+the eleven failure keys the tool asks by, the three kinds it asks for by name - and two sanctioned
+exceptions. The eight header field names: fetch hands a value over for each field, so it cannot ask
+without naming them (Sergey, 2026-09-21). And the name and version of each routine this tool
+implements, because a version describes code and a tool that runs a routine cannot ask without
+naming it (Sergey, 2026-09-25). A test reads this source back, holds both lists against their
+tables both ways, and fails if any limit value, any User-Agent, any code, any media type or any
+signature is typed here.
+
+WHAT IS STORED
+
+A response is classified before it is decoded, in the order the content kinds table states: a
+signature at byte 0 decides whatever the media type says; else a media type a row lists; else a
+parse that finds JSON. Then, for every body whose kind so far is stored or not yet found, a NUL in
+the bytes when no charset was declared, or in the decoded text when one was, makes it binary, so a
+stored body never holds U+0000. What nothing claims is text. A kind whose row names a routine is stored under it; a kind
+whose row names none is a failed URL, and nothing is written.
 
 WHAT IT PRODUCES
 
@@ -32,9 +46,21 @@ port. `retrieved` is the same string in the name and in the header. The four val
 the timestamp, the routine's name, its version and the digest - have their forms written in the
 snapshot format reference, and the tests of this folder hold that paragraph and this tool together.
 
+A FILE OF URLS
+
+`--urls FILE` reads one URL a line, UTF-8, a byte-order mark dropped and any line ending taken.
+Spaces and tabs around a line are stripped; an empty line and a line that starts with `#` are
+skipped. Every URL is attempted in the order written, and each gives one line on stdout in that
+order. A line repeating an earlier URL is not fetched again and is reported as a warning, which is
+not a failure:
+
+    WARN<TAB>url<TAB>line N repeats line M; not fetched again
+
+A single URL on the command line is taken as it is given - not stripped, not read as a comment.
+
 FAILURE
 
-A failed URL is one line on stdout and exit 1:
+A failed URL is one line on stdout, and the rest of the URLs carry on:
 
     CODE<TAB>url<TAB>message
 
@@ -43,9 +69,13 @@ is about a URL and not about a place in a file (AD-6, amended by Sergey on 2026-
 is read from the fetch failures table. Nothing is written for a failed URL - no snapshot, no partial
 file - and nothing is ever retried without certificate verification.
 
-A tool that could not run at all exits 2: bad usage, an interpreter below the floor, a contract that
-cannot be read (one coded line per problem, under the loader's own code), or an uncaught exception,
-which becomes one internal line naming this file and the line in it, and never a traceback.
+The exit is the highest seen: 0 when every URL gave a snapshot, 1 when any failed, 2 when the tool
+could not run or a URL met an uncaught exception. Could not run is bad usage - a URL file that cannot
+be read or decoded, or that holds no URL, among it - an interpreter below the floor, a contract that
+cannot be read (one coded line per problem, under the loader's own code) or a content kinds table
+this tool cannot use. An uncaught exception becomes one internal line naming this file and the line
+in it, and never a traceback; inside a file of URLs it is that URL's line, and the next URL is still
+attempted.
 
 This file keeps to syntax that every Python 3 accepts - no f-strings, no annotations - so that an
 interpreter below the floor reaches the version check and says what is needed. It uses the standard
@@ -54,6 +84,7 @@ the naive UTC clock and the newer file-digest helper.
 """
 import datetime
 import http.client
+import json
 import os
 import re
 import socket
@@ -70,12 +101,23 @@ from idemlib import contract, snapshot  # noqa: E402  - the path has to be set f
 
 # --- what to ask the contract for -----------------------------------------------------------------
 
-#: The two tables this tool reads, and the columns it reads them by. A table id and a column name
+#: The three tables this tool reads, and the columns it reads them by. A table id and a column name
 #: are addresses: what stands at them is read at run time.
 LIMITS_TABLE = "fetch-limits"
 FAILURES_TABLE = "fetch-failures"
+KINDS_TABLE = "content-kinds"
 VALUE = "value"
 CODE = "code"
+MEDIA_TYPES = "media_types"
+SIGNATURES = "signatures"
+ROUTINE_CELL = "routine"
+
+#: The three kinds this tool asks for by name, because a step of the classification names them
+#: rather than finding them by a cell: what a body nothing else claims is, what a parse decides, and
+#: what a NUL decides. Keys of the content kinds table, and so addresses.
+TEXT = "text"
+JSON = "json"
+BINARY = "binary"
 
 #: The four limits, by the keys the table gives them. The unit is in the key and never in the value.
 TIMEOUT_SECONDS = "timeout_seconds"
@@ -83,8 +125,7 @@ MAX_REDIRECTS = "max_redirects"
 MAX_BYTES = "max_bytes"
 USER_AGENT = "user_agent"
 
-#: The ten failure keys this tool can raise. The eleventh row of the table, the unsupported content
-#: type, belongs to the tool that classifies content: here whatever decodes is stored as served.
+#: The eleven failure keys this tool can raise: every row of the table.
 HTTP_STATUS = "http_status"
 TIMEOUT = "timeout"
 CERTIFICATE = "certificate"
@@ -95,8 +136,9 @@ EMPTY_BODY = "empty_body"
 BAD_SCHEME = "bad_scheme"
 SNAPSHOT_EXISTS = "snapshot_exists"
 UNREACHABLE = "unreachable"
+UNSUPPORTED_TYPE = "unsupported_type"
 
-# --- the one exception: the eight fields a header carries -----------------------------------------
+# --- the first exception: the eight fields a header carries ---------------------------------------
 
 #: The header fields, in the order the table writes them. This tool hands a value over for each of
 #: them, so it cannot ask without naming them; a test holds this list against the rows of the
@@ -109,10 +151,13 @@ SOURCE_URL, FINAL_URL, STATUS, CONTENT_TYPE, RETRIEVED, ROUTINE, VERSION, SHA256
 
 #: The retrieval time, in UTC, as it is written in the header and in the file name.
 STAMP = "%Y%m%dT%H%M%SZ"
-#: The routine that produced the body, and its version. Nothing is reduced here: the bytes that
-#: decoded are the body, whatever the content type said they were.
+#: The second exception: the routines this tool implements, by name, with their versions. Nothing
+#: is reduced by the one there is - the bytes that decoded are the body. The routine cells of the
+#: content kinds table are held against this at load, both ways, so a row naming a routine nobody
+#: wrote, or a routine no row names, stops the tool before it asks for anything.
 AS_SERVED = "as-served"
 AS_SERVED_VERSION = "1"
+ROUTINES = {AS_SERVED: AS_SERVED_VERSION}
 EXTENSION = ".txt"
 #: The folder a snapshot goes to when no other is named: the one beside this tool.
 SNAPSHOTS = "00_snapshots"
@@ -148,6 +193,21 @@ TEMPORARY = 307
 CHUNK = 65536
 
 ENCODING = "utf-8"
+#: What a media type is read from: the Content-Type before its first parameter.
+PARAMETERS = ";"
+#: What a media type as the table lists it never holds: it is compared with the part of a
+#: Content-Type before its parameters, trimmed, so a cell holding one of these could never match.
+NOT_IN_A_MEDIA_TYPE = (PARAMETERS, " ", "\t")
+#: A signature is written in upper-case hexadecimal, two characters a byte, and is never empty.
+UPPER_HEX = re.compile("^(?:[0-9A-F]{2})+$")
+#: The parse step looks past a byte-order mark and this white space for the byte a JSON text of an
+#: object or an array opens with.
+UTF8_MARK = b"\xef\xbb\xbf"
+LEADING_SPACE = b" \t\r\n"
+OPENS_JSON = (b"{", b"[")
+#: The byte and the character that make a body binary.
+NUL_BYTE = b"\x00"
+NUL = chr(0)
 SPACE = " "
 #: A header value folded across lines comes back with its line endings in it; the fold is one space.
 FOLD = re.compile("[\r\n]+[ \t]*")
@@ -158,9 +218,18 @@ DELETE = 127
 
 DASH = "-"
 OUT = "--out"
-USAGE = ("usage: python3 00_fetch/fetch.py [--out DIR] <url> - one http or https URL, and a "
-         "directory that is there and can be written; the snapshot is written beside this tool "
-         "when no directory is named")
+URLS = "--urls"
+USAGE = ("usage: python3 00_fetch/fetch.py [--out DIR] (<url> | --urls FILE) - one http or https "
+         "URL, or a file of them one a line, and a directory that is there and can be written; "
+         "the snapshots are written beside this tool when no directory is named")
+#: A URL file: a line starting with this is a comment, and one of these characters around a line
+#: is not part of it.
+COMMENT = "#"
+AROUND_A_LINE = " \t"
+BYTE_ORDER_MARK = chr(0xfeff)
+#: The first field of a line that reports a repeated URL. Not a code: nothing failed, and no table
+#: has a row for a repeat (AD-6).
+WARN = "WARN"
 
 
 class FetchFailure(Exception):
@@ -177,7 +246,34 @@ class FetchFailure(Exception):
 
 
 class _Usage(Exception):
-    """The tool was not asked for something it could do. One usage line, exit 2, no code."""
+    """The tool was not asked for something it could do. One usage line, exit 2, no code.
+
+    Carries the line to print when there is more to say than the grammar - a URL file that cannot
+    be read says which file and why - and the grammar when there is not.
+    """
+
+    def __init__(self, message=None):
+        self.message = USAGE if message is None else message
+        Exception.__init__(self, self.message)
+
+
+class Kind(object):
+    """One row of the content kinds table, read and checked: its name, the media types it lists,
+    its signatures as (cell text, bytes), and the routine that stores it, empty when none does."""
+
+    def __init__(self, name, media_types, signatures, routine):
+        self.name = name
+        self.media_types = media_types
+        self.signatures = signatures
+        self.routine = routine
+
+
+class Kinds(object):
+    """The rows of the content kinds table in the order it writes them, and the same rows by name."""
+
+    def __init__(self, rows):
+        self.rows = rows
+        self.named = dict([(kind.name, kind) for kind in rows])
 
 
 # --- the contract, by the addresses above -----------------------------------------------------------
@@ -195,6 +291,73 @@ def _codes(tables):
     return dict([(name, rows[name][CODE]) for name in rows])
 
 
+def _kinds(tables):
+    """The content kinds, read and checked before any URL is asked for.
+
+    A cell this tool cannot use is not a failed URL and not a finding about a document: it is the
+    contract as this tool reads it being wrong, and every URL would meet it. So each check raises,
+    and the caller turns that into the one internal line and exit 2. What is checked is what the
+    classification relies on: a routine it can run, a media type that one row alone decides, a
+    signature that is bytes, and the three kinds it asks for by name.
+    """
+    rows = tables[KINDS_TABLE].rows
+    found = []
+    listed = {}
+    taken = []
+    named = set()
+    for name in rows:
+        row = rows[name]
+        media_types = _cell_list(row[MEDIA_TYPES])
+        for media_type in media_types:
+            broken = media_type == "" or media_type != media_type.lower()
+            for part in NOT_IN_A_MEDIA_TYPE:
+                broken = broken or part in media_type
+            if broken:
+                raise ValueError("the media type '" + media_type + "' of the kind '" + name +
+                                 "' is not written lower-case with no space, tab or parameter")
+            if media_type in listed:
+                raise ValueError("the media type '" + media_type + "' is listed by the kind '" +
+                                 listed[media_type] + "' and again by '" + name + "'; one row "
+                                 "decides a media type")
+            listed[media_type] = name
+        signatures = []
+        for signature in _cell_list(row[SIGNATURES]):
+            if not UPPER_HEX.match(signature):
+                raise ValueError("the signature '" + signature + "' of the kind '" + name + "' is "
+                                 "not upper-case hexadecimal of an even length")
+            raw = bytes.fromhex(signature)
+            for other, other_raw, owner in taken:
+                if raw.startswith(other_raw) or other_raw.startswith(raw):
+                    raise ValueError("the signature '" + signature + "' of the kind '" + name +
+                                     "' and the signature '" + other + "' of '" + owner + "' "
+                                     "match one body; one row decides a signature")
+            taken.append((signature, raw, name))
+            signatures.append((signature, raw))
+        routine = row[ROUTINE_CELL]
+        if routine != "":
+            if routine not in ROUTINES:
+                raise ValueError("the kind '" + name + "' is stored by the routine '" + routine +
+                                 "', which this tool does not implement")
+            named.add(routine)
+        found.append(Kind(name, media_types, signatures, routine))
+    for routine in ROUTINES:
+        if routine not in named:
+            raise ValueError("this tool implements the routine '" + routine + "', and no row of "
+                             "the content kinds names it")
+    for name in (TEXT, JSON, BINARY):
+        if name not in rows:
+            raise ValueError("the content kinds have no row '" + name + "', which a step of the "
+                             "classification asks for by name")
+    return Kinds(found)
+
+
+def _cell_list(cell):
+    """A list cell, split on the catalogue's separator. An empty cell lists nothing."""
+    if cell == "":
+        return []
+    return cell.split(contract.COLUMN_SEPARATOR)
+
+
 def failure_line(codes, url, failure):
     """One failed URL as AD-6 writes it: the code, the URL as given, the message.
 
@@ -203,6 +366,80 @@ def failure_line(codes, url, failure):
     """
     return (codes[failure.key] + contract.TAB + contract.flatten(url) + contract.TAB +
             contract.flatten(failure.message))
+
+
+def warning_line(url, line, first):
+    """A URL repeated in a URL file: three fields and no code, because nothing failed and no table
+    has a row for a repeat (AD-6). The URL is flattened as a failed one is."""
+    return (WARN + contract.TAB + contract.flatten(url) + contract.TAB + "line " + str(line) +
+            " repeats line " + str(first) + "; not fetched again")
+
+
+# --- what came back --------------------------------------------------------------------------------
+
+
+def classify(kinds, media_type, data):
+    """The kind of a body by the first three steps, and what decided it - or (None, None).
+
+    A signature at byte 0 decides first, whatever the media type says, because a server that calls
+    a PDF text is wrong about it and the bytes are not. Then the media type, when a row lists it.
+    Then a parse: a body that opens with a brace or a bracket and parses whole is JSON, and one that
+    does not parse - a Markdown link, brackets nested past what the parser takes - is not. What is
+    left is decided by a NUL, by the caller, which is the step that needs to know the charset.
+    """
+    for kind in kinds.rows:
+        for text, signature in kind.signatures:
+            if data.startswith(signature):
+                return kind, "its first bytes, which are the signature " + text
+    if media_type != "":
+        for kind in kinds.rows:
+            if media_type in kind.media_types:
+                return kind, "its media type, " + media_type
+    if _is_json(data):
+        return kinds.named[JSON], "a parse: the bytes are JSON"
+    return None, None
+
+
+def _media_type(content_type):
+    """The Content-Type before its first parameter, trimmed and lower-cased; empty for none."""
+    return content_type.split(PARAMETERS, 1)[0].strip(AROUND_A_LINE).lower()
+
+
+def _is_json(data):
+    """True when the bytes open an object or an array and parse as JSON whole.
+
+    The first test is cheap and keeps a body that could never be JSON away from the parser. The
+    parser takes the bytes as received and finds their encoding itself. A text it refuses, and
+    brackets nested deeper than it goes, both mean the same thing here: not JSON.
+    """
+    start = data
+    if start.startswith(UTF8_MARK):
+        start = start[len(UTF8_MARK):]
+    start = start.lstrip(LEADING_SPACE)
+    if start[:1] not in OPENS_JSON:
+        return False
+    try:
+        json.loads(data)
+    except (ValueError, RecursionError):
+        return False
+    return True
+
+
+def _stored(kind):
+    """True when the kind found so far would be stored, or none is found yet: the NUL test runs for
+    every such body, because a stored body never holds U+0000 whatever the media type said."""
+    return kind is None or kind.routine != ""
+
+
+def _refuse_unsupported(kind, why):
+    """The one test that refuses a kind: its row names no routine."""
+    if kind is not None and kind.routine == "":
+        raise _unsupported(kind, why)
+
+
+def _unsupported(kind, why):
+    return FetchFailure(UNSUPPORTED_TYPE, "the content is " + kind.name + ", decided by " + why +
+                        "; no routine turns " + kind.name + " into a body, so nothing is stored")
 
 
 # --- where the snapshot goes ------------------------------------------------------------------------
@@ -429,8 +666,8 @@ def _body_bytes(response, cap, timeout):
 def _one_line(value):
     """A header value as one line: a fold is one space, and a value nobody sent is empty.
 
-    A response with no Content-Type leaves that field empty and the body is stored all the same:
-    what the server called the bytes is recorded, and what they are is the reader's judgment.
+    A response with no Content-Type leaves that field empty, and its body is classified by its
+    bytes alone: what the server called the bytes is recorded, and what they are is read from them.
     """
     if value is None:
         return ""
@@ -543,17 +780,22 @@ def _close(descriptor):
 # --- one URL ---------------------------------------------------------------------------------------
 
 
-def fetch_one(url, directory, limits, now, opener):
+def fetch_one(url, directory, limits, now, opener, kinds=None):
     """Fetch this URL into this directory and return the path of the snapshot written.
 
-    `limits` is the fetch limits as {key: value}, `now` the retrieval time as a datetime, and
-    `opener` an opener to use, or None for one built from the limits for this URL alone. Raises
+    `limits` is the fetch limits as {key: value}, `now` the retrieval time as a datetime, `opener`
+    an opener to use, or None for one built from the limits for this URL alone, and `kinds` the
+    content kinds as `_kinds` reads them, or None to read them from the contract here. Raises
     FetchFailure, carrying the key of the row that codes it, for every way one URL can fail; the
     caller prints the coded line, because the codes live in a table and this function reads none.
 
-    Nothing is written unless everything else succeeded: the bytes of the whole snapshot are built
-    first, and the file is created last.
+    The refusals come in the order the snapshot format states: the status, a control character in
+    a header value, an encoding, the size cap, a body cut short, the kind by its bytes, the decode,
+    the kind by its text, an empty body. Nothing is written unless everything else succeeded: the
+    bytes of the whole snapshot are built first, and the file is created last.
     """
+    if kinds is None:
+        kinds = _kinds(contract.load())
     _refuse_a_url_that_is_not_one(url)
     _refuse_other_schemes(url)
     if opener is None:
@@ -578,10 +820,21 @@ def fetch_one(url, directory, limits, now, opener):
             raise FetchFailure(TOO_LARGE, "the body is more than " + str(cap) + " bytes, which is "
                                "the cap the contract sets; no part of it is stored")
         _refuse_a_body_cut_short(headers.get(CONTENT_LENGTH_HEADER), data)
-        charset = headers.get_content_charset() or ENCODING
+        declared = headers.get_content_charset()
     finally:
         response.close()
-    body = snapshot.normalise(_decode(data, charset))
+    kind, why = classify(kinds, _media_type(content_type), data)
+    if _stored(kind) and declared is None and NUL_BYTE in data:
+        kind, why = kinds.named[BINARY], "a NUL in its bytes, with no charset declared"
+    _refuse_unsupported(kind, why)
+    text = _decode(data, declared or ENCODING)
+    if _stored(kind) and declared is not None and NUL in text:
+        kind, why = kinds.named[BINARY], "a NUL, U+0000, in the text the declared charset gives"
+        _refuse_unsupported(kind, why)
+    if kind is None:
+        kind, why = kinds.named[TEXT], "nothing else claiming it"
+        _refuse_unsupported(kind, why)
+    body = snapshot.normalise(text)
     if body == "":
         raise FetchFailure(EMPTY_BODY, "the body is empty, so there is nothing to number, hash or "
                            "quote; a page that needs a browser to show its text reduces to this")
@@ -592,8 +845,8 @@ def fetch_one(url, directory, limits, now, opener):
     values[STATUS] = str(status)
     values[CONTENT_TYPE] = content_type
     values[RETRIEVED] = stamp
-    values[ROUTINE] = AS_SERVED
-    values[VERSION] = AS_SERVED_VERSION
+    values[ROUTINE] = kind.routine
+    values[VERSION] = ROUTINES[kind.routine]
     values[SHA256] = snapshot.digest(body)
     return _create(os.path.join(directory, slug(url) + HYPHEN + stamp + EXTENSION),
                    snapshot.write(values, body))
@@ -643,17 +896,64 @@ def _now():
 # --- running as a script -------------------------------------------------------------------------------
 
 
-def _arguments(argv):
-    """The URL and the directory, or a usage failure.
+def read_url_file(path):
+    """The URLs of a URL file, as [(line number, url)] in the order written, repeats included.
 
-    An unknown flag, a flag with no value, no URL at all, an empty one, a second URL, a directory
-    that is not there and a directory that cannot be written are all the same thing: the tool was
-    not asked for something it could do. None of them is an internal error, and none of them makes
-    a request. An empty URL is nothing to fetch rather than a URL that failed, which is why it is
-    usage and carries no code - a coded line would point at a URL that is not there.
+    The file is read as bytes and decoded as UTF-8, a byte-order mark at its head dropped, CRLF and
+    a lone CR each read as one line ending. Each line is stripped of the spaces and tabs around it;
+    an empty line and a line that then starts with `#` are skipped. The line number is the line's
+    place in the file, counting the skipped ones, so a report can be matched to what a person sees.
+
+    A file that cannot be read or decoded, or that holds no URL once the skipped lines are gone, is
+    usage and not a failed URL: there is no URL for a coded line to name.
+    """
+    try:
+        handle = open(path, "rb")
+        try:
+            data = handle.read()
+        finally:
+            handle.close()
+    except EnvironmentError as broken:
+        raise _Usage(_about_the_file(path, "cannot be read: " + _named(broken)))
+    try:
+        text = data.decode(ENCODING)
+    except UnicodeDecodeError as broken:
+        raise _Usage(_about_the_file(path, "is not UTF-8: " + str(broken)))
+    if text.startswith(BYTE_ORDER_MARK):
+        text = text[len(BYTE_ORDER_MARK):]
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    found = []
+    number = 0
+    for line in text.split("\n"):
+        number += 1
+        line = line.strip(AROUND_A_LINE)
+        if line == "" or line.startswith(COMMENT):
+            continue
+        found.append((number, line))
+    if not found:
+        raise _Usage(_about_the_file(path, "holds no URL: every line is empty or a comment"))
+    return found
+
+
+def _about_the_file(path, reason):
+    return contract.flatten("usage: the URL file '" + path + "' " + reason + "; it holds one http "
+                            "or https URL a line")
+
+
+def _arguments(argv):
+    """The URLs, as [(line number or None, url)], and the directory - or a usage failure.
+
+    An unknown flag, a flag with no value, no URL at all, an empty one, a second URL, a URL and a
+    URL file together, two URL files, a directory that is not there and a directory that cannot be
+    written are all the same thing: the tool was not asked for something it could do. None of them
+    is an internal error, and none of them makes a request. An empty URL is nothing to fetch rather
+    than a URL that failed, which is why it is usage and carries no code - a coded line would point
+    at a URL that is not there. A URL given on the command line is taken as given: it has no line
+    of a file to be stripped from or skipped as.
     """
     directory = None
     url = None
+    urls = None
     index = 0
     while index < len(argv):
         word = argv[index]
@@ -662,6 +962,11 @@ def _arguments(argv):
             if index >= len(argv):
                 raise _Usage()
             directory = argv[index]
+        elif word == URLS:
+            index += 1
+            if index >= len(argv) or urls is not None:
+                raise _Usage()
+            urls = argv[index]
         elif word.startswith(DASH):
             raise _Usage()
         elif url is not None:
@@ -669,13 +974,17 @@ def _arguments(argv):
         else:
             url = word
         index += 1
-    if not url:
+    if urls is not None and url is not None:
+        raise _Usage()
+    if urls is None and not url:
         raise _Usage()
     if directory is None:
         directory = default_directory()
     if not os.path.isdir(directory) or not os.access(directory, os.W_OK | os.X_OK):
         raise _Usage()
-    return url, directory
+    if urls is None:
+        return [(None, url)], directory
+    return read_url_file(urls), directory
 
 
 def main(argv=None, version_info=None):
@@ -685,14 +994,15 @@ def main(argv=None, version_info=None):
         contract.emit(contract.version_message(version_info))
         return 2
     try:
-        url, directory = _arguments(list(argv) if argv is not None else [])
-    except _Usage:
-        contract.emit(USAGE)
+        entries, directory = _arguments(list(argv) if argv is not None else [])
+    except _Usage as refused:
+        contract.emit(refused.message)
         return 2
     try:
         tables = contract.load()
         limits = _limits(tables)
         codes = _codes(tables)
+        kinds = _kinds(tables)
     except contract.ContractError as broken:
         for line in broken.lines():
             contract.emit(line)
@@ -700,16 +1010,37 @@ def main(argv=None, version_info=None):
     except Exception:
         contract.emit(contract.internal_line(__file__))
         return 2
-    try:
-        path = fetch_one(url, directory, limits, _now(), None)
-    except FetchFailure as failed:
-        contract.emit(failure_line(codes, url, failed))
-        return 1
-    except Exception:
-        contract.emit(contract.internal_line(__file__))
-        return 2
-    contract.emit(contract.relative(path, contract.idem_root()))
-    return 0
+    return _fetch_each(entries, directory, limits, codes, kinds)
+
+
+def _fetch_each(entries, directory, limits, codes, kinds):
+    """Every URL in order, one line each; the exit is the highest seen.
+
+    A failed URL does not stop the rest, and neither does a defect met on one: its internal line is
+    printed where the URL's line would be and the next URL is attempted, because the evidence the
+    others would give is no less true for it. A repeat is compared with the URLs as written, so two
+    spellings of one page are two fetches, and the second of them inside one second is a name
+    already on disk.
+    """
+    worst = 0
+    first = {}
+    for line, url in entries:
+        if url in first:
+            contract.emit(warning_line(url, line, first[url]))
+            continue
+        first[url] = line
+        try:
+            path = fetch_one(url, directory, limits, _now(), None, kinds)
+        except FetchFailure as failed:
+            contract.emit(failure_line(codes, url, failed))
+            worst = max(worst, 1)
+            continue
+        except Exception:
+            contract.emit(contract.internal_line(__file__))
+            worst = 2
+            continue
+        contract.emit(contract.relative(path, contract.idem_root()))
+    return worst
 
 
 if __name__ == "__main__":
