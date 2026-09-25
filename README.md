@@ -35,8 +35,10 @@ run it, what a passing check does and does not prove, and what is not built. An 
 
 ## Running it
 
-Python 3.9 or later, standard library only; there is nothing to install. Run every command from the
-root of the clone. Everything below was run on macOS with the system `/usr/bin/python3`, which is
+Steps 1 to 3 are one run, carried out in order: fetch a changelog, translate the snapshot, validate
+the answer; step 4 checks the tools themselves. Python 3.9 or later, standard library only; there
+is nothing to install. Run every command from the root of the clone. Everything below was run on
+macOS with the system `/usr/bin/python3`, which is
 3.9.6; the tests and the suite were also run on 3.14.4.
 
     git clone https://github.com/sergeymanevitch/Idem.git
@@ -58,9 +60,10 @@ the exit is 0. For example, the PagerDuty snapshot shipped here was fetched from
 
     python3 00_fetch/fetch.py https://raw.githubusercontent.com/PagerDuty/api-schema/f2c09c0df6b3c4bd9d5df8a9940014785a8fb87f/docs/CHANGELOG.md
 
-Run as written, this adds a second PagerDuty file beside the shipped one; to try fetch without
-adding a file to the clone, name a directory with `--out`. A snapshot fetched into `DIR` is
-validated with `--snapshots DIR`.
+Run as written, this adds a second PagerDuty file beside the shipped one, named with the time of
+your fetch: that file is the snapshot to translate in step 2. To try fetch without adding a file to
+the clone, name a directory with `--out`; a snapshot fetched into `DIR` is validated with
+`--snapshots DIR`.
 
 `--urls FILE` fetches every URL of a UTF-8 file, one a line, in order, and prints one line for
 each in that order. Spaces and tabs around a line are stripped; empty lines and lines starting
@@ -117,6 +120,11 @@ started with the snapshot's file name and nothing else, run from the author's wo
 author's own instruction files were loaded beside this one; their tickets files stand in
 `01_translate/00_tickets/`, never edited after the model wrote them. `rules.md` says what it has not
 settled.
+
+A Claude Code session that is already running somewhere else — the one that cloned this repository,
+say — translates the same way, without a new session: it reads `CLAUDE.md`, section **To translate
+a snapshot**, and follows it for the snapshot of step 1. The hooks below are loaded only by a
+session started in this folder, so such a session validates its answer by hand, with step 3.
 
 In Claude Code, `.claude/settings.json` registers hooks on three events, all through one POSIX
 `sh` wrapper, `.claude/hooks/idem-hook.sh`:
