@@ -41,10 +41,13 @@ no file and writes nothing to disk.
 `00_fetch/fetch.py` is the first step script and the only writer of evidence: one `http` or `https`
 URL, or each URL of a file given with `--urls`, to one numbered, hashed snapshot, written through
 `snapshot.py` and created exclusively, with every limit read from `fetch-limits`, every response
-classified by `content-kinds` — Markdown, plain text, RSS, Atom and HTML stored as served; JSON, a
-PDF, an archive and a binary refused as `unsupported_type` — and every failed URL coded from
-`fetch-failures`, all eleven rows raised. It reduces no HTML; `00_fetch/CONTEXT.md` says what it
-does and what it holds. `00_fetch/00_snapshots/` holds three snapshots of public changelogs —
+classified by `content-kinds` — Markdown, plain text, RSS and Atom stored as served, HTML reduced
+to text; JSON, a PDF, an archive and a binary refused as `unsupported_type` — and every failed URL
+coded from `fetch-failures`, all eleven rows raised. `00_fetch/html_text.py` is the HTML routine,
+`html-text`: it removes markup and scripts, writes the two markers, lays the text out in lines by
+the `html-elements` table, which nothing else reads, and gives one text for one page on 3.9.6 and
+3.14.4, pinned by the fixture page of `00_fetch/01_fixtures/`; `00_fetch/CONTEXT.md` says what
+fetch does and what it holds. `00_fetch/00_snapshots/` holds three snapshots of public changelogs —
 PagerDuty, Docker Engine API, Plaid — tidy, messy and near-empty; `00_fetch/00_snapshots/CONTEXT.md`
 names each. Each has its tickets file in `01_translate/00_tickets/`, written by the translator in
 Claude Code with the hooks live, and `02_validate/validate.py` exits 0 on each.
@@ -148,8 +151,8 @@ reconciliation between `reference/05_checks.md` and `02_validate/00_fixtures/man
 the committed corpus; `02_validate/test_run_fixtures.py`, which runs that corpus through the
 suite and proves each way the suite has to fail; and `02_validate/test_compare_runs.py`, which
 holds the run comparer to every case of what it compares, on pairs built in a temporary directory.
-The third is `00_fetch/test_fetch.py` alone, and it holds `fetch.py` against a stub server on
-127.0.0.1 — no network, and every snapshot in a temporary directory. The fourth is
+The third is `00_fetch/test_fetch.py` and `00_fetch/test_html_text.py`, and it holds `fetch.py`
+and the HTML routine against a stub server on 127.0.0.1 — no network, and every snapshot in a temporary directory. The fourth is
 `.claude/hooks/test_idem_hook.py` alone, the negative test of the hook wrapper, run under `sh` and
 under `dash` when it is on PATH, every case in a temporary root. Discovery under `lib/tests/`
 reaches none of the last three. `lib/CONTEXT.md` says more.

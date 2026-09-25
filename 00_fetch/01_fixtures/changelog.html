@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<!-- A fixture page for the HTML routine. Every construct below has its line in changelog.txt. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Example API &amp; SDK changelog</title>
+  <style>
+    body { font-family: sans-serif; }
+    h2 > a { color: #333; }
+  </style>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    if (1 < 2 && "<p>" !== "") { console.log("</div>"); }
+  </script>
+</head>
+<body>
+  <nav><a href="/">Home</a> | <a href="/docs">Docs</a></nav>
+  <h1>Changelog</h1>
+  <p>All notable changes to the Example API are listed here, newest first.</p>
+  <h2 id="v2-1-0">2.1.0 &mdash; 2026-09-01</h2>
+  <ul>
+    <li><strong>Breaking:</strong> the <code>GET /v1/users</code> endpoint now returns <code>email_verified</code>.</li>
+    <li>Deprecated the <code>sort</code> parameter.
+      <ul>
+        <li>Use <code>order_by</code> instead.</li>
+        <li>Removal is planned for 3.0.
+          <ol>
+            <li>Warning headers from 2.2.</li>
+          </ol>
+        </li>
+      </ul>
+    </li>
+    <li><p>Added a <code>limit</code> parameter.</p><p>The default is 50 &amp; the maximum is 500.</p></li>
+    <li><h3>Webhooks</h3>New events for refunds.</li>
+  </ul>
+  <p>Request bodies larger than 1&nbsp;MB are rejected with <code>413</code>.<br>Contact support &lt;support@example.com&gt; for &#169; questions.</p>
+  <h2>2.0.0 &ndash; 2026-08-01</h2>
+  <table>
+    <thead>
+      <tr><th>Endpoint</th><th>Change</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>/v1/orders</td><td>Removed the <code>legacy</code> field.</td></tr>
+      <tr>
+        <td>/v1/refunds</td>
+        <td><p>Added.</p><ul><li>Supports partial refunds.</li></ul></td>
+      </tr>
+    </tbody>
+  </table>
+  <p>An example request body:</p>
+  <textarea readonly><b>not bold</b> &lt;id&gt; &amp;amp;</textarea>
+  <iframe srcdoc="x"><p>raw &amp; unresolved</p></iframe>
+  <script type="application/json">{"hidden": "</p>"}</script>
+  <details><summary>Older releases</summary><div hidden>1.9.0 &ndash; the first public release.</div></details>
+  <hr>
+  <footer><p>&copy; 2026 Example, Inc.</p></footer>
+</body>
+</html>

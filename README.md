@@ -87,8 +87,11 @@ verification off.
 Fetch classifies every response by the `content-kinds` table of `reference/04_snapshot-format.md`:
 a signature at the first byte decides whatever the Content-Type says, then the media type, then a
 parse that finds JSON, then a NUL byte, and what is left is text. Markdown, plain text, RSS, Atom
-and HTML are stored exactly as they were served — nothing reduces a web page to text yet — and
-so is any other media type whose bytes decode and hold no NUL, as `text`; JSON, a PDF, an archive
+are stored exactly as they were served, and so is any other media type whose bytes decode and hold
+no NUL, as `text`; an HTML page, by its media type alone, is reduced to text by one routine,
+`html-text`, which removes the markup and the scripts, writes a heading as `#` × its level and a
+list item as `- ` indented two spaces a level, lays the text out in lines and collapses its white
+space (`reference/04_snapshot-format.md`, **What the HTML routine does**); JSON, a PDF, an archive
 and a binary, a NUL under any media type among them, fail with `UNSUPPORTED_TYPE`. Point it at a raw Markdown or
 plain-text file, as the three shipped snapshots are:
 
@@ -236,13 +239,13 @@ The tests are four commands, and "the tests" means all four:
     python3 -m unittest discover -s 00_fetch -t 00_fetch
     python3 -m unittest discover -s .claude/hooks -t .claude/hooks
 
-Run on 2026-09-25 from a fresh clone, on 3.9.6 and on 3.14.4: 720 tests OK, 452 OK, 207 OK and 46
+Run on 2026-09-25 from a fresh clone, on 3.9.6 and on 3.14.4: 726 tests OK, 452 OK, 296 OK and 46
 OK. The second command takes about two minutes. Two of the first command's tests need 3.11 or later
 and are skipped below it. Nobody has run 3.10 to 3.13. The third needs no network: it runs
 `fetch.py` against a stub server on 127.0.0.1. The fourth is the negative test of the hook wrapper:
 it feeds the wrapper hook input in a temporary folder, under `/bin/sh` and under `dash` when it is
 on PATH. `python3 lib/idemlib/contract.py` loads the contract on its own and prints
-`16 tables, 183 rows, named by reference/00_catalogue.md` last, with exit 0.
+`16 tables, 221 rows, named by reference/00_catalogue.md` last, with exit 0.
 
 ## In a claude.ai Project
 
@@ -253,7 +256,7 @@ alone, and the answer is validated afterwards, in a clone.
    `identity.md`, `rules.md`, `examples.md`, `00_catalogue.md`, `01_schema.md`,
    `02_segmentation.md`, `03_breaking-terms.md`, `04_snapshot-format.md`, `05_checks.md`. The last
    six are the files of `reference/`. `examples.md` is a placeholder and is uploaded too, because
-   `rules.md` names it. Together they are 222,804 bytes, measured on 2026-09-25; it changes when
+   `rules.md` names it. Together they are 235,779 bytes, measured on 2026-09-25; it changes when
    those files change.
 2. **Leave out everything else**: `00_fetch/`, `01_translate/`, `02_validate/`, `03_examples/`,
    `lib/`, `.claude/`, `CLAUDE.md`, `README.md`, `.gitignore`, and every `CONTEXT.md`, the one at
@@ -299,7 +302,6 @@ are not in this repository.
   `NotebookEdit` and the `*.input.txt` deny are proved by the negative test alone.
 - The examples: `examples.md` is a placeholder, and the script in `03_examples/` that would assemble
   it from validated answers is not written.
-- The routine that reduces an HTML page to text: fetch stores HTML as served.
 
 ## Limits
 
@@ -312,6 +314,13 @@ are not in this repository.
   the name is host and path by the snapshot format, and a digest of the query in it is not built.
   The workaround is one file per page, run separately, or no more than one such URL per second
   (`00_fetch/CONTEXT.md`, **Outputs**).
+- **An HTML page is only as good as its markup.** A page whose text is drawn by JavaScript reduces
+  to what it holds without its scripts: nothing, which is `EMPTY_BODY`, or, for a shell with a
+  `title` and a `noscript`, those two lines and no changelog. A charset stated only in a `<meta>`
+  element is not read. `pre` is collapsed to one line, a custom element is inline, and served text
+  that begins `- ` or `#` reads as an item or a heading. The routine's output is pinned on 3.9.6 and
+  3.14.4 for well-formed markup; some malformed markup gives two texts on the two
+  (`reference/04_snapshot-format.md`, **What the HTML routine does**).
 - **A false `not in source` cannot be caught mechanically**: nothing mechanical can tell what a
   source does not say. The backstop is `Unmapped`, which must list every non-blank line no ticket
   cites, and the warning lines that point at a listed line inside a ticket's range holding a date

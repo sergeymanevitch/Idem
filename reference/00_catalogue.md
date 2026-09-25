@@ -178,14 +178,14 @@ validator check with its code, the fetch failures with theirs, and the pattern a
 That is the whole of the enumerable contract Epic 1 set out to write, and the loader that reads it
 is written and tested. A table is usable by a tool on the day its row appears here, and not before.
 
-Listed is not the same as used. Every table above loads today, and all but one are read by a tool
-of their own: `snapshot-header`, `snapshot-constants` and `line-classes`, by `snapshot.py`;
+Listed is not the same as used. Every table above loads today, and each is read by a tool of its
+own: `snapshot-header`, `snapshot-constants` and `line-classes`, by `snapshot.py`;
 `content-kinds`, `fetch-limits` and `fetch-failures`, by `00_fetch/fetch.py`; `fields`,
 `schema-constants`, `header-items` and `ticket-lines`, by `tickets.py`; and `checks`, `fields`,
 `schema-constants`, `refusal-reasons`, `breaking-terms` and `warn-patterns`, by
-`02_validate/validate.py`, which reads `line-classes` as well, through `snapshot.classify`. One
-waits: `html-elements`, for the routine that reduces an HTML page. A row here says a tool *may* read
-that table, never that one does.
+`02_validate/validate.py`, which reads `line-classes` as well, through `snapshot.classify`; and
+`html-elements`, with `snapshot-constants`, by `00_fetch/html_text.py`, the routine that reduces an
+HTML page. Every table is read. A row here says a tool *may* read that table, never that one does.
 
 One table Idem ships is deliberately **not** listed here: the fixture manifest of
 `02_validate/00_fixtures/`. It is written in the same grammar and read by the same reader, through

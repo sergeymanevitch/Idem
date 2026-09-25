@@ -10,7 +10,8 @@ of content came back, decodes the bytes of a kind it stores by the charset the r
 and hands the header values and the body text to the one writer of the snapshot format. It numbers
 nothing, hashes nothing and parses nothing of a body itself.
 
-No model is involved, and after decoding nothing touches the text (FR-8).
+No model is involved, and after decoding and the routine its kind names, nothing touches the text
+(FR-8).
 
 WHAT IS READ FROM THE CONTRACT
 
@@ -23,8 +24,8 @@ as a string or as bytes. What is written here is addresses - the three table ids
 the eleven failure keys the tool asks by, the three kinds it asks for by name - and two sanctioned
 exceptions. The eight header field names: fetch hands a value over for each field, so it cannot ask
 without naming them (Sergey, 2026-09-21). And the name and version of each routine this tool
-implements, because a version describes code and a tool that runs a routine cannot ask without
-naming it (Sergey, 2026-09-25). A test reads this source back, holds both lists against their
+implements - `as-served` and `html-text`, each version 1 - because a version describes code and a
+tool that runs a routine cannot ask without naming it (Sergey, 2026-09-25). A test reads this source back, holds both lists against their
 tables both ways, and fails if any limit value, any User-Agent, any code, any media type or any
 signature is typed here.
 
@@ -34,8 +35,15 @@ A response is classified before it is decoded, in the order the content kinds ta
 signature at byte 0 decides whatever the media type says; else a media type a row lists; else a
 parse that finds JSON. Then, for every body whose kind so far is stored or not yet found, a NUL in
 the bytes when no charset was declared, or in the decoded text when one was, makes it binary, so a
-stored body never holds U+0000. What nothing claims is text. A kind whose row names a routine is stored under it; a kind
-whose row names none is a failed URL, and nothing is written.
+stored body never holds U+0000. What nothing claims is text. A kind whose row names a routine is
+stored under it; a kind whose row names none is a failed URL, and nothing is written.
+
+A routine takes the decoded text, its byte-order mark removed and its line endings made LF, and
+gives the body. `as-served` gives the text back as it came. `html-text`, the HTML routine of
+`html_text.py` beside this file, reduces a page to text by the table of HTML elements - the one table
+this tool never reads itself - and a page that reduces to nothing is the failed URL for an empty
+body. HTML is chosen by its media type alone: nothing sniffs markup, and a page served under no
+listed media type is text, stored as it came.
 
 WHAT IT PRODUCES
 
@@ -72,8 +80,8 @@ file - and nothing is ever retried without certificate verification.
 The exit is the highest seen: 0 when every URL gave a snapshot, 1 when any failed, 2 when the tool
 could not run or a URL met an uncaught exception. Could not run is bad usage - a URL file that cannot
 be read or decoded, or that holds no URL, among it - an interpreter below the floor, a contract that
-cannot be read (one coded line per problem, under the loader's own code) or a content kinds table
-this tool cannot use. An uncaught exception becomes one internal line naming this file and the line
+cannot be read (one coded line per problem, under the loader's own code), a content kinds table
+this tool cannot use, or a table of HTML elements the HTML routine cannot use. An uncaught exception becomes one internal line naming this file and the line
 in it, and never a traceback; inside a file of URLs it is that URL's line, and the next URL is still
 attempted.
 
@@ -96,8 +104,11 @@ import urllib.request
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(_HERE), "lib"))
+if _HERE not in sys.path:
+    sys.path.insert(0, _HERE)
 
 from idemlib import contract, snapshot  # noqa: E402  - the path has to be set first
+import html_text  # noqa: E402  - and this, beside this file
 
 # --- what to ask the contract for -----------------------------------------------------------------
 
@@ -151,13 +162,24 @@ SOURCE_URL, FINAL_URL, STATUS, CONTENT_TYPE, RETRIEVED, ROUTINE, VERSION, SHA256
 
 #: The retrieval time, in UTC, as it is written in the header and in the file name.
 STAMP = "%Y%m%dT%H%M%SZ"
-#: The second exception: the routines this tool implements, by name, with their versions. Nothing
-#: is reduced by the one there is - the bytes that decoded are the body. The routine cells of the
-#: content kinds table are held against this at load, both ways, so a row naming a routine nobody
+#: The second exception: the routines this tool implements, by name, each with its version and the
+#: function that runs it, `(text, tables) -> body`. `as-served` gives the decoded text back as it
+#: came; `html-text` reduces a page by the table of HTML elements. The routine cells of the content
+#: kinds table are held against these names at load, both ways, so a row naming a routine nobody
 #: wrote, or a routine no row names, stops the tool before it asks for anything.
 AS_SERVED = "as-served"
 AS_SERVED_VERSION = "1"
-ROUTINES = {AS_SERVED: AS_SERVED_VERSION}
+HTML_TEXT = "html-text"
+HTML_TEXT_VERSION = "1"
+
+
+def _as_served(text, tables):
+    """The routine that reduces nothing: the text that decoded is the body."""
+    return text
+
+
+ROUTINES = {AS_SERVED: (AS_SERVED_VERSION, _as_served),
+            HTML_TEXT: (HTML_TEXT_VERSION, html_text.reduce)}
 EXTENSION = ".txt"
 #: The folder a snapshot goes to when no other is named: the one beside this tool.
 SNAPSHOTS = "00_snapshots"
@@ -780,12 +802,13 @@ def _close(descriptor):
 # --- one URL ---------------------------------------------------------------------------------------
 
 
-def fetch_one(url, directory, limits, now, opener, kinds=None):
+def fetch_one(url, directory, limits, now, opener, kinds=None, tables=None):
     """Fetch this URL into this directory and return the path of the snapshot written.
 
     `limits` is the fetch limits as {key: value}, `now` the retrieval time as a datetime, `opener`
-    an opener to use, or None for one built from the limits for this URL alone, and `kinds` the
-    content kinds as `_kinds` reads them, or None to read them from the contract here. Raises
+    an opener to use, or None for one built from the limits for this URL alone, `kinds` the
+    content kinds as `_kinds` reads them, and `tables` the contract a routine reads; either left
+    None is read from the contract here. Raises
     FetchFailure, carrying the key of the row that codes it, for every way one URL can fail; the
     caller prints the coded line, because the codes live in a table and this function reads none.
 
@@ -794,8 +817,11 @@ def fetch_one(url, directory, limits, now, opener, kinds=None):
     the kind by its text, an empty body. Nothing is written unless everything else succeeded: the
     bytes of the whole snapshot are built first, and the file is created last.
     """
+    if tables is None:
+        tables = contract.load()
+        html_text.elements(tables)
     if kinds is None:
-        kinds = _kinds(contract.load())
+        kinds = _kinds(tables)
     _refuse_a_url_that_is_not_one(url)
     _refuse_other_schemes(url)
     if opener is None:
@@ -834,7 +860,8 @@ def fetch_one(url, directory, limits, now, opener, kinds=None):
     if kind is None:
         kind, why = kinds.named[TEXT], "nothing else claiming it"
         _refuse_unsupported(kind, why)
-    body = snapshot.normalise(text)
+    version, routine = ROUTINES[kind.routine]
+    body = snapshot.normalise(routine(snapshot.normalise(text), tables))
     if body == "":
         raise FetchFailure(EMPTY_BODY, "the body is empty, so there is nothing to number, hash or "
                            "quote; a page that needs a browser to show its text reduces to this")
@@ -846,7 +873,7 @@ def fetch_one(url, directory, limits, now, opener, kinds=None):
     values[CONTENT_TYPE] = content_type
     values[RETRIEVED] = stamp
     values[ROUTINE] = kind.routine
-    values[VERSION] = ROUTINES[kind.routine]
+    values[VERSION] = version
     values[SHA256] = snapshot.digest(body)
     return _create(os.path.join(directory, slug(url) + HYPHEN + stamp + EXTENSION),
                    snapshot.write(values, body))
@@ -1003,6 +1030,7 @@ def main(argv=None, version_info=None):
         limits = _limits(tables)
         codes = _codes(tables)
         kinds = _kinds(tables)
+        html_text.elements(tables)
     except contract.ContractError as broken:
         for line in broken.lines():
             contract.emit(line)
@@ -1010,10 +1038,10 @@ def main(argv=None, version_info=None):
     except Exception:
         contract.emit(contract.internal_line(__file__))
         return 2
-    return _fetch_each(entries, directory, limits, codes, kinds)
+    return _fetch_each(entries, directory, limits, codes, kinds, tables)
 
 
-def _fetch_each(entries, directory, limits, codes, kinds):
+def _fetch_each(entries, directory, limits, codes, kinds, tables):
     """Every URL in order, one line each; the exit is the highest seen.
 
     A failed URL does not stop the rest, and neither does a defect met on one: its internal line is
@@ -1030,7 +1058,7 @@ def _fetch_each(entries, directory, limits, codes, kinds):
             continue
         first[url] = line
         try:
-            path = fetch_one(url, directory, limits, _now(), None, kinds)
+            path = fetch_one(url, directory, limits, _now(), None, kinds, tables)
         except FetchFailure as failed:
             contract.emit(failure_line(codes, url, failed))
             worst = max(worst, 1)

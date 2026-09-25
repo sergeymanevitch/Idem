@@ -1,7 +1,12 @@
 # 00_fetch — URL to snapshot
 
 One job: fetch a changelog and store it as plain text with every line numbered. `fetch.py` is built
-and takes one URL, or a file of them.
+and takes one URL, or a file of them; `html_text.py` beside it reduces an HTML page to text.
+
+| Folder | Holds |
+| --- | --- |
+| `00_snapshots/` | the snapshots fetch writes — evidence, never edited; its `CONTEXT.md` names the three shipped |
+| `01_fixtures/` | the pages the HTML routine is pinned by and the text one must give; read by the tests alone, its `CONTEXT.md` names them |
 
 ## Inputs
 - Working: one `http` or `https` URL, or a file of them one a line —
@@ -25,12 +30,18 @@ after decoding nothing is edited, reordered or dropped.
 order `04_snapshot-format.md` states: a signature at byte 0 decides whatever the media type says,
 then a media type the table lists, then a parse that finds JSON, then — for every body that would
 be stored — a NUL, in the bytes when no charset was declared, in the decoded text when one was,
-and what is left is text. Markdown, plain text, RSS, Atom and HTML are stored as served, under the
+and what is left is text. Markdown, plain text, RSS and Atom are stored as served, under the
 routine name `as-served`, and so is any other media type whose bytes decode and hold no NUL, as
 `text`; a stored body never holds U+0000. JSON, a PDF, an archive and a binary are the failed URL
 `UNSUPPORTED_TYPE`, whose message names the kind and what
-decided it. HTML is stored as served because the routine that reduces it, and the sniff that would
-choose it, are not built. What the response called the bytes is recorded in `content_type`, empty
+decided it. **HTML is reduced to text** by the routine `html-text`, in `html_text.py` beside the
+tool, and chosen by its media type alone — nothing sniffs markup, so a page served under no listed
+media type is text, stored as served. The routine removes the markup and the content of `script`
+and `style`, writes a heading as its hashes and a list item as a hyphen indented by its level, lays
+the text out in lines and collapses its white space, all by the `html-elements` table and two
+counts of `snapshot-constants` (`../reference/04_snapshot-format.md`, **What the HTML routine
+does**); a page that reduces to nothing — one drawn by a script — is the failed URL `EMPTY_BODY`.
+What the response called the bytes is recorded in `content_type`, empty
 when it said nothing.
 
 ## Outputs
@@ -55,7 +66,8 @@ when it said nothing.
   an internal error — its line is `INTERNAL`, the rest are still fetched and their snapshots are on
   disk — or the tool could not run at all — bad usage, a URL file that cannot be
   read, is not UTF-8 or holds no URL, an interpreter below the floor, a contract that cannot be
-  read, or a `content-kinds` cell the tool cannot use.
+  read, a `content-kinds` cell the tool cannot use, or an `html-elements` cell the HTML routine
+  cannot use — that line points at `html_text.py`.
 
 ## What the tool holds, and what it reads
 Every limit, every User-Agent, every failure code, every media type and every signature is read
@@ -64,12 +76,22 @@ reads them by, the eleven failure keys it asks a row by — a key is an address,
 carries is the value — the three kinds it asks for by name, `text`, `json` and `binary`, and two
 exceptions `04_snapshot-format.md` grants it: **the eight header field names**, because a writer
 that supplies a value for each field cannot ask without naming them, and **the name and version of
-each routine it implements**, today `as-served` and `1`, held against the `routine` cells of
+each routine it implements**, today `as-served` and `html-text`, each version `1`, held against the `routine` cells of
 `content-kinds` both ways as the contract loads.
+
+`html_text.py` is the HTML routine, and the only reader of `html-elements`: it reads that table and
+the marker gap and item indent of `snapshot-constants`, and holds no element name, no marker and no
+count. It holds the words of the table's `parsing` and `output` columns — `raw-text`,
+`escapable-raw-text`, `normal`; `removed`, `kept`, `heading`, `item`, `line`, `list`, `cell`,
+`break` — the exception `04_snapshot-format.md` grants it, held against the two columns both ways.
+It subclasses the standard library's HTML parser and sets everything that differs between
+interpreters itself, so one page gives one text on 3.9.6 and 3.14.4.
 
 ## Tests
 `python3 -m unittest discover -s 00_fetch -t 00_fetch`, from the Idem root. No network: every
-request goes to a stub server on 127.0.0.1 and every snapshot into a temporary directory. One of
+request goes to a stub server on 127.0.0.1 and every snapshot into a temporary directory. Two
+files: `test_fetch.py` holds the tool, `test_html_text.py` the HTML routine, page by page and by the
+fixture page of `01_fixtures/`, whose expected text it compares byte for byte. One of
 the four commands the repository's tests are made of; `../CLAUDE.md` lists all four.
 
 ## A note on the interpreter

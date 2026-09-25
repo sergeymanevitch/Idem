@@ -36,8 +36,8 @@ fixture exercises. That validator reads three tables of `01_schema.md` for its o
 and which fields may cite an ancestor line, `schema-constants` for the four values a check
 compares against, and `refusal-reasons` for
 the list a reason must be in — and `breaking-terms`, for the two checks that decide what a quote
-supports; and `warn-patterns`, for the one warning that looks for a date. The remaining one —
-`html-elements` — waits for the HTML routine.
+supports; and `warn-patterns`, for the one warning that looks for a date. `html-elements` is read
+by `00_fetch/html_text.py`, the HTML routine, and by nothing else.
 `02_segmentation.md` holds no table, so the loader never opens it at all. A pattern is the one kind
 of cell the loader looks inside: a column named `pattern`, or ending `_pattern`, is linted and
 compiled as the contract loads, and `00_catalogue.md` states that convention.

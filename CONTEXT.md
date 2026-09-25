@@ -7,7 +7,7 @@ Three filters that never call each other. Each reads files the previous one wrot
 
 | Step | Reads | Writes | A person checks |
 | --- | --- | --- | --- |
-| `00_fetch/` | one URL, or a file of URLs one a line | one snapshot per URL of a kind it stores — Markdown, text, a feed, HTML as served — in `00_fetch/00_snapshots/`; three are there | the snapshot against the page it came from |
+| `00_fetch/` | one URL, or a file of URLs one a line | one snapshot per URL of a kind it stores — Markdown, text and a feed as served, an HTML page reduced to text — in `00_fetch/00_snapshots/`; three are there | the snapshot against the page it came from |
 | `01_translate/` | one snapshot; `identity.md`, `rules.md`, the reference files each step names | one file in `01_translate/00_tickets/` | `Unmapped`, and every `not in source` row |
 | `02_validate/` | a tickets file and the snapshot it names, or the input text for a file written from pasted text; or two tickets files of one input, for the comparer | nothing; an exit code and coded failure lines, and for the comparer plain lines that carry no code. `validate.py` has every phase and every check written, and the header alone selects which run; `compare_runs.py` says whether two tickets files of one input have one shape | that the exit code is 0 before the tickets are used |
 | `03_examples/` | not built: the folder holds only its `CONTEXT.md`, which says what it will read and write | nothing yet; `examples.md` at the root is a placeholder | nothing yet |

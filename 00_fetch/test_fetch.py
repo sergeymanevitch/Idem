@@ -49,6 +49,7 @@ sys.path.insert(0, os.path.join(ROOT, "lib"))
 sys.path.insert(0, HERE)
 
 import fetch  # noqa: E402  - the path has to be set first
+import html_text  # noqa: E402  - and this, beside it
 from idemlib import contract, snapshot  # noqa: E402  - and so does this
 
 #: The three tables fetch reads, and the columns it reads them by. Addresses, not values.
@@ -104,6 +105,11 @@ STAMP_FORM = "YYYYMMDDTHHMMSSZ"
 STAMP_PATTERN = re.compile("^[0-9]{8}T[0-9]{6}Z$")
 ROUTINE = "as-served"
 ROUTINE_VERSION = "1"
+#: The HTML routine, which the html row names, and its version.
+HTML_ROUTINE = "html-text"
+HTML_ROUTINE_VERSION = "1"
+#: Every routine the tool implements, by name, with its version.
+ROUTINE_VERSIONS = {ROUTINE: ROUTINE_VERSION, HTML_ROUTINE: HTML_ROUTINE_VERSION}
 DIGEST_LENGTH = 64
 DIGEST_PATTERN = re.compile("^[0-9a-f]{64}$")
 
@@ -406,13 +412,14 @@ class TestOneUrlGivesOneSnapshot(FetchCase):
         self.assertEqual("café\n", read.body)
         self.assertEqual("text/plain", read.header["content_type"])
 
-    def test_html_is_stored_as_served_and_is_not_an_unsupported_type(self):
-        """The html row names the as-served routine until the routine that reduces a page is
-        built, so a page is stored as it came."""
+    def test_html_is_reduced_and_is_not_an_unsupported_type(self):
+        """The html row names the HTML routine, so a page is stored as the text it reduces to,
+        under that routine's name and version."""
         url = self.stub.at("/page.html", serve(b"<p>one</p>\n", content_type="text/html"))
         read = snapshot.read(self.read(os.path.basename(self.fetch(url))))
-        self.assertEqual("<p>one</p>\n", read.body)
-        self.assertEqual(ROUTINE, read.header["routine"])
+        self.assertEqual("one\n", read.body)
+        self.assertEqual(HTML_ROUTINE, read.header["routine"])
+        self.assertEqual(HTML_ROUTINE_VERSION, read.header["routine_version"])
 
     def test_the_default_directory_is_the_snapshots_folder_beside_the_tool(self):
         self.assertEqual(os.path.join(HERE, "00_snapshots"), fetch.default_directory())
@@ -1025,7 +1032,7 @@ class TestContentIsClassified(FetchCase):
                 read = self.stored("/stored" + str(second), b"- one\n", media_type, second)
                 self.assertEqual("- one\n", read.body, media_type)
                 self.assertEqual(rows[kind][ROUTINE_CELL], read.header["routine"], media_type)
-                self.assertEqual(fetch.ROUTINES[rows[kind][ROUTINE_CELL]],
+                self.assertEqual(fetch.ROUTINES[rows[kind][ROUTINE_CELL]][0],
                                  read.header["routine_version"], media_type)
                 tried += 1
         self.assertTrue(tried)
@@ -1112,7 +1119,8 @@ class TestContentIsClassified(FetchCase):
         """With a second routine granted, the row decides which name and version the header
         carries - not the one routine there happens to be today."""
         original = fetch.ROUTINES
-        fetch.ROUTINES = {ROUTINE: ROUTINE_VERSION, "other-routine": "3"}
+        fetch.ROUTINES = dict(original)
+        fetch.ROUTINES["other-routine"] = ("3", fetch._as_served)
         self.addCleanup(setattr, fetch, "ROUTINES", original)
         tables = copy.deepcopy(dict(SHIPPED))
         tables[KINDS].rows[TEXT][ROUTINE_CELL] = "other-routine"
@@ -1670,7 +1678,7 @@ class TestTheFormsTheFileStates(FetchCase):
 
     def test_the_paragraph_states_the_four_forms(self):
         text = self.forms()
-        for phrase in (STAMP_FORM, ROUTINE, str(DIGEST_LENGTH), "lower-case"):
+        for phrase in (STAMP_FORM, ROUTINE, HTML_ROUTINE, str(DIGEST_LENGTH), "lower-case"):
             self.assertIn(phrase, text, phrase)
 
     def test_the_paragraph_says_they_get_no_check_key(self):
@@ -1852,8 +1860,14 @@ class TestTheToolNamesNothingTheTablesOwn(FetchCase):
     def folder(self):
         """Every file of this step: the tool, its tests, and the two files that route a reader."""
         return [os.path.abspath(fetch.__file__), os.path.abspath(__file__),
+                os.path.abspath(html_text.__file__),
+                os.path.join(HERE, "test_html_text.py"),
                 os.path.join(HERE, "CONTEXT.md"),
-                os.path.join(HERE, "00_snapshots", "CONTEXT.md")]
+                os.path.join(HERE, "00_snapshots", "CONTEXT.md"),
+                os.path.join(HERE, "01_fixtures", "CONTEXT.md"),
+                os.path.join(HERE, "01_fixtures", "changelog.html"),
+                os.path.join(HERE, "01_fixtures", "changelog.txt"),
+                os.path.join(HERE, "01_fixtures", "script-only.html")]
 
     def test_it_imports_the_two_modules_of_the_library_and_parses_nothing_itself(self):
         text = self.source()
@@ -1911,7 +1925,20 @@ class TestTheKindsTable(FetchCase):
         rows = table(KINDS).rows
         named = set([rows[kind][ROUTINE_CELL] for kind in rows]) - set([""])
         self.assertEqual(named, set(fetch.ROUTINES))
-        self.assertEqual({ROUTINE: ROUTINE_VERSION}, fetch.ROUTINES)
+        self.assertEqual(ROUTINE_VERSIONS,
+                         dict([(name, fetch.ROUTINES[name][0]) for name in fetch.ROUTINES]))
+        for name in fetch.ROUTINES:
+            self.assertTrue(callable(fetch.ROUTINES[name][1]), name)
+
+    def test_the_html_row_names_the_html_routine_and_no_other_row_does(self):
+        rows = table(KINDS).rows
+        self.assertEqual(["html"], [kind for kind in rows
+                                    if rows[kind][ROUTINE_CELL] == HTML_ROUTINE])
+        self.assertIs(fetch.ROUTINES[HTML_ROUTINE][1], html_text.reduce)
+
+    def test_as_served_gives_the_text_back_as_it_came(self):
+        text = "<p>one</p>\n- two\n"
+        self.assertEqual(text, fetch.ROUTINES[ROUTINE][1](text, SHIPPED))
 
     def test_the_rows_load_in_the_order_the_table_writes_them(self):
         found = kinds()

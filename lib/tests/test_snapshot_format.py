@@ -1,4 +1,4 @@
-"""Tests for reference/04_snapshot-format.md - the five tables of the snapshot format.
+"""Tests for reference/04_snapshot-format.md - the tables of the snapshot format.
 
     python3 -m unittest discover -s lib/tests -t lib
 
@@ -41,11 +41,29 @@ ESCAPABLE_RAW_TEXT = ["textarea", "title"]
 REMOVED = ["script", "style"]
 
 PARSINGS = ["raw-text", "escapable-raw-text", "normal"]
-OUTPUTS = ["removed", "kept", "heading", "item"]
+OUTPUTS = ["removed", "kept", "heading", "item", "line", "list", "cell", "break"]
+
+#: The elements that lay the kept text out in lines (Sergey, 2026-09-25): where a line ends, what
+#: counts the nesting of an item, what stands one space from its neighbours, and what ends a line
+#: without asking for an empty one.
+LINE = ["head", "body", "p", "div", "hr", "section", "article", "header", "footer", "nav", "main",
+        "aside", "blockquote", "pre", "address", "figure", "figcaption", "details", "summary",
+        "dialog", "dl", "dt", "dd", "table", "caption", "thead", "tbody", "tfoot", "tr", "form",
+        "fieldset", "legend"]
+LIST = ["ul", "ol", "menu"]
+CELL = ["td", "th"]
+BREAK = ["br"]
 
 #: Characters that are invisible and are not a space or a tab: no class and no constant may treat
 #: one as nothing, because the body keeps what was served (FR-4).
 INVISIBLE = [chr(0x00a0), chr(0x200b), chr(0x2007), chr(0xfeff), "\f", "\v", "\r"]
+
+#: The HTML table's element name is also the word the loader's summary line counts tables by
+#: ("16 tables"). The word was there first and names no row of any table; the element joined
+#: html-elements with the layout rows (Sergey, 2026-09-25), so the sweep below passes over that one
+#: key of that one table and no other.
+HTML_ELEMENTS = "html-elements"
+TABLE_WORD = "table"
 
 SHIPPED = {}
 
@@ -296,11 +314,34 @@ class TestTheHtmlElements(unittest.TestCase):
         self.assertEqual(["li"], self.group("output", "item"))
         self.assertEqual("-", self.rows()["li"]["marker"])
 
-    def test_every_row_uses_one_of_the_three_parsings_and_one_of_the_four_outputs(self):
+    def test_the_elements_that_end_a_line(self):
+        self.assertEqual(sorted(LINE), self.group("output", "line"))
+
+    def test_the_list_containers(self):
+        self.assertEqual(sorted(LIST), self.group("output", "list"))
+
+    def test_the_table_cells(self):
+        self.assertEqual(sorted(CELL), self.group("output", "cell"))
+
+    def test_the_line_break(self):
+        self.assertEqual(sorted(BREAK), self.group("output", "break"))
+
+    def test_the_layout_rows_are_all_normal(self):
+        rows = self.rows()
+        for name in LINE + LIST + CELL + BREAK:
+            self.assertEqual("normal", rows[name]["parsing"], name)
+
+    def test_every_row_uses_one_of_the_three_parsings_and_one_of_the_eight_outputs(self):
         rows = self.rows()
         for name in rows:
             self.assertIn(rows[name]["parsing"], PARSINGS, name)
             self.assertIn(rows[name]["output"], OUTPUTS, name)
+
+    def test_every_element_is_named_in_lower_case_once(self):
+        rows = self.rows()
+        self.assertEqual(53, len(rows))
+        for name in rows:
+            self.assertEqual(name.lower(), name)
 
     def test_only_a_marker_row_carries_a_marker(self):
         rows = self.rows()
@@ -370,6 +411,8 @@ class TestTheLoaderNamesNothingInTheseTables(unittest.TestCase):
             for key in SHIPPED[table_id].rows:
                 if key == contract.PATTERN_COLUMN:
                     continue  # the one name the module is allowed: table grammar, not a row of one
+                if table_id == HTML_ELEMENTS and key == TABLE_WORD:
+                    continue  # the loader's summary counts tables in English; not the HTML element
                 found += 1
                 self.assertNotIn(key, literals, table_id + " / " + key)
         self.assertTrue(found)

@@ -1,0 +1,42 @@
+Example API & SDK changelog
+
+Home | Docs
+
+# Changelog
+
+All notable changes to the Example API are listed here, newest first.
+
+## 2.1.0 — 2026-09-01
+
+- Breaking: the GET /v1/users endpoint now returns email_verified.
+- Deprecated the sort parameter.
+  - Use order_by instead.
+  - Removal is planned for 3.0.
+    - Warning headers from 2.2.
+- Added a limit parameter.
+  The default is 50 & the maximum is 500.
+- ### Webhooks
+  New events for refunds.
+
+Request bodies larger than 1 MB are rejected with 413.
+Contact support <support@example.com> for © questions.
+
+## 2.0.0 – 2026-08-01
+
+Endpoint Change
+
+/v1/orders Removed the legacy field.
+
+/v1/refunds
+Added.
+- Supports partial refunds.
+
+An example request body:
+
+<b>not bold</b> <id> &amp; <p>raw &amp; unresolved</p>
+
+Older releases
+
+1.9.0 – the first public release.
+
+© 2026 Example, Inc.
