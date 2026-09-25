@@ -659,15 +659,14 @@ The tests are five commands, and "the tests" means all five:
     python3 -m unittest discover -s .claude/hooks -t .claude/hooks
     python3 -m unittest discover -s 03_examples -t 03_examples
 
-Run on 2026-09-25 from a fresh clone, on 3.9.6 and on 3.14.4: 726 tests OK, 472 OK, 296 OK, 46 OK
+Run on 2026-09-25 from a fresh clone, on 3.9.6 and on 3.14.4: 732 tests OK, 472 OK, 296 OK, 46 OK
 and 38 OK. The second command takes about three minutes. Two of the first command's tests need 3.11
-or later and are skipped below it. Nobody has run 3.10 to 3.13. Two others find the shipped
-PagerDuty snapshot by the vendor's name and fail while a second PagerDuty snapshot stands beside it,
-as step 1 run as written leaves one: run the tests in a clone with nothing fetched into
-`00_fetch/00_snapshots/`, or move your snapshot out first. The third needs no network: it runs
-`fetch.py` against a stub server on 127.0.0.1. The fourth is the negative test of the hook wrapper:
-it feeds the wrapper hook input in a temporary folder, under `/bin/sh` and under `dash` when it is
-on PATH. The fifth holds the examples script, every output in a temporary directory.
+or later and are skipped below it. Nobody has run 3.10 to 3.13. The shipped snapshots are found
+through `03_examples/examples-manifest.md`, so a snapshot you fetched beside them in step 1 changes
+no result. The third needs no network: it runs `fetch.py` against a stub server on 127.0.0.1. The
+fourth is the negative test of the hook wrapper: it feeds the wrapper hook input in a temporary
+folder, under `/bin/sh` and under `dash` when it is on PATH. The fifth holds the
+examples script, every output in a temporary directory.
 `python3 lib/idemlib/contract.py` loads the contract on its own and prints
 `16 tables, 221 rows, named by reference/00_catalogue.md` last, with exit 0.
 
@@ -786,6 +785,11 @@ inputs and the nine answers are not in this repository.
   cites, and the warning lines that point at a listed line inside a ticket's range holding a date
   or a phrase of the list that decides `breaking` (`02_validate/CONTEXT.md`, section
   **Human check**).
+- **A setext heading is not a heading.** A title underlined with `=` or `-` is read as a `plain`
+  line and an underline of two or more characters as a separator, so the title is never an ancestor, and a release date
+  written only on it is read by no field that reads a heading: that `entry_date` is
+  `not in source` ([reference/02_segmentation.md](reference/02_segmentation.md), **The one
+  narrowing: separator lines**).
 - **In a changelog with no headings and no lists the range checks constrain little**: where one
   change ends and the next begins is then held by nothing but the translator's rule
   (`reference/05_checks.md`, the paragraph on what the ranges phase cannot hold).
@@ -851,3 +855,24 @@ never changes; the suite's fixture snapshots are built by hand on purpose, and
 `02_validate/00_fixtures/CONTEXT.md` says which. A tickets file names its snapshot and copies that
 snapshot's digest; the validator recomputes the digest of the body and compares. In Claude Code the
 deny hook of `.claude/` refuses the file tools that folder.
+
+**The labels in the files.** `AD-n`, `FR-n` and `NFR-n`, and "the spine", are labels of the
+author's design documents, which are not in this repository: `FR` and `NFR` number the
+requirements, `AD` the architecture decisions, and the spine is the document that holds the
+decisions. A sentence or a comment that cites one points at where a rule came from; what binds is
+the file it stands in. The twelve decisions, one line each, as they stand after their amendments:
+
+| Label | The decision | Where it is held |
+| --- | --- | --- |
+| `AD-1` | Every listed value of the contract is written once, as a table in `reference/`; no tool holds one as a literal but the exceptions recorded where they are granted | [reference/00_catalogue.md](reference/00_catalogue.md), [lib/idemlib/contract.py](lib/idemlib/contract.py) |
+| `AD-2` | The validator checks the shape of ranges — disjoint or identical, no heading inside, the ancestors a range may cite — and never segments the body again | [reference/02_segmentation.md](reference/02_segmentation.md), [02_validate/validate.py](02_validate/validate.py) |
+| `AD-3` | One reader and writer per format, and one canonical form that a canonical file survives byte for byte | [lib/idemlib/](lib/idemlib/) |
+| `AD-4` | One owner per kind of knowledge: what Idem is in `identity.md`, procedure in `rules.md`, definitions in `reference/`; the upload set cites files by bare name | [rules.md](rules.md), [lib/tests/test_rules.py](lib/tests/test_rules.py) |
+| `AD-5` | A file has one writer and is never edited: only `fetch.py` writes a snapshot, a refetch is a new file, a tickets file names its snapshot by bare name | [00_fetch/fetch.py](00_fetch/fetch.py), [.claude/](.claude/), [02_validate/validate.py](02_validate/validate.py) |
+| `AD-6` | Exit 0, 1 or 2 for every tool; the validator's failure line `CODE<TAB>file:line<TAB>message`, fetch's with the URL in place of `file:line`, the comparer's plain; fixed phases of which the first that fails is printed | [reference/05_checks.md](reference/05_checks.md), [02_validate/validate.py](02_validate/validate.py), [00_fetch/fetch.py](00_fetch/fetch.py) |
+| `AD-7` | Every check is registered under a key of the `checks` table, reconciled with it both ways at start, and named by a fixture that must raise exactly its codes | [reference/05_checks.md](reference/05_checks.md), [02_validate/00_fixtures/manifest.md](02_validate/00_fixtures/manifest.md), [02_validate/run_fixtures.py](02_validate/run_fixtures.py) |
+| `AD-8` | One coordinate system: body line 1 is the first line after the separator, a range is `a-b` or one bare number, and `snapshot.py` alone classifies lines and computes the digest | [lib/idemlib/snapshot.py](lib/idemlib/snapshot.py), [reference/04_snapshot-format.md](reference/04_snapshot-format.md) |
+| `AD-9` | Citation scope belongs to the field: the `ancestor` column of `fields` says which fields may cite a heading or parent item above their range | [reference/01_schema.md](reference/01_schema.md), [02_validate/validate.py](02_validate/validate.py) |
+| `AD-10` | The tickets header selects what the validator runs — the numbered mode, the unnumbered mode, a refusal, zero tickets — and no flag excuses a phase the header does not | [reference/05_checks.md](reference/05_checks.md), [02_validate/validate.py](02_validate/validate.py) |
+| `AD-11` | `examples.md` is generated whole from the examples manifest, each file in a fence longer than any backtick run in it and never shorter than three, and the suite regenerates it and requires byte equality | [03_examples/build_examples.py](03_examples/build_examples.py), [02_validate/run_fixtures.py](02_validate/run_fixtures.py) |
+| `AD-12` | Fetch and the HTML routine give one snapshot of one page across Python versions: element lists from the table, no version-dependent default, a certificate failure coded and never retried unverified | [00_fetch/html_text.py](00_fetch/html_text.py), [00_fetch/fetch.py](00_fetch/fetch.py) |

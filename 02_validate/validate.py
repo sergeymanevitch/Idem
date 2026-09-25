@@ -1549,9 +1549,9 @@ def check_breaking_quote(run):
     """The phrases the routine keeps in one quote carry different values (FR-30).
 
     The quote supports neither answer, so no row filled from it can be true of it, and the remedy is
-    a narrower quote - one sentence rather than a paragraph holding both. It is per quote and not
-    per ticket: two rows of one ticket that disagree break no rule stated anywhere, and the checks
-    file names that as a limit with no key.
+    a narrower quote - one sentence rather than a paragraph holding both. It is per quote, and a
+    ticket has one quote here: the field takes one row, and a second row is refused by the grammar
+    phase, so two rows of one ticket never reach this check.
 
     Nothing to read where there is no model, no ticket, or no filled row of that field with a quote:
     it returns an empty list.

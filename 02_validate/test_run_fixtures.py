@@ -218,7 +218,7 @@ class SuiteCase(unittest.TestCase):
 
 
 class TestTheCommittedCorpus(unittest.TestCase):
-    """The acceptance run: every fixture this story ships, through the suite as a person runs it."""
+    """The acceptance run: every fixture the corpus holds, through the suite as a person runs it."""
 
     def run_main(self, argv, version_info=None):
         out = io.StringIO()
@@ -293,7 +293,7 @@ class TestTheCommittedCorpus(unittest.TestCase):
     def unexercised(self):
         """The rows of `checks` no existing fixture names, counted here from the two files.
 
-        Counted rather than written down: the number falls out of the corpus, and a story that
+        Counted rather than written down: the number falls out of the corpus, and a change that
         writes one more fixture moves it without an edit here.
         """
         exempt = (contract.CODE, contract.INTERNAL)

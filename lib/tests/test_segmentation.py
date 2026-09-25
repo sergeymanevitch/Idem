@@ -17,7 +17,7 @@ condition of the classifier is written in terms of them - an item opens on one c
 another - and each is asserted to be a row of the table. **Every answer it gives is now compared
 with `snapshot.classify`**, so the two readings cannot drift apart in silence; that the reading
 still says what the prose says is enforced by nothing, and the debt of the helper's existence is
-named in `reference/CONTEXT.md`, whose owner is the story that replaces it.
+named in `reference/CONTEXT.md`, whose owner is the change that replaces it.
 
 The file under test is **prose**: it holds no table, nothing loads it, and no tool reads a line of
 it. So what can be proved today is that it is not contract by accident, that every name it cites
@@ -30,19 +30,21 @@ states, applied to its own examples, gives the ranges and the ancestors those ex
 WHAT IS WRITTEN HERE AS A LITERAL
 
 The four class names above; the headings of the eight worked examples and of the sections that
-carry a checklist or a stated limit, because the story fixes them and there is nowhere else to read
+carry a checklist or a stated limit, because the requirements fix them and there is nowhere else to read
 them from; the two claim line forms of the example convention; the characters a separator line is
 made of; the words the checklist's questions and the limits are held by; one word of the source
-URL of each of the two shipped snapshots a limit quotes from; and `AD-2`, the provision this story
+URL of each of the two shipped snapshots a limit quotes from; and `AD-2`, the provision this file
 is about. Every field name, check key, column name and constant is read from the contract, so a
 row renamed by decision is not typed here as well.
 
-No test pins the catalogue's row set, or the row set of any table: a story that adds a table or a
+No test pins the catalogue's row set, or the row set of any table: a change that adds a table or a
 decision that adds a check must not have to edit this file.
 """
 import io
 import os
 import re
+import shutil
+import tempfile
 import unittest
 
 from idemlib import contract, snapshot
@@ -76,8 +78,8 @@ COPIED = "copied"
 SEPARATOR_CHARACTERS = "-*_="
 
 HEADING_2, HEADING_3 = "## ", "### "
-#: The eight worked examples, by their headings. The first four are the FR-9 cases the story
-#: requires; the fifth is the reconstruction of the first example of `01_schema.md`; the last three
+#: The eight worked examples, by their headings. The first four are the FR-9 cases the requirements
+#: name; the fifth is the reconstruction of the first example of `01_schema.md`; the last three
 #: are the mixed pages and the other language, which the checklist and the two sections after it
 #: point at.
 SEVERAL_ENDPOINTS = "Several endpoints in one list item"
@@ -137,10 +139,13 @@ BROKEN_LINES = (227, 228, 229)
 #: The folder the shipped snapshots stand in. A snapshot's origin is read from the first row of
 #: the header table, whatever that row is called.
 SNAPSHOTS = os.path.join("00_fetch", "00_snapshots")
+#: The table that names the shipped snapshots, and where it stands: the first column of each row is
+#: a snapshot's bare file name. A snapshot a reader fetches beside them is named by no row.
+EXAMPLES_MANIFEST, EXAMPLES_TABLE = os.path.join("03_examples", "examples-manifest.md"), "examples"
 #: The ticket count of each of the three new examples, pinned as FR-9's are: the blog post's two
 #: leaves and two paragraphs, the three product items, the three German items.
 NEW_COUNTS = {BLOG: 4, PRODUCTS: 3, GERMAN: 3}
-#: The provision this story is about. The file has to name the checks that come from it.
+#: The provision this file is about. The file has to name the checks that come from it.
 AD_2 = "AD-2"
 #: What one citation of a provision looks like, whatever family it is of.
 PROVISION = re.compile(r"^[A-Z]+-[0-9]+$")
@@ -231,18 +236,27 @@ def paragraph_holding(body, phrase):
     return found[0]
 
 
-def shipped_snapshot(word):
+def shipped_names(root=ROOT):
+    """The bare file names of the shipped snapshots, in the order the examples manifest gives them.
+
+    Read from that table and not from the folder, so that a snapshot fetched beside them - which the
+    first command of the README leaves there - is none of them.
+    """
+    rows = contract.read_table(os.path.join(root, EXAMPLES_MANIFEST), EXAMPLES_TABLE).rows
+    return [row.cells[0] for row in rows]
+
+
+def shipped_snapshot(word, root=ROOT):
     """The body lines of the one shipped snapshot whose source URL holds `word`, 1-based by index.
 
     Read through `snapshot.read`, so the lines are exactly what the validator would see; found by
-    the URL and never by the file name, which carries a retrieval time nobody should type.
+    the URL and never by the file name, which carries a retrieval time nobody should type. Only the
+    snapshots the examples manifest names are searched.
     """
     origin = list(table("snapshot-header").rows)[0]
     found = []
-    folder = os.path.join(ROOT, SNAPSHOTS)
-    for name in sorted(os.listdir(folder)):
-        if not name.endswith(".txt"):
-            continue
+    folder = os.path.join(root, SNAPSHOTS)
+    for name in shipped_names(root):
         handle = io.open(os.path.join(folder, name), "rb")
         try:
             loaded = snapshot.read(handle.read())
@@ -777,7 +791,7 @@ class TestTheFileIsNotContract(unittest.TestCase):
 
     def test_it_marks_no_table_anywhere(self):
         """Not outside a fence, where the loader would read it, and not inside one either. This
-        file owns no enumerable fact: Epic 2 adds no table, and a story that finds it needs one
+        file owns no enumerable fact: it adds no table, and a change that finds it needs one
         raises a decision instead of writing a marker."""
         for line in _lines(PATH):
             self.assertIsNone(contract.MARKER_RE.match(line), repr(line))
@@ -858,7 +872,7 @@ class TestWhatItNames(unittest.TestCase):
                               "the contract")
 
     def test_the_fields_that_may_cite_an_ancestor_are_pointed_at_and_never_listed(self):
-        """AD-9 and the story: the file names the table and the column that carry citation scope,
+        """AD-9: the file names the table and the column that carry citation scope,
         and the reader looks the three fields up there. The column is found by what its cells hold,
         so neither its name nor the value is written down here."""
         values = set([table("breaking-terms").rows[phrase]["value"]
@@ -1026,7 +1040,7 @@ class TestTheTestForAChangelog(unittest.TestCase):
         self.assertIn("**What is not a change**", found[0][1])
 
     def test_a_body_of_headings_alone_reaches_the_second_question(self):
-        """A1 of the story: a heading that says a release holds no changes, with nothing under it,
+        """A heading that says a release holds no changes, with nothing under it,
         is the zero-ticket shape and not the refusal. The paragraph that says so names both
         outcomes, read from the tables."""
         _heading, body = changelog_section()
@@ -1056,7 +1070,7 @@ class TestTheTestForAChangelog(unittest.TestCase):
         self.assertIn(READING_TWO, flat)
 
     def test_the_section_names_no_question_of_quality(self):
-        """The story: a checklist a model can apply without judgment of quality."""
+        """A checklist a model can apply without judgement of quality."""
         _heading, body = changelog_section()
         for word in ("quality", "well-written", "good enough"):
             self.assertNotIn(word, body.lower(), word)
@@ -1266,7 +1280,7 @@ class TestTheStatedLimits(unittest.TestCase):
         self.assertEqual((0, 2), (first, last))
 
     def test_the_empty_fenced_line_is_the_one_limit_the_fences_section_names(self):
-        """Decision 5b: named as a limit, skipped in the ancestor walk as `05_checks.md` says, and
+        """A decision of the owner: named as a limit, skipped in the ancestor walk as `05_checks.md` says, and
         what coverage makes of it stated nowhere. And the file still says no example holds a fence."""
         body = self.section(HEADING_2, FENCES)
         paragraph = paragraph_holding(body, "One line inside a fence")
@@ -1545,7 +1559,7 @@ class TestTheReconstruction(unittest.TestCase):
         self.assertEqual(len(self.body), last)
 
     def test_the_published_ticket_ranges_are_the_ranges_this_rule_cuts(self):
-        """The claim the story turns on. The ranges are read off the example's own `source` rows,
+        """The claim the file turns on. The ranges are read off the example's own `source` rows,
         the units off the reconstruction, and the two have to agree."""
         ranged = self.ranged_field()
         published = []
@@ -1647,8 +1661,9 @@ class TestTheHelperItself(unittest.TestCase):
         self.assertEqual([(1, 1, ITEM_START, False), (2, 2, ITEM_START, False)], units(body))
 
     def test_a_parent_only_range_fails_the_reading_of_range_end(self):
-        """Q4 against Q2: a ticket for the parent alone is the thing the leaf rule forbids, and the
-        reading this file states for `range_end` is what would catch it."""
+        """The leaf rule against the reading of `range_end`: a ticket for the parent alone is the
+        thing the leaf rule forbids, and the reading this file states for `range_end` is what would
+        catch it."""
         body = self.body("- Storage API",
                          "  - PUT /v1/blobs takes a checksum.")
         classes = classify(body)
@@ -1839,6 +1854,32 @@ class TestTheHelperItself(unittest.TestCase):
         body = self.body("- Storage API", "  - the first change.")
         classes = classify(body)
         self.assertTrue(is_ancestor(body, classes, (1, 1), 0))
+
+
+class TestAFetchedSnapshotBesideTheShippedOnesChangesNothing(unittest.TestCase):
+    """The README promises that a snapshot fetched beside the shipped ones, as its first command
+    leaves one, changes no result. The lookup is run over a copy of the tree holding such a
+    snapshot: a renamed copy of the PagerDuty one, which the vendor's name alone would find twice."""
+
+    def test_the_lookup_reads_the_manifest_and_not_the_folder(self):
+        names = shipped_names()
+        self.assertEqual(3, len(names), names)
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, SNAPSHOTS))
+            os.makedirs(os.path.dirname(os.path.join(root, EXAMPLES_MANIFEST)))
+            shutil.copyfile(os.path.join(ROOT, EXAMPLES_MANIFEST),
+                            os.path.join(root, EXAMPLES_MANIFEST))
+            for name in names:
+                shutil.copyfile(os.path.join(ROOT, SNAPSHOTS, name),
+                                os.path.join(root, SNAPSHOTS, name))
+            pagerduty = [name for name in names if SIBLING_SNAPSHOT in name]
+            self.assertEqual(1, len(pagerduty), names)
+            stray = pagerduty[0].replace(".txt", "-fetched-again.txt")
+            shutil.copyfile(os.path.join(ROOT, SNAPSHOTS, pagerduty[0]),
+                            os.path.join(root, SNAPSHOTS, stray))
+            self.assertEqual(names, shipped_names(root))
+            self.assertEqual(shipped_snapshot(SIBLING_SNAPSHOT),
+                             shipped_snapshot(SIBLING_SNAPSHOT, root))
 
 
 if __name__ == "__main__":

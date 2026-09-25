@@ -25,7 +25,7 @@ copies a value. Both are held by the review layers.
 
 WHAT IS WRITTEN HERE AS A LITERAL
 
-The six step titles and the files each step is allowed to name, because the story fixes both and
+The six step titles and the files each step is allowed to name, because the requirements fix both and
 there is nowhere else to read them from; the citation form a step uses to name a section, and the
 place every citation of an **ambiguous** heading is pinned to, because a heading text standing in
 two reference files can otherwise be cited of the wrong one and resolve; the column a value is read
@@ -33,11 +33,11 @@ from, asserted by name rather than taken by position; the four requirements the 
 cover and the one the self-check must cite; the word that marks a draft and the words that say
 what it still leaves open; the sections of the field rules step 3 has to cite and the sections of
 the segmentation rule step 2 has to cite; and the short plain
-words Q20 exempts from the forbidden-value scan. Every phrase, reason,
+words the owner exempted from the forbidden-value scan. Every phrase, reason,
 constant, field name and pattern is read from the contract through `contract.load()`, so a row
 renamed by decision is not typed here as well.
 
-No test pins the catalogue's row set, or the row set of any table: a story that adds a table or a
+No test pins the catalogue's row set, or the row set of any table: a change that adds a table or a
 decision that adds a check must not have to edit this file.
 """
 import io
@@ -55,7 +55,7 @@ REFERENCE = "reference"
 
 #: The heading a step stands under: the word, its number, an em dash, its title.
 STEP_HEADING = re.compile(r"^## Step ([0-9]+) — (.+)$")
-#: The six stages, in the order the story names them, under the titles this file fixes; beside each,
+#: The six stages, in the order the requirements name them, under the titles this file fixes; beside each,
 #: every file that step is allowed to name. A step that lost a file, or gained one, fails here -
 #: which is the mutation a bare "every step names a file" test lets through.
 STEPS = [
@@ -87,7 +87,7 @@ HEADING = re.compile(r"^#+[ \t]+(.+?)[ \t]*$")
 #: names. A heading text carried by two reference files resolves whichever of them is written beside
 #: it, so the test above it cannot tell "The header" of the schema from "The header" of the snapshot
 #: format. These triples are the only place that pairing is fixed, and they are pinned by hand
-#: because the story fixes them and there is nowhere to read them from.
+#: because the requirements fix them and there is nowhere to read them from.
 #: They are compared as a list and not as a set, so two citations of one section are two entries: a
 #: step that points twice at the same place and has one of the two swapped for its twin is caught.
 AMBIGUOUS_CITATIONS = [
@@ -167,11 +167,11 @@ MINIMUM_PARAGRAPH = 280
 PROHIBITION_TAGS = ["FR-12", "FR-19", "FR-20", "FR-21"]
 SELF_CHECK_TAG = "FR-27"
 
-#: Q20: a value shorter than this, or one of the plain English words below, is not evidence of
+#: By the owner's decision, a value shorter than this, or one of the plain English words below, is not evidence of
 #: anything - it is a word. Those are held by review and not by the scan.
 SHORT = 5
 PLAIN_WORDS = ("yes", "no", "none", "refusal", "lf")
-#: Three constants the story names outright, which the exemption above does not reach: the sentinel,
+#: Three constants the requirements name outright, which the exemption above does not reach: the sentinel,
 #: the cell an unnumbered line reads, and the size limit. The last is three characters long and
 #: would otherwise be exempt for its length, and it is exactly the value a step is most tempted to
 #: copy - so a value of one of these is banned whatever it reads. A value that is all digits is
@@ -395,7 +395,7 @@ def forbidden():
     snapshot format, every limit fetch works inside, and every pattern that classifies a line - of
     a snapshot body, of a tickets file, or of a header item's value.
 
-    The Q20 exemptions come off: a value shorter than five characters, or a plain English word, is
+    The owner's exemptions come off: a value shorter than five characters, or a plain English word, is
     held by review rather than by this scan, because banning `no` would ban the language. The three
     constants of NEVER_EXEMPT are put back in whatever they read.
     """
@@ -435,7 +435,7 @@ def forbidden():
 
 class TestNeitherFileIsAStub(unittest.TestCase):
     def test_both_files_are_written(self):
-        """The mutation: either file reverted to the placeholder Story 1.1 left behind."""
+        """The mutation: either file reverted to the placeholder the skeleton left behind."""
         for name in both():
             body = text(name)
             self.assertNotIn(STUB, body, name)
@@ -545,7 +545,7 @@ class TestEveryCitationResolves(unittest.TestCase):
                                 name + " cites " + cited)
 
     def test_every_cited_section_is_a_heading_of_the_file_cited_beside_it(self):
-        """The mutation the story turns on: a step pointing at a section that was renamed, or at a
+        """The mutation this test turns on: a step pointing at a section that was renamed, or at a
         heading of a file that has no such section."""
         checked = 0
         for name in both():
@@ -621,7 +621,7 @@ class TestTheFieldRulesAreCited(unittest.TestCase):
 
 
 class TestNeitherFileHoldsAContractValue(unittest.TestCase):
-    """The grep the story asks for, run as a test and over both files at once: a value `reference/`
+    """The grep the requirements ask for, run as a test and over both files at once: a value `reference/`
     owns must be found under `reference/` and nowhere else. Every value is read from the contract,
     so a phrase added by decision is covered the day it is added."""
 

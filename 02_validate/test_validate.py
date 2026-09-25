@@ -17,7 +17,7 @@ Addresses and forms, and **no key and no code of the checks table**. A test that
 it out of the manifest row of the file it is running, and a test that needs to name one check finds
 it in the registry through the phase its function carries - which is how a caller would have to
 find it too. What is written is the path of the two files that are read as prose, the headings of
-the two passages in them a test reads, the counts the story fixes, the manifest columns by
+the two passages in them a test reads, the counts the corpus fixes, the manifest columns by
 position, and the shapes a line must have.
 """
 import ast
@@ -598,7 +598,7 @@ class TestTheRegistry(ValidatorCase):
         for key in found:
             self.assertIn(key, keys, key)
 
-    def test_the_counts_are_the_ones_this_story_fixes(self):
+    def test_the_counts_are_the_ones_fixed_here(self):
         checks = registry()
         written = [key for key in checks
                    if checks[key] is not validate.pending and checks[key] is not validate.frame]
@@ -800,7 +800,7 @@ class TestThePhases(ValidatorCase):
 
 
 class TestTheCorpusRaisesWhatTheManifestSays(ValidatorCase):
-    """Every fixture this story ships, against its own row. The codes are never written here: they
+    """Every fixture the corpus holds, against its own row. The codes are never written here: they
     are read out of the manifest, which `test_manifest.py` holds against `checks` both ways."""
 
     def test_the_clean_file_says_nothing_and_exits_zero(self):
@@ -872,7 +872,7 @@ class TestTheCorpusRaisesWhatTheManifestSays(ValidatorCase):
         self.assertEqual(expected_codes("snapshot_missing-01.tickets.md"), self.codes(lines))
 
     def test_the_snapshot_named_by_the_clean_file_is_the_fetched_one_byte_for_byte(self):
-        """Decision 1: the fixture snapshot is the Plaid snapshot of `00_fetch/00_snapshots/`,
+        """A decision of the owner: the fixture snapshot is the Plaid snapshot of `00_fetch/00_snapshots/`,
         written back through the one writer of the format. It is found by the URL the clean file's
         own header names, so neither long file name is written here."""
         header = tickets.parse(self.bytes_of(os.path.join(TICKETS_FOLDER, CLEAN))).header
@@ -880,9 +880,7 @@ class TestTheCorpusRaisesWhatTheManifestSays(ValidatorCase):
         name = [item.value for item in header if item.name == "snapshot"][0]
         fixture = self.bytes_of(os.path.join(SNAPSHOTS_FOLDER, name))
         fetched = []
-        for entry in sorted(os.listdir(FETCH_SNAPSHOTS)):
-            if not entry.endswith(".txt"):
-                continue
+        for entry in segmentation.shipped_names():
             data = self.bytes_of(os.path.join(FETCH_SNAPSHOTS, entry))
             if snapshot.read(data).header["source_url"] == url:
                 fetched.append(data)
@@ -1104,7 +1102,7 @@ class TestTheFindingMap(ValidatorCase):
                 found[key] = set([kinds[failure.line - 1] for failure in raised])
         return found
 
-    def test_the_reader_makes_the_number_of_classes_this_story_counted(self):
+    def test_the_reader_makes_the_number_of_classes_counted_here(self):
         self.assertEqual(FINDING_CLASSES, len(self.classes()))
 
     def test_every_class_of_finding_is_claimed_by_exactly_one_check(self):
@@ -1147,7 +1145,7 @@ class TestTheGrammarPhase(ValidatorCase):
         self.assertEqual(GRAMMAR_FIXTURES, found)
 
     def test_blocks_run_together_are_canonical_forms_and_not_the_shapes(self):
-        """Decision 2 of this story. The tolerance set forgives an empty line anywhere, so an
+        """A decision of the owner. The tolerance set forgives an empty line anywhere, so an
         absent separator is read and reported as a departure from canonical form; the row about the
         shape is for a block that is not there at all."""
         lines = self.clean().decode("utf-8").split("\n")
@@ -1362,7 +1360,7 @@ class TestTheRowStates(ValidatorCase):
         source row's: every defect of that row's cells is that one code, and this one is two - the
         value is not two parts, and a row reading the sentinel carries no line.
 
-        The line cell reading the sentinel under a numbered header is the same story from the other
+        The line cell reading the sentinel under a numbered header is the same case from the other
         side: the source row's code, and not the sentinel check's.
         """
         for cells in ({"value": constant(tickets.SENTINEL), "line": "2"},
@@ -1379,7 +1377,7 @@ class TestTheRowStates(ValidatorCase):
             self.assertEqual(1, len(self.raised_by(validate.STATES, FILLED_ROW, data)), cells)
 
     def test_a_filler_with_no_line_and_no_quote_is_that_same_failure_whatever_word_it_uses(self):
-        """No filler list, here or anywhere (decision 3). A filler carrying neither a line nor a
+        """No filler list, here or anywhere (the owner's decision). A filler carrying neither a line nor a
         quote is exactly a filled row missing its cells; one carrying both cannot be told from a
         value and is the substring rule's, a phase further down."""
         for filler in ("N/A", "none", "-"):
@@ -2638,7 +2636,7 @@ class TestRangesAndAncestors(BuiltCase):
                 self.assertFalse(validate._is_ancestor(classified, first, line), (first, line))
 
     def test_a_separator_item_is_an_ancestor_to_the_tool(self):
-        """Decision 9: the tool reads classes alone. A line that is a separator to the translator's
+        """A decision of the owner: the tool reads classes alone. A line that is a separator to the translator's
         rule is an item start to every check, so an indented item under it has it for an
         ancestor here, and the narrowing belongs to the translator and to nobody else."""
         lines = ["- - -", "  - child"]
@@ -3344,7 +3342,7 @@ class TestCoverage(CoverageCase):
         self.assertIn("201", found[0].message)
 
     def test_a_range_past_the_body_inside_the_body_range_is_that_failure_alone(self):
-        """Decision 6: the body range is read literally, so a range reaching past the body while
+        """A decision of the owner: the body range is read literally, so a range reaching past the body while
         inside it fires here; blank and text read nothing of the entry."""
         self.assertEqual(snapshot.BLANK, snapshot.classify(self.plaid().lines)[198].cls)
         data = self.with_range(self.replaced(self.clean(), [200], [entry(199, last=201)]), "1-250")
@@ -3353,7 +3351,7 @@ class TestCoverage(CoverageCase):
         self.assertIn("201", found[0].message)
 
     def test_a_range_with_a_huge_upper_bound_is_compared_as_an_interval(self):
-        """Decision 10: the listed set is built only up to the last body line, so no file can hang
+        """A decision of the owner: the listed set is built only up to the last body line, so no file can hang
         the run; the entry is still a phantom, and a cited line inside it is still cited."""
         huge = 10 ** 100
         data = self.replaced(self.clean(), [200], [entry(199, last=huge)])
@@ -3699,7 +3697,7 @@ class TestTheTwoWarnings(CoverageCase):
         self.assertEqual(0, code)
 
     def test_a_range_reaching_past_the_body_is_read_up_to_the_last_body_line(self):
-        """Decision 10 for the warnings: the members of a range are built only up to the last body
+        """The same decision for the warnings: the members of a range are built only up to the last body
         line, so a range of any length is read once and the lines it does hold still warn."""
         base = self.warns_base()
         data = self.with_range(self.with_row_of(self.without_ticket(self.without_ticket(base, 1), 1),

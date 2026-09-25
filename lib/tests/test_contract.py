@@ -1,4 +1,6 @@
-"""Tests for lib/idemlib/contract.py - one class per acceptance block of Story 1.3.
+"""Tests for lib/idemlib/contract.py - the catalogued tables loading, what is visible to the reader,
+a broken contract and its coded lines, the grammar, the script interface, the pattern lint, the
+reader of uncatalogued tables, and an old Python.
 
     python3 -m unittest discover -s lib/tests -t lib
 
@@ -218,7 +220,7 @@ class TestCataloguedTablesLoad(TreeCase):
     def test_the_script_prints_a_summary_of_the_shipped_contract(self):
         """One line per table, in catalogue order, and one total.
 
-        No count is written out here - a story that adds a table or a row must not have to edit this
+        No count is written out here - a change that adds a table or a row must not have to edit this
         test - but every count printed is checked against what the loader read, so a summary that
         counted the columns, or printed the same number everywhere, would not pass.
         """
@@ -636,7 +638,7 @@ class TestBrokenContract(TreeCase):
         self.assertNotIn("Traceback", lines[0])
 
     def test_the_internal_line_names_the_deepest_frame_of_this_repository(self):
-        """Decision 5 of Story 3.3: one internal line for every tool, under the rule fetch wrote.
+        """A decision of the owner: one internal line for every tool, under the rule fetch wrote.
         A standard-library file is where many an exception is finally raised, and naming it would
         print the path of the machine's Python installation instead of the defect."""
         try:

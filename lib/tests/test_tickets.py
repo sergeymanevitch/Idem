@@ -263,7 +263,7 @@ def only(test, findings, kind):
 
 
 class TestTheFourExamplesRoundTrip(unittest.TestCase):
-    """The first acceptance block: the canonical example files of `01_schema.md` parse with no
+    """The canonical example files of `01_schema.md` parse with no
     finding and serialise back to the same bytes."""
 
     def test_the_file_publishes_four_examples(self):
@@ -294,7 +294,7 @@ class TestTheFourExamplesRoundTrip(unittest.TestCase):
 
 
 class TestTheModel(unittest.TestCase):
-    """The second half of the first acceptance block: header items, tickets, rows, ranges and
+    """The canonical examples, read back: header items, tickets, rows, ranges and
     `Unmapped` entries, each with its line in the file."""
 
     def model(self, index):
@@ -455,7 +455,7 @@ class TestTheModel(unittest.TestCase):
 
 
 class TestTheCanonicalForm(unittest.TestCase):
-    """The second acceptance block: a file that differs from canonical form only in padding,
+    """A file that differs from canonical form only in padding,
     delimiter dashes, blank lines, CRLF or the final newline reads, is not repaired, and carries one
     non-canonical finding at the first offending line."""
 
@@ -631,7 +631,7 @@ class TestTheCanonicalForm(unittest.TestCase):
 
 
 class TestTheEscapes(unittest.TestCase):
-    """The third acceptance block: `\\|` and `\\\\` are the only two escapes, they are removed when a
+    """`\\|` and `\\\\` are the only two escapes, they are removed when a
     cell is read, and they apply inside a cell and nowhere else."""
 
     def rows_of(self, lines):
@@ -709,7 +709,7 @@ def repeated_field():
 
 
 class TestTheUnclaimedLines(unittest.TestCase):
-    """The fourth acceptance block, first family: a line the grammar does not account for is named,
+    """Departures, first family: a line the grammar does not account for is named,
     wherever in the file it sits."""
 
     def unclaimed(self, lines, at):
@@ -812,7 +812,7 @@ class TestTheUnclaimedLines(unittest.TestCase):
 
 
 class TestTheShapeFindings(unittest.TestCase):
-    """The fourth acceptance block, second family: the blocks of a shape, missing, out of order or
+    """Departures, second family: the blocks of a shape, missing, out of order or
     run together."""
 
     def shape(self, lines, at):
@@ -899,7 +899,7 @@ class TestTheShapeFindings(unittest.TestCase):
 
 
 class TestTheTicketNumbers(unittest.TestCase):
-    """The fourth acceptance block, third family: numbers run from 1 upward with no gap."""
+    """Departures, third family: numbers run from 1 upward with no gap."""
 
     def numbered(self, lines, at):
         parsed = tickets.parse(as_bytes(lines))
@@ -936,7 +936,7 @@ class TestTheTicketNumbers(unittest.TestCase):
 
 
 class TestTheFieldFindings(unittest.TestCase):
-    """The fourth acceptance block, fourth family: the rows of a ticket give the eight fields, in
+    """Departures, fourth family: the rows of a ticket give the eight fields, in
     table order, each once or in consecutive rows."""
 
     def fields(self, lines, at):
@@ -999,7 +999,7 @@ class TestTheFieldFindings(unittest.TestCase):
 
 
 class TestTheUnmappedForm(unittest.TestCase):
-    """The fourth acceptance block, fifth family: an entry written in a form the mode forbids."""
+    """Departures, fifth family: an entry written in a form the mode forbids."""
 
     def test_an_entry_with_no_number_under_the_numbered_mode(self):
         block = example(0)
@@ -1637,7 +1637,7 @@ class TestTheModesAreReadAndNotWritten(unittest.TestCase):
         self.assertEqual(set([mode_of(block) for block in examples()]), found)
 
     def test_the_two_public_readers_give_the_modes_the_rule_cells_bind(self):
-        """Decision 3 of Story 3.3: a caller comparing a header value with a mode writes neither
+        """A decision of the owner: a caller comparing a header value with a mode writes neither
         mode down. The reader of the numbered mode is the class that writes a line **number**, the
         other the class that writes text alone - both through the same `_modes()` reading."""
         self.assertEqual(tickets._modes()[UNMAPPED_LINE], tickets.numbered_mode())
@@ -1669,7 +1669,7 @@ class TestTheModesAreReadAndNotWritten(unittest.TestCase):
 
 
 class TestTheHeaderAndTheShapeSurviveAFinding(unittest.TestCase):
-    """Decision 3 of Story 3.3. `Parsed` carries the header block and the shape beside the model,
+    """A decision of the owner. `Parsed` carries the header block and the shape beside the model,
     so that a caller can say what a file claims to be a translation of even when the file is
     refused. The header is the five items in order whenever the **block** read - a value that
     failed its pattern included - and None when the block itself is not that; the shape is the

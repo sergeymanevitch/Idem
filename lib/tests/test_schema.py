@@ -38,7 +38,7 @@ file and handed every pattern they use from the contract; they are not a second 
 What no test here holds is the tying test of the date table and which sentence states an action:
 the file names both as readings.
 
-No test pins the catalogue's row set: a story that adds a table must not have to edit this file.
+No test pins the catalogue's row set: a change that adds a table must not have to edit this file.
 """
 import io
 import os
@@ -174,7 +174,7 @@ AFTER_RULES, BEFORE_RULES = "The two states of a row", "The constants"
 DATE_TABLE = FIELD_RULES[4]
 #: The closing section, which now names the one reading the rules leave and no address.
 NOT_HELD = "What this file does not hold yet"
-#: An address of the plan this file must not carry in the prose this story wrote.
+#: An address of the plan this file must not carry in its prose.
 ADDRESS = re.compile(r"Epic [0-9]|Story [0-9]|comp_[01][0-9]")
 
 #: The line class whose match is the cut, and the pattern a date is found by. Both are rows of
@@ -289,7 +289,7 @@ def examples():
     can gain prose, or another fence, without this test reading the wrong thing.
 
     The lines are the file byte for byte once each is ended with one LF, which is what the file says
-    a fence of that section means and what Story 3.2 will take it to mean.
+    a fence of that section means and what `tickets.py` takes it to mean.
     """
     lines, _fenced = file_lines()
     blocks = []
@@ -936,7 +936,7 @@ class TestTheLiteralsAndThePatternsAgree(unittest.TestCase):
 
 
 class TestTheExamples(unittest.TestCase):
-    """The file shows four whole files as illustration, and Story 3.2 parses them. Each line is
+    """The file shows four whole files as illustration, and `tickets.py` parses them. Each line is
     classified under the mode its own header gives, and the four cells of a row are read with the
     loader's own `split_cells`. What a shape's blocks are and in what order is prose, and named as
     debt; nothing here stands in for the parser that will hold it."""
@@ -1011,7 +1011,7 @@ class TestTheExamples(unittest.TestCase):
 
     def test_one_example_is_in_each_of_the_shapes_the_grammar_has(self):
         """Three shapes - tickets, refusal, zero-ticket - and four examples, because the tickets
-        shape is shown in both of its modes (Story 3.2)."""
+        shape is shown in both of its modes, and `tickets.py` parses each."""
         classes = [set(self.classes(block)) for block in examples()]
         modes = [mode_of(block) for block in examples()]
         self.assertEqual(1, len([found for found in classes if "refusal" in found]))
@@ -1034,7 +1034,7 @@ class TestTheExamplesAndTheirModes(unittest.TestCase):
 
     def test_an_unnumbered_example_writes_no_entry_that_reads_as_a_numbered_one(self):
         """Under `none` an entry is text, and a text that also reads as `- 12: a line` would leave
-        a reader - and Story 3.2 - unable to tell which form the example is teaching."""
+        a reader - and `tickets.py` - unable to tell which form the example is teaching."""
         numbered = [patterns()[name] for name in BY_MODE[NUMBERED]]
         for index, block in enumerate(examples()):
             if mode_of(block) != UNNUMBERED:
@@ -1113,7 +1113,7 @@ class TestTheRowsOfTheExamples(unittest.TestCase):
         self.assertTrue(tickets)
 
     def test_rows_of_one_field_on_one_line_stand_in_the_order_their_values_begin(self):
-        """Story 2.2 fixed the order of several rows of one field in `rules.md`: their values stand
+        """`rules.md` fixes the order of several rows of one field: their values stand
         in the order the values stand in the input, first by line and then by where each begins on
         that line. Where two rows of a field cite the same line with the same quote, the quote is
         that line's text and the order is readable off it, so the published examples can be held to
@@ -1548,7 +1548,7 @@ class TestTheRulesOnTheLinesTheProseQuotes(unittest.TestCase):
         them: the snapshot is read through the loader's own reader and nothing is typed twice."""
         from idemlib import snapshot
         path = os.path.join(contract.idem_root(), "00_fetch", "00_snapshots")
-        names = [name for name in os.listdir(path) if "pagerduty" in name]
+        names = [name for name in segmentation.shipped_names() if "pagerduty" in name]
         self.assertEqual(1, len(names), names)
         name = names[0]
         with open(os.path.join(path, name), "rb") as handle:

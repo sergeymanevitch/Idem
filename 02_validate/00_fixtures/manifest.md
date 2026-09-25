@@ -1,6 +1,6 @@
 # manifest.md — what each fixture must raise
 
-The negative-fixture suite is the answer to the defect that cost comp_11 and comp_12: a check that
+The negative-fixture suite is the answer to the defect that cost two earlier projects: a check that
 stands beside the thing it should hold instead of holding it. A mutation that fails *for the wrong
 reason* is as bad as one that passes, so this file says not only that a fixture must be rejected but
 **exactly which codes** it must raise. `run_fixtures.py` requires the emitted set to equal the

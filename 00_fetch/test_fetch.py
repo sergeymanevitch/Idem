@@ -310,7 +310,7 @@ class FetchCase(unittest.TestCase):
             handle.close()
 
 
-# --- acceptance block 1: one URL, one snapshot ----------------------------------------------------
+# --- one URL, one snapshot ----------------------------------------------------------------------
 
 
 class TestOneUrlGivesOneSnapshot(FetchCase):
@@ -482,7 +482,7 @@ class TestARedirectIsFollowedAndRecorded(FetchCase):
         self.assertEqual(end, read.header["final_url"])
 
 
-# --- acceptance block 2: the bytes survive --------------------------------------------------------
+# --- the bytes survive --------------------------------------------------------------------------
 
 
 class TestOnlyTheMarkAndTheEndingsChange(FetchCase):
@@ -539,7 +539,7 @@ class TestOnlyTheMarkAndTheEndingsChange(FetchCase):
         self.assertEqual(1, len(read.lines))
 
 
-# --- acceptance block 3: a refetch never overwrites -----------------------------------------------
+# --- a refetch never overwrites -----------------------------------------------------------------
 
 
 class TestARefetchIsANewFile(FetchCase):
@@ -602,7 +602,7 @@ class TestARefetchIsANewFile(FetchCase):
         self.assertEqual(2, len(self.files()))
 
 
-# --- acceptance block 4: every failure is one coded line ------------------------------------------
+# --- every failure is one coded line ------------------------------------------------------------
 
 
 class TestEveryFailureIsOneCodedLine(FetchCase):
@@ -1560,7 +1560,7 @@ class TestTheToolThatCouldNotRun(FetchCase):
         self.assertEqual("00_fetch/fetch.py:1", line.split("\t")[1])
 
     def test_a_crash_inside_the_tool_names_the_tool(self):
-        """Decision 1: the second field of an INTERNAL line is a file and a line in it, and for a
+        """A decision of the owner: the second field of an INTERNAL line is a file and a line in it, and for a
         defect of this tool that file is this tool."""
         try:
             fetch.fetch_one("http://a.example/x", self.directory, self.limits, when(),
@@ -1655,7 +1655,7 @@ class TestTheFileName(FetchCase):
 
 
 class TestTheFormsTheFileStates(FetchCase):
-    """Decision 5: the four values fetch invents get no check key, one paragraph of
+    """A decision of the owner: the four values fetch invents get no check key, one paragraph of
     04_snapshot-format.md states their forms, and this test holds that paragraph and what the tool
     produces together."""
 

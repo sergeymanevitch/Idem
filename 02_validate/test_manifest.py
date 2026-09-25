@@ -5,8 +5,8 @@
 AD-7 puts the suite's expectations in `00_fixtures/manifest.md` and requires that every row of
 `checks` be named by at least one fixture and that every code a fixture expects be a row of
 `checks`. Neither half is much use without the other: the first alone lets a manifest invent a code
-nothing defines, the second alone lets a check exist that nothing exercises - which is the comp_12
-defect this whole entry is built against.
+nothing defines, the second alone lets a check exist that nothing exercises - which is the
+defect this whole tool is built against.
 
 Nothing here runs the validator, and nothing here reads the fixture tree. Both are
 `run_fixtures.py`'s, which is written and stands beside this file; what this one proves is that the
@@ -21,10 +21,10 @@ WHAT IS WRITTEN HERE AS A LITERAL
 
 Structural identifiers only. The table ids `checks` and `manifest`, the path of the manifest and the
 four column names AD-7 fixes for it, all of which say where a value is and never what it is. The
-numbers FR-29 to FR-37, because the story requires each of them to be cited and there is nowhere
-else to read that requirement from. The two exit codes of AD-6 that a fixture may expect. And the
-opening words of a warning's `what it checks` cell, which is how a warning row is told from a
-failure row without naming one. Every key and every code is read out of the contract, so a row
+numbers FR-29 to FR-37, because the requirements ask for each of them to be cited and there is
+nowhere else to read that requirement from. The two exit codes of AD-6 that a fixture may
+expect. And the opening words of a warning's `what it checks` cell, which is how a warning row is
+told from a failure row without naming one. Every key and every code is read out of the contract, so a row
 added or renamed by decision is not typed here as well.
 """
 import os
@@ -57,7 +57,7 @@ EXIT_CODES = ("0", "1")
 #: tells a warning from a failure, so a warning code is found through it rather than written here.
 WARNING_PREFIX = "warning: "
 
-#: The requirements the story requires the FR column to cite, every one of them.
+#: The requirements the FR column must cite, every one of them.
 REQUIRED_PROVISIONS = ["FR-" + str(number) for number in range(29, 38)]
 
 #: How a list of codes is written in one cell, and how the catalogue writes a list of column names.

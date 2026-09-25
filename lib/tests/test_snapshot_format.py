@@ -11,7 +11,7 @@ is exactly what a row of the table promises on its own. The rules that need stat
 pairing and the open item, are stated in the `rule` column, and what honours them is tested there
 and not here: this file is about the table, that one is about the tool.
 
-No test pins the catalogue's row set: a story that adds a table must not have to edit this file.
+No test pins the catalogue's row set: a change that adds a table must not have to edit this file.
 """
 import ast
 import io
@@ -136,7 +136,7 @@ class TestTheHeader(unittest.TestCase):
     def test_there_is_no_pattern_column(self):
         """A header-form rule would need a check key, and the two keys `05_checks.md` gives a
         snapshot say nothing about the form of a value: the table says what a field holds and stops
-        there, and what a value looks like waits for the story that writes `fetch.py`."""
+        there, and what a value looks like is `fetch.py`'s."""
         self.assertNotIn("pattern", table("snapshot-header").columns)
 
 
@@ -392,7 +392,7 @@ class TestTheFetchLimits(unittest.TestCase):
 
 
 class TestTheLoaderNamesNothingInTheseTables(unittest.TestCase):
-    """AD-1 read from the other side. `contract.py` gained one literal for this story - the name
+    """AD-1 read from the other side. `contract.py` gained one literal for this table - the name
     that makes a column a pattern column - and it is a column name, not a row. Nothing a table says
     is in the module: not a table id, not a field, not a class, not an element, not a limit."""
 

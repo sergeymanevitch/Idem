@@ -8,19 +8,19 @@ Nothing here is a check. `02_validate/validate.py` is written and seven of its n
 warnings are behind it, but a row of `checks` still states what will be checked and under what
 code, never that anything checks it today; what each written check does is proved in
 `02_validate/test_validate.py`, beside the tool. What can
-be proved here is that the table is well formed, that it holds the rows the story requires, that
+be proved here is that the table is well formed, that it holds the rows the requirements ask for, that
 it agrees with the two code strings `contract.py` is allowed to hold, and that no other code string
 has leaked into any source file.
 
 WHAT IS WRITTEN HERE AS A LITERAL
 
-Three codes - `CONTRACT_TABLE`, `INTERNAL` and `NONCANONICAL` - because the story's acceptance
+Three codes - `CONTRACT_TABLE`, `INTERNAL` and `NONCANONICAL` - because the acceptance
 criteria name them and there is nowhere else to read that requirement from. The first two are taken
 from `contract.py` where it can be done, so that the module and the table are compared rather than
 both compared to this file. Nothing else: every other key, code, column name and field name is
 derived from the contract, so that a row added or renamed by decision is not typed here as well.
 
-No test pins the row set of the catalogue or of `checks`: a story that adds a table, or a decision
+No test pins the row set of the catalogue or of `checks`: a change that adds a table, or a decision
 that adds a check, must not have to edit this file.
 """
 import ast
@@ -48,7 +48,7 @@ KEY, CODE, WHAT, FR = 0, 1, 2, 3
 #: The columns of `warn-patterns`, by position: name, pattern.
 NAME, PATTERN = 0, 1
 
-#: The one code the story names that `contract.py` does not hold. The other two are read from the
+#: The one code the requirements name that `contract.py` does not hold. The other two are read from the
 #: module, below, so that this file is not a third place they are written.
 NONCANONICAL = "NONCANONICAL"
 
@@ -274,7 +274,7 @@ class TestKeysAndCodes(unittest.TestCase):
             self.assertEqual(len(citations), len(set(citations)), row[KEY])
 
 
-# --- the rows the story requires ------------------------------------------------------------------------
+# --- the rows the requirements ask for ------------------------------------------------------------------
 
 
 class TestTheRequiredRows(unittest.TestCase):
@@ -296,7 +296,7 @@ class TestTheRequiredRows(unittest.TestCase):
         self.assertNotEqual(contract.CODE, contract.INTERNAL)
 
     def test_pairing_gives_each_shared_header_item_a_code_of_its_own(self):
-        """FR-35 pairs the tickets header against the snapshot on two items, and the story requires
+        """FR-35 pairs the tickets header against the snapshot on two items, and the requirements ask for
         a separate code for each. The two items are found rather than named: they are the ones that
         are both a row of `header-items` and a field of `snapshot-header` - the digest and the URL -
         which is exactly what "the same value, copied" means."""
@@ -343,7 +343,7 @@ class TestTheRequiredRows(unittest.TestCase):
 
 class TestWhatTheProseRecords(unittest.TestCase):
     def test_the_file_records_where_fetch_failure_codes_live(self):
-        """The story requires the decision to be recorded. It is recorded twice over: by the table
+        """The requirements ask for the decision to be recorded. It is recorded twice over: by the table
         itself, which is a second table in this file and in no fixture manifest, and by a section
         of prose that says why."""
         self.assertEqual(SHIPPED[CHECKS].file, SHIPPED[FETCH_FAILURES].file)
@@ -496,7 +496,7 @@ class TestTheWarningPattern(unittest.TestCase):
 
 class TestNoCodeLeaksIntoSource(unittest.TestCase):
     """AD-1: a code that appears in a tool's source as well as in this table is a defect. The one
-    exception is `contract.py`'s two, and this story's boundary lets a test module hold those two
+    exception is `contract.py`'s two, and this file's boundary lets a test module hold those two
     and `NONCANONICAL`, which the acceptance criteria name.
 
     It looks for a code anywhere inside a string literal, not only as the whole of one, so a regex

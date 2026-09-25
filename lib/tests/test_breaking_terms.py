@@ -19,12 +19,12 @@ illustration and on a made-up list, quote by quote. So the two readings of one p
 agree rather than left standing side by side, and a change made to one of them without the other
 fails there.
 
-The literals here are the ones the story fixes: the three phrases its acceptance criteria require,
+The literals here are the ones the requirements fix: the three phrases they require,
 the one they forbid, the two values a phrase maps to - this table's `value` column is their first
 enumerable home - and the sample quotes. Every other phrase is read from the table, so a phrase
 added or removed by decision is not typed here as well.
 
-No test pins the catalogue's row set: a story that adds a table must not have to edit this file.
+No test pins the catalogue's row set: a change that adds a table must not have to edit this file.
 """
 import io
 import os
@@ -439,7 +439,7 @@ class TestTheList(unittest.TestCase):
 
     def test_one_phrase_and_one_only_gives_yes(self):
         """FR-14 names one phrase that says a change breaks, and no decision has added another. A
-        second `yes` phrase is a decision, not a story finding a sentence it would like to catch."""
+        second `yes` phrase is a decision, not a change finding a sentence it would like to catch."""
         listed = terms()
         self.assertEqual([REQUIRED[0]], [p for p in listed if listed[p] == YES])
 

@@ -961,7 +961,7 @@ def emit(line):
     out.
 
     The attribute is reached rather than named, because `encoding` became a key of the `checks`
-    table in Story 1.7, and a test holds the loader to naming no key of any shipped table.
+    table, and a test holds the loader to naming no key of any shipped table.
     """
     try:
         encoding = sys.stdout.encoding

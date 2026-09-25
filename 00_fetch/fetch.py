@@ -612,7 +612,7 @@ def _attempt(action, timeout):
                            _named(error))
     except ValueError as error:
         # A URL the request machinery cannot send: a character it cannot put on the wire, a host it
-        # cannot read. Decision 12 - a malformed URL is a failed URL and not a defect in this tool.
+        # cannot read. By the owner's decision, a malformed URL is a failed URL and not a defect in this tool.
         raise FetchFailure(UNREACHABLE, "this URL cannot be requested as it is written: " +
                            _named(error))
     except EnvironmentError as error:

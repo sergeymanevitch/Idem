@@ -20,6 +20,10 @@ exist (one plain line each) — and nothing is written then.
   two columns `snapshot | tickets`, read by position, catalogued nowhere; and the pairs it names,
   by bare file name, from `../00_fetch/00_snapshots/` and `../01_translate/00_tickets/`. Three
   rows today: PagerDuty, Docker Engine API, Plaid.
+- Read by the tests as well: the manifest's `snapshot` column is how they find the shipped
+  snapshots, through `shipped_names()` of `../lib/tests/test_segmentation.py`, which
+  `../lib/tests/test_schema.py` and `../02_validate/test_validate.py` use, so a snapshot fetched
+  beside them is none of them.
 
 ## Outputs
 - `../examples.md`, whole: a title, a notice naming this script and the manifest, and one section
