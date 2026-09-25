@@ -36,9 +36,10 @@ holding `identity.md` and `rules.md` at the Idem root. The second is four files 
 `reference/05_checks.md` and `02_validate/00_fixtures/manifest.md`** — every check named by a
 fixture, every code a fixture expects defined as a check (AD-7) — `test_validate.py`,
 `test_run_fixtures.py` and `test_compare_runs.py`, one per step script of that folder;
-`02_validate/CONTEXT.md` says what each holds. The third is one file, `00_fetch/test_fetch.py`,
-and it holds `fetch.py` against a stub server on 127.0.0.1 and a temporary directory — no
-network, and nothing written into the snapshot folder. The fourth is
+`02_validate/CONTEXT.md` says what each holds. The third is two files, `00_fetch/test_fetch.py`
+and `00_fetch/test_html_text.py`, and they hold `fetch.py` and the HTML routine against a stub
+server on 127.0.0.1 and a temporary directory — no network, and nothing written into the snapshot
+folder; `00_fetch/CONTEXT.md` says what each holds. The fourth is
 `.claude/hooks/test_idem_hook.py`, the negative test of the Claude Code hook wrapper;
 `.claude/CONTEXT.md` says what it holds. The fifth is `03_examples/test_build_examples.py`, which
 holds the script that assembles `examples.md` — `extract(embed(b)) == b`, the committed file

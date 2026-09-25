@@ -5,6 +5,17 @@ exec form — the command `sh`, the wrapper's path under `${CLAUDE_PROJECT_DIR}`
 so no shell quoting is involved and the executable bit is not relied on. The wrapper is POSIX `sh`, runs under
 `/bin/sh` and `dash`, and tells the three apart by the event named in the JSON on its stdin.
 
+- **Inputs:** the hook JSON Claude Code writes on the wrapper's stdin; `02_validate/validate.py`,
+  which it runs; the tickets files and saved input texts of `01_translate/00_tickets/`.
+- **Outputs:** an exit code, 0 or 2, and on 2 the lines Claude Code hands back on stderr. It
+  writes no file.
+- **Human check:** after a session that wrote a tickets file, `python3 02_validate/validate.py` on
+  it by hand exits 0 (with `--input` for a file written from pasted text), and `git status` shows
+  no file under `00_fetch/00_snapshots/` modified or deleted — a new snapshot of a fetch is
+  untracked, and a saved `*.input.txt` is never tracked, so its bytes are checked against what was
+  pasted. The hooks are a guard in the session, not the check: `Stop` sends a turn back once, and a
+  failing file can still stand when the turn ends.
+
 | Event | Fires on | What the wrapper does |
 | --- | --- | --- |
 | `PreToolUse` | `Write`, `Edit`, `MultiEdit`, `NotebookEdit` (the matcher `^(Write\|Edit\|MultiEdit\|NotebookEdit)$`) | denies a path under `00_fetch/00_snapshots/`, and a saved input text `*.input.txt` under `01_translate/00_tickets/` |
@@ -56,14 +67,14 @@ or moved.
 
 - The `Bash` deny is a guess from the command's text. It was added on 2026-09-24 after a live
   session appended a line to a committed snapshot with `printf … >>`, which no hook then watched
-  (`comp_13/test-cases/2026-09-24-hook-live-run/log.md`). It reads the whole `tool_input` text,
+  (the record of that session is kept outside this repository). It reads the whole `tool_input` text,
   so a quote inside the command hides nothing, and it needs both a guarded name and a mark of
   writing, so reading a snapshot with `cat`, `sed -n` or `head`, and running the validator with
   `--input`, pass. What it cannot see: a path held in a variable, built after a `cd`, or written
   by an interpreter (`python3 -c 'open(…)'`) with no redirect. What it denies wrongly: a reading
   command that also holds `>`, such as `cat … 2>&1` — the cost is one Read tool call, and the
   message says so. The guard that holds whatever wrote a snapshot is its recorded `sha256`, which
-  `snapshot.read` checks.
+  `02_validate/validate.py` recomputes for the snapshot a tickets file names.
 - A path is compared with the root as a string. A path that is not absolute, or holds `//`, `/./`,
   `/../`, a trailing `/.` or `/..`, or a backslash, is denied on `PreToolUse` as not plain and is
   not a tickets file on `PostToolUse`. Every part of the path is compared as text: the root spelled

@@ -54,13 +54,9 @@ the unnumbered mode takes it or leaves it. Owed and missing, or given and refuse
 and exit 2; an input that cannot be opened or is not UTF-8 is one plain line and exit 2. No flag
 chooses a mode or skips a phase.
 
-**What each mode skips** (AD-10, `../reference/05_checks.md`). A refusal runs the reading of the
-file, the grammar and the warnings, in either mode. A zero-ticket file skips the row states, the
-quotes and the ranges, and runs pairing and coverage. Under `line_numbers: none` pairing and the
-ranges are skipped, the two checks that read a quote on a numbered line are skipped inside the
-quotes phase, `quote_input` searches every quote anywhere in the input text instead, and coverage
-runs with nothing to read. The skips live in one function of the frame, and the rule inside each
-check — nothing to read, an empty list — stays beside them.
+**What each mode skips** is stated once, in `../reference/05_checks.md`, **What each mode skips**
+(AD-10). The skips live in one function of the frame, and the rule inside each check — nothing to
+read, an empty list — stays beside them.
 
 ## Outputs
 Nothing on disk. Exit 0, 1 or 2, and one line per failure:

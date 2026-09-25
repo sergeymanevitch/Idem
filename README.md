@@ -660,7 +660,10 @@ The tests are five commands, and "the tests" means all five:
 
 Run on 2026-09-25 from a fresh clone, on 3.9.6 and on 3.14.4: 726 tests OK, 472 OK, 296 OK, 46 OK
 and 38 OK. The second command takes about three minutes. Two of the first command's tests need 3.11
-or later and are skipped below it. Nobody has run 3.10 to 3.13. The third needs no network: it runs
+or later and are skipped below it. Nobody has run 3.10 to 3.13. Two others find the shipped
+PagerDuty snapshot by the vendor's name and fail while a second PagerDuty snapshot stands beside it,
+as step 1 run as written leaves one: run the tests in a clone with nothing fetched into
+`00_fetch/00_snapshots/`, or move your snapshot out first. The third needs no network: it runs
 `fetch.py` against a stub server on 127.0.0.1. The fourth is the negative test of the hook wrapper:
 it feeds the wrapper hook input in a temporary folder, under `/bin/sh` and under `dash` when it is
 on PATH. The fifth holds the examples script, every output in a temporary directory.
