@@ -595,9 +595,10 @@ digest, every quote stands on the line it cites, the ticket ranges hold together
 lists exactly the non-blank lines of the translated range that no ticket cites. It does not clear
 what no check can name: a date filed under the wrong field inside its own ticket's range, a quote
 taken from another line holding the same text inside that range or on a line its field may cite
-above it, or a `not in source` where the source does state the value. Read `Unmapped`, the warning
-lines and every `not in source` row by eye before the tickets are used. `02_validate/CONTEXT.md`,
-section **Human check**, gives the whole list, mode by mode.
+above it, a `not in source` where the source does state the value, or a ticket made of a unit that
+states no change, such as a lead-in. Read `Unmapped`, the warning lines and every `not in source`
+row by eye before the tickets are used. `02_validate/CONTEXT.md`, section **Human check**, gives
+the list, mode by mode; a ticket made of a lead-in is not yet on it.
 
 ### 4. The suite and the tests
 
@@ -722,6 +723,36 @@ that decide them, and three new chats on the new files gave one shape, 155 ticke
 on 2026-09-21, gave the PagerDuty body twice with earlier files and no snapshot name typed; both
 answers stop at line 1 with `HEADER_VALUE`. The records of these runs, their inputs and every answer
 are not in this repository.
+
+**The unseen-input runs**, on 2026-09-25 (New York time), used three public changelogs that nobody
+working on Idem had opened before the first chat on each; they may still be in a model's training
+data. They are GitLab's REST API deprecations (184 body lines), Sentry's API schema changelog (173)
+and DigitalOcean's `godo` client changelog (102), three of six changelogs fetched with
+`00_fetch/fetch.py` and set aside unopened four days earlier: a fourth, of 295 body lines, was left
+out as over the limit of step 6, the other two were kept in reserve and not used, and no input was
+replaced. Each was pasted, as steps 4 and 5 say, into three chats of its own in a fresh Project set
+up as steps 1 to 3 say, in the Claude desktop app with no connectors, on Opus 5.5 at medium effort,
+with the Project's memory and the app's reference to past chats turned off; whether every tool was
+off is not known, and two answers came back as a file rather than as text. All nine answers passed
+`validate.py` with nothing printed: the two files as they came, the seven copied with the Copy
+button once the chat's opening sentence and the missing final line feed were dealt with as step 7
+says. Each input's rows were then read against its source by a separate Claude session (Opus 5.5):
+every row of the first answer, filled or `not in source`, and every value or ticket of the second
+and third answers that differs from the first; the session that ran the checks confirmed every tally
+and re-read two claims. No row read holds an invented value or a value in the wrong field. No first
+answer holds a false `not in source`; the third GitLab answer holds one. Six `affected_surface` rows
+are words, not surfaces (`this`, `the` and `/` in GitLab, `agent` in `godo`), a cost of the surface
+rule. Every GitLab `breaking` row reads `not in source`, as the contract requires, because that page
+marks its breaking sections with a paragraph of its own, which no ticket may cite. For Sentry (5
+tickets) and `godo` (34) the three cleaned answers are byte-identical. **GitLab's three answers are
+not one shape by `02_validate/compare_runs.py`** (34, 35 and 34 tickets), and one shape per input is
+the bar these runs were held to. The second answer made a ticket of a lead-in, a paragraph standing
+directly before a list, which `reference/02_segmentation.md` says is never a change. The third read
+the `required_action` of two sentences that run across two lines differently from the other two,
+which is the source of its false `not in source`; `reference/01_schema.md` leaves which sentence
+states an action to the translator. The one allowed round of changing the wording and running again
+was declined: no wording was changed and no chat was run again, so the GitLab failure stands. The
+inputs and the nine answers are not in this repository.
 
 ## What is not built
 
