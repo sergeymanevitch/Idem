@@ -3,7 +3,7 @@
 Written only by `../fetch.py`, and this is where it writes when a run names no other directory.
 Each file is **created exclusively**: a name already here is a failed URL, never an overwrite, so a
 refetch is a new file beside the old one and nothing that was written is ever opened for writing
-again. Three snapshots stand here, the three example inputs the translator is tuned on — one
+again. Ten snapshots stand here. Three are the example inputs the translator is tuned on — one
 vendor each, every page public and served as plain text at a commit-pinned URL, so the page can be
 opened beside the snapshot:
 
@@ -14,7 +14,23 @@ opened beside the snapshot:
 | `raw-githubusercontent-com-plaid-plaid-openapi-84a303ae4a48816951233ba0db0ce24c7e-20260921T212216Z.txt` | Plaid, `plaid-openapi/CHANGELOG.md` at tag `1.20.6` | 200 | near-empty — mostly `not in source` |
 
 The Plaid snapshot is the one the validator's first hand-written tickets file is built on: the
-shortest, every unit one line. The `source_url` in each header is the exact URL fetched.
+shortest, every unit one line.
+
+Seven more were fetched on 2026-09-25 from branch URLs (`main` or `master`), so the page behind
+each may have changed since; one of them, Slack's, is an HTML page reduced to text by the routine
+`html-text`. None is an example input. Each has its tickets file in `01_translate/00_tickets/`:
+
+| File | Source | Body lines | Role |
+| --- | --- | --- | --- |
+| `api-slack-com-changelog-20260925T165315Z.txt` | Slack, `https://api.slack.com/changelog`, an HTML page | 4529 | refused, over the size limit |
+| `raw-githubusercontent-com-mailchimp-mailchimp-client-lib-codegen-main-changelog-20260925T164157Z.txt` | Mailchimp, `mailchimp-client-lib-codegen/CHANGELOG.md` on `main` | 83 | translated, body 1-83, 26 tickets |
+| `raw-githubusercontent-com-netlify-open-api-master-changelog-md-20260925T165109Z.txt` | Netlify, `open-api/CHANGELOG.md` on `master` | 1206 | refused, over the size limit |
+| `raw-githubusercontent-com-nylas-nylas-python-main-changelog-md-20260925T165121Z.txt` | Nylas, `nylas-python/CHANGELOG.md` on `main` | 567 | refused, over the size limit |
+| `raw-githubusercontent-com-pagerduty-api-schema-main-docs-changelog-md-20260925T165100Z.txt` | PagerDuty, `api-schema/docs/CHANGELOG.md` on `main` | 1615 | refused, over the size limit |
+| `raw-githubusercontent-com-twilio-twilio-oai-main-changes-md-20260925T163933Z.txt` | Twilio, `twilio-oai/CHANGES.md` on `main` | 3135 | translated, body 1-250, 88 tickets; every `entry_date` reads `not in source`, its dates standing on setext headings (`../../README.md`, **Limits**) |
+| `raw-githubusercontent-com-zulip-zulip-main-api-docs-changelog-md-20260925T163747Z.txt` | Zulip, `api_docs/changelog.md` on `main` | 4719 | translated, body 21-129, 12 tickets |
+
+The `source_url` in each header is the exact URL fetched.
 
 - **Inputs:** a URL or a file of them, fetched by
   `python3 00_fetch/fetch.py [--out DIR] (<url> | --urls FILE)` from the Idem root.

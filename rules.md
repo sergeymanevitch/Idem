@@ -13,7 +13,7 @@ section named beside it is the rule, and the section is what is read.
 ## What is not settled
 
 This procedure and the field rules it points at have been run on real changelogs. The three
-snapshots shipped with Idem, the largest of them as long as the size limit allows, were each
+example snapshots shipped with Idem, the largest of them as long as the size limit allows, were each
 translated in Claude Code and in claude.ai Project chats, every answer passing the validator once
 what the Copy button adds was removed, and the last three Project answers of each input gave one
 shape. Before them, one vendor's body was translated twice more — pasted as text with no line

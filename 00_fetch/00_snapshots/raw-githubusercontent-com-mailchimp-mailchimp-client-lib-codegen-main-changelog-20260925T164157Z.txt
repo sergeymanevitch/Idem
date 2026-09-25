@@ -1,0 +1,92 @@
+source_url: https://raw.githubusercontent.com/mailchimp/mailchimp-client-lib-codegen/main/CHANGELOG.md
+final_url: https://raw.githubusercontent.com/mailchimp/mailchimp-client-lib-codegen/main/CHANGELOG.md
+http_status: 200
+content_type: text/plain; charset=utf-8
+retrieved: 20260925T164157Z
+routine: as-served
+routine_version: 1
+sha256: 58939e763882ef7d8ffc97a3bc11c75fb670e5e116d9ba355792b75a3d9f42f4
+--- body ---
+      1: # Changelog
+      2: 
+      3: ## Transactional
+      4: 
+      5: ### 1.0.56
+      6: * Adding DMARC and DKIM2 fields to the API reference
+      7: 
+      8: ### 1.0.55
+      9: * Updating github actions bot user email
+     10: 
+     11: ### 1.0.54
+     12: * Fixing a problem with Github auth token that was preventing builds from being created.
+     13: 
+     14: ### 1.0.53
+     15: * Fixed broken ruby SDK test, updated PHP SDK to send form data via JSON
+     16: 
+     17: ### 1.0.52
+     18: * Added the `is_broken_template` response to the /template endpoints that include it
+     19: 
+     20: ### 1.0.51
+     21: * Fixed `/messages/send-template` documentation where incorrectly referenced the template name usage.
+     22: 
+     23: ### 1.0.50
+     24: * Added a response parameter to /messages/send and /messages/send-template called 'queued_response' that details why an email was queued.
+     25: 
+     26: ### 1.0.48
+     27: * Allowing users to schedule messages (using messages/send, messages/send-template, messages/send-raw and messages/reschedule APIs) within a year from the date of scheduling.
+     28: 
+     29: ### 1.0.46
+     30: * Added a little more granularity to the `set_timeout` method to the Client class in the Ruby SDK; now supports `read`, `write` and `connect` parameters, which will default to the `timeout` param if unspecified, or 300 seconds if `timeout` is unspecified.
+     31: 
+     32: ### 1.0.45
+     33: * Added a `set_timeout` method to the Client class in the Ruby SDK
+     34: 
+     35: ### 1.0.44
+     36: * Added a `set_timeout` method to the Client class in the Python SDK
+     37: 
+     38: ### 1.0.43
+     39: * Added a `setTimeout` method to the Configuration class in the PHP SDK.
+     40: 
+     41: ### 1.0.42
+     42: * Added a `setDefaultTimeoutMs` method to the node client. This allows users to override the default timeout for API requests, which is set to 5 minutes by default.
+     43: 
+     44: ### 1.0.41
+     45: * Updated the "reject_reasons" response for /messages/send and /messages/send-template to correctly use "hard-bounce" and "soft-bounce" instead of the previously stated "hard_bounce" and "soft_bounce".
+     46: 
+     47: ### 1.0.40
+     48: * Added the new /allowlists/ series of endpoints and the /exports/allowlist endpoint to the API reference
+     49: 
+     50: ### 1.0.39
+     51: * Fixes the output directory for the Changelog for the php client library
+     52: 
+     53: ### 1.0.38
+     54: * A change was made to `mailchimp-transactional-php` - the API client will now always return an `Exception`, instead of an `Exception` or a string, when the API returns an error. Having to parse the response as a string was found to be a bit clunky.
+     55: 
+     56: ### 1.0.37
+     57: * Added a changelog, which will be used to describe changes to both transactional and marketing client libraries.
+     58: 
+     59: ## Marketing
+     60: 
+     61: ### 3.0.72
+     62: * Updated the `PATCH /automations/.../emails/.../` documentation to state the required `workflow_type`
+     63: 
+     64: ### 3.0.70
+     65: * Added more granularity for the `timeout` field in the Ruby Marketing SDK; now supports `read_timeout`, `write_timeout` and `connect_timeout` fields which will default to the `timeout` value.
+     66: 
+     67: ### 3.0.69
+     68: * Added handling for a `timeout` field in the config block passed to the client constructor in the Ruby Marketing SDK.
+     69: 
+     70: ### 3.0.68
+     71: * Added handling for a `'timeout'` field in `set_config()` in the Python Marketing SDK.
+     72: 
+     73: ### 3.0.67
+     74: * Added a `setTimeout()` method to the configuration class in the PHP Marketing SDK, to allow manually setting the timeout for Guzzle requests.
+     75: 
+     76: ### 3.0.65
+     77: * Added a new API endpoint, `/3.0/account-exports`, allowing users to programatically export their account information
+     78: 
+     79: ### 3.0.64
+     80: * Fixes the output directory for the Changelog for the php client library
+     81: 
+     82: ### 3.0.63
+     83: * Added a changelog, which will be used to describe changes to both transactional and marketing client libraries.

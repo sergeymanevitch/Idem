@@ -14,8 +14,9 @@ WHAT IT DOES TODAY
 
 The contract is loaded and the registry is built and reconciled with the table both ways. The file
 is opened once and read once, by the one reader of the format. Then nine phases run in the fixed
-order (AD-6): the tool's own failures, reading the file, pairing it with its snapshot, canonical
-form and grammar, row states, quotes and values, ranges and ancestors, coverage, and the warnings.
+order (AD-6): the contract (the tool's own failures), reading the file, pairing it with its
+snapshot, canonical form and grammar, row states, quotes and values, ranges and ancestors, coverage,
+and the warnings.
 All nine are written. Which of them run is decided by the header alone (AD-10): a refusal runs the
 reading, the grammar and the warnings and nothing else; a file with no ticket skips the row states,
 the quotes and the ranges; and a file written from text with no line numbers skips pairing, the

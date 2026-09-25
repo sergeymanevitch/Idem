@@ -158,7 +158,7 @@ guessing:
   each other: a second row is `FIELDS`, whatever the two quotes say.
 - **A vendor's own mark is not a phrase.** `*BREAKING*` holds "breaking" and not "breaking change",
   so a line marked that way and saying nothing more reads the sentinel. Body line 136 of the
-  PagerDuty snapshot shipped in `00_fetch/00_snapshots/` is such a line, and every row citing it
+  example PagerDuty snapshot in `00_fetch/00_snapshots/` is such a line, and every row citing it
   quotes `` - *BREAKING* `POST /service_dependencies/associate` was changed from 204 to 200 for
   successful changes. ``, which keeps no phrase. The list is left as it is: widening it is a
   decision about this table, and none has been taken.

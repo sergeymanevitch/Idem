@@ -4,9 +4,10 @@
 
 These read the shipped contract and the committed fixture corpus: what the validator must agree
 with is what `reference/05_checks.md` says and what `00_fixtures/manifest.md` claims of each file.
-Where a case needs a file the corpus does not hold yet - a refusal, a file in the unnumbered mode -
-it is built in a temporary directory out of the published examples of `reference/01_schema.md`,
-which are canonical by construction and are the specification of the format.
+Where a case needs a file beyond the committed corpus - a second refusal, a file in either mode with
+one cell changed, a header that disagrees with its mode - it is built in a temporary directory, from
+the published examples of `reference/01_schema.md`, which are canonical by construction and are the
+specification of the format, or from the corpus.
 
 These tests live beside the tool rather than in `lib/tests/`, because they are about a step script
 and not about `idemlib`. Like a step script, this file puts `lib/` on `sys.path` itself.

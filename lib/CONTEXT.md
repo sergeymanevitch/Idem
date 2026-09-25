@@ -12,7 +12,7 @@ imports `idemlib`. Python 3.9 or later, standard library only, no install step.
 | `idemlib/tickets.py` | built — the tickets file: `parse` gives a data model and every finding about the bytes, `serialise` writes a model back in canonical form, and `serialise(parse(x).model) == x` on every canonical file. `parse` also gives back the **header block** whenever it read at all and the **shape** of what follows it, so a caller can say what a refused file claims to be a translation of; `numbered_mode()` and `unnumbered_mode()` give the two modes, read out of the rule cells that name them. Reads `fields`, `schema-constants`, `header-items` and `ticket-lines` through `contract.load()`, holds no value of any of them, raises nothing on any input bytes, writes nothing to disk and opens no file |
 | `tests/` | the `unittest` suite: `idemlib` itself — `test_contract.py`, `test_snapshot.py` and `test_tickets.py` — one module per written file of `reference/`, and one for `identity.md` and `rules.md` together — each holding its file to what its prose says, by reading its tables back where it has tables and by cutting its worked examples where it has none. The last holds the two procedure files to their structure and their citations, and to holding no key or value of `breaking-terms`, `refusal-reasons`, `schema-constants`, `snapshot-constants` or `fetch-limits`, and no pattern of `line-classes`, `ticket-lines` or `header-items`. Beside them, `test_public_text.py` walks the whole repository and fails on a line, outside the byte copies, that names an epic or a story of the build plan by its number or an earlier project by its folder; other numbered references to the plan were reworded by hand, and nothing holds them |
 
-- **Read by:** every step script and the harness. Nothing in `idemlib/` reads a step's output folder; the tests do: `shipped_snapshot()` of `tests/test_segmentation.py` reads the shipped snapshots of `00_fetch/00_snapshots/`, found through `03_examples/examples-manifest.md`, and `tests/test_public_text.py` walks the whole tree.
+- **Read by:** every step script and the harness. Nothing in `idemlib/` reads a step's output folder; the tests do: `shipped_snapshot()` of `tests/test_segmentation.py` reads the three example snapshots of `00_fetch/00_snapshots/`, found through `03_examples/examples-manifest.md`, and `tests/test_public_text.py` walks the whole tree.
 - **Writes:** nothing. `contract.py` finds the Idem root from its own location, never the working
   directory, and writes nothing into the repository. It reads nothing outside `reference/` of its
   own accord; `read_table(path, table_id)` is the one function a **caller may supply a path** to,
@@ -43,7 +43,7 @@ folder; `00_fetch/CONTEXT.md` says what each holds. The fourth is
 `.claude/hooks/test_idem_hook.py`, the negative test of the Claude Code hook wrapper;
 `.claude/CONTEXT.md` says what it holds. The fifth is `03_examples/test_build_examples.py`, which
 holds the script that assembles `examples.md` — `extract(embed(b)) == b`, the committed file
-against the six shipped files byte for byte, the script as a person runs it — with every output in
+against the six example files byte for byte, the script as a person runs it — with every output in
 a temporary directory; `03_examples/CONTEXT.md` says what it holds. Nothing under `lib/tests/` runs
 any of the last four, so a person who runs only the first command has run none of them.
 
@@ -68,11 +68,12 @@ each and stop. A table with a header, a delimiter row and no body rows is a tabl
 
 ## What a tool here is allowed to hold
 
-`reference/` owns everything enumerable, and no tool holds a copy (AD-1). There are three exceptions
-in this folder, each of them a thing a table could not state, and each held to its limits by a test
-that reads the module's own source back.
+`reference/` owns everything enumerable, and no tool holds a copy (AD-1). Three modules of this
+folder hold an exception — `contract.py`, `snapshot.py` and `tickets.py` — each of them a thing a
+table could not state, and each held to its limits by a test that reads the module's own source
+back.
 
-`contract.py` is the first, and this is everything it holds:
+`contract.py` holds this, and nothing more:
 
 - **one path**, `reference/00_catalogue.md`. It is the one file whose location cannot be read out of
   a file, because it is the file that says where everything else is.
@@ -94,8 +95,8 @@ No field name, no phrase, no check key, no limit on a value. A test reads `contr
 fails if any other upper-case code string or any other reference file name appears in it, and
 another lints every pattern the module itself compiles against the rule the module enforces.
 
-`snapshot.py` is the second, and what it holds is **names and characters, never a value**. A name a
-tool asks by is an address — what stands at it is still read at run time — and this is all of it:
+`snapshot.py` holds **names and characters, never a value**. A name a tool asks by is an address
+— what stands at it is still read at run time — and this is all of it:
 
 - **the ids of the three tables it asks for**: `snapshot-header`, `snapshot-constants`,
   `line-classes`. A tool cannot ask for a table without naming it.
@@ -122,7 +123,7 @@ so a value smuggled in under a new name fails the day it is written. A fifth ass
 class names are exactly the rows of the table, so a class renamed by decision fails there rather
 than being classified into silence.
 
-`tickets.py` is the third, and what it holds is **names and characters** on the same rule. The ids
+`tickets.py` holds **names and characters** on the same rule. The ids
 of the four tables it asks for; the keys of the constants and of the two header items it asks by;
 the names of the four columns it reads by name — `value`, `value_pattern`, `rows`, `rule`; the
 **thirteen class names** of `ticket-lines`, granted in `01_schema.md` under Sergey's name on
@@ -138,7 +139,7 @@ what it reads against the `value_pattern` of the mode item — a test pins that 
 the table id, and `unmapped_text`, a class, read the same as two **keys of `checks`**; the key sweep
 of `lib/tests/test_checks.py` therefore carries a per-file allowance, granting that one file a
 literal that is a catalogued table id or a row key of `ticket-lines` and no other file either, so the
-registry wall the validator will stand on stays whole.
+registry wall the validator stands on stays whole.
 
 A step script outside this folder has an allowance of its own, granted where the table it names is
 defined and never here: `04_snapshot-format.md` grants `00_fetch/fetch.py` the eight header field
@@ -148,10 +149,13 @@ carries is a value no tool writes. The same file refuses one in the other direct
 `02_validate/validate.py` asks for **every** row of `checks`, and forty-eight keys typed into one
 file would be a second copy of that table, so a key stands there as the suffix of a `check_`
 function name instead — an address a reader can see and a string sweep cannot (Sergey, 2026-09-22).
-That tool has one allowance of its own, granted in `01_schema.md` beside the column it is about: the
-two readings of the `kind` column of `fields` a check is selected by — the one that says a value is
-copied out of its quote and the one that says a closed list fills it. It is the fifth exception, and
-it is the same reason as the two above: a condition written in terms of a reading cannot be read out
+That tool has two allowances of its own, both granted in `01_schema.md` beside the column each is
+about, which numbers them the fifth and the sixth exceptions to AD-1. The fifth is the two
+readings of the `kind` column of `fields` a check is selected by — `copied`, which says a value is
+copied out of its quote, and `listed`, which says a closed list fills it. The sixth is the one word
+`no` of the `ancestor` column, which selects the check that refuses an ancestor line cited by a
+field that may not cite one. Both stand for the reason that granted `snapshot.py` its seven class
+names and `tickets.py` its thirteen: a condition written in terms of a reading cannot be read out
 of the cell that carries it.
 
 ## The failure line, in one place

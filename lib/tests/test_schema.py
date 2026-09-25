@@ -15,7 +15,10 @@ the table grammar the loader already owns. There is no data model, no block stru
 counting from one ticket heading to the next, and nothing here could read a file this file does not
 hold. The rules a pattern cannot carry - which blocks a shape has, a field's rows being consecutive,
 ticket numbers running without a gap, the first number of a range lying below the second - are
-stated in prose and named as debt in `reference/CONTEXT.md`.
+stated in prose, enforced by `tickets.py` and `02_validate/validate.py`, and held by
+`test_tickets.py` and `02_validate/test_validate.py`; `reference/CONTEXT.md` names the key of each.
+One case is named by no check: a reversed range in a zero-ticket file's `Unmapped` comes back as
+missing lines, and no line names the range itself, as `reference/CONTEXT.md` records.
 
 Classification is mode-driven, not order-driven, because the contract is: the three `Unmapped`
 forms overlap, and the header's `line_numbers` decides between them. `classify()` takes the mode,

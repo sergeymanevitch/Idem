@@ -5,7 +5,7 @@ and takes one URL, or a file of them; `html_text.py` beside it reduces an HTML p
 
 | Folder | Holds |
 | --- | --- |
-| `00_snapshots/` | the snapshots fetch writes — evidence, never edited; its `CONTEXT.md` names the three shipped |
+| `00_snapshots/` | the snapshots fetch writes — evidence, never edited; ten stand there, the three example inputs and seven more, and its `CONTEXT.md` names them |
 | `01_fixtures/` | the pages the HTML routine is pinned by and the text one must give; read by the tests alone, its `CONTEXT.md` names them |
 
 ## Inputs
@@ -46,14 +46,14 @@ when it said nothing.
 
 ## Outputs
 - `00_snapshots/<host-path-slug>-<retrieved UTC>.txt` — one per URL, created exclusively, never
-  overwritten. Three are there, the shipped examples; `00_snapshots/CONTEXT.md` names them. A
-  refetch is a new file beside the old one; **two fetches of one URL inside one second ask for one
-  name, and the second of them is a failed URL** rather than a name made unique behind a reader's
-  back. The slug leaves the query out, so in one URL file, `?page=1`, `?page=2`, … of one path
-  collide when fetched inside one second, and every one after the first is `SNAPSHOT_EXISTS`: the
-  name is host and path by the snapshot format, and a digest of the query in it is not built. The
-  workaround is one file per page, run separately, or no more than one such URL per second. A repeat
-  in a URL file is the line as written, so two spellings of one URL — `Example.com` and
+  overwritten. Ten are there, the three example inputs and seven more; `00_snapshots/CONTEXT.md`
+  names them. A refetch is a new file beside the old one; **two fetches of one URL inside one second
+  ask for one name, and the second of them is a failed URL** rather than a name made unique behind a
+  reader's back. The slug leaves the query out, so in one URL file, `?page=1`, `?page=2`, … of one
+  path collide when fetched inside one second, and every one after the first is `SNAPSHOT_EXISTS`:
+  the name is host and path by the snapshot format, and a digest of the query in it is not built.
+  The workaround is one file per page, run separately, or no more than one such URL per second. A
+  repeat in a URL file is the line as written, so two spellings of one URL — `Example.com` and
   `example.com`, or one with a fragment and one without — are two fetches, and the second inside one
   second is `SNAPSHOT_EXISTS`.
 - One stdout line per URL, in the order given: the path written — **relative to the Idem root when
@@ -97,7 +97,7 @@ the five commands the repository's tests are made of; `../lib/CONTEXT.md` lists 
 ## A note on the interpreter
 A `python3` installed from python.org on macOS ships without root certificates, and every fetch
 under it fails `CERTIFICATE` — the message names the remedy. The system `/usr/bin/python3` reads
-the macOS trust store and the three shipped snapshots were fetched under it. Fetch never relaxes
+the macOS trust store and the three example inputs were fetched under it. Fetch never relaxes
 verification either way.
 
 ## Human check

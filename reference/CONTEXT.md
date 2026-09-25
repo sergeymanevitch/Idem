@@ -20,12 +20,12 @@ what it never reads — because that grammar is the one thing `contract.py` know
 A table becomes usable by a tool on the day its row appears in the catalogue, and not before: the
 loader reads the catalogue both ways and refuses a marked table nobody listed.
 
-Usable is not used, but it is no longer unused. The five files that hold tables load today; all but
-one of their sixteen tables are read by a tool — `snapshot-header`, `snapshot-constants` and `line-classes`, by
-`lib/idemlib/snapshot.py`, which writes and reads a snapshot and classifies its body lines;
-`content-kinds`, `fetch-limits` and `fetch-failures`, by `00_fetch/fetch.py`, which turns one URL,
-or each URL of a file, into one snapshot inside that envelope, stores or refuses each response by
-its kind, and codes every failed URL from that table; and `fields`, `schema-constants`,
+Usable is not used, but it is no longer unused. The five files that hold tables load today; every
+one of their sixteen tables is read by a tool — `snapshot-header`, `snapshot-constants` and
+`line-classes`, by `lib/idemlib/snapshot.py`, which writes and reads a snapshot and classifies its
+body lines; `content-kinds`, `fetch-limits` and `fetch-failures`, by `00_fetch/fetch.py`, which
+turns one URL, or each URL of a file, into one snapshot inside that envelope, stores or refuses each
+response by its kind, and codes every failed URL from that table; and `fields`, `schema-constants`,
 `header-items` and `ticket-lines`, by `lib/idemlib/tickets.py`, which reads a tickets file into a
 data model, writes one back in canonical form and reports every departure it finds. `catalogue` is
 read by the loader itself, on every load, because it is the table that says where the others are.
@@ -33,29 +33,27 @@ read by the loader itself, on every load, because it is the table that says wher
 prints the code each row carries, and by `02_validate/run_fixtures.py`, which counts the rows no
 fixture exercises. That validator reads three tables of `01_schema.md` for its own work as well —
 `fields` for which rows are fields 1 to 7, which is field 8, how a row's value relates to its quote
-and which fields may cite an ancestor line, `schema-constants` for the four values a check
-compares against, and `refusal-reasons` for
-the list a reason must be in — and `breaking-terms`, for the two checks that decide what a quote
-supports; and `warn-patterns`, for the one warning that looks for a date. `html-elements` is read
-by `00_fetch/html_text.py`, the HTML routine, and by nothing else.
+and which fields may cite an ancestor line, `schema-constants` for the four values a check compares
+against, and `refusal-reasons` for the list a reason must be in — and `breaking-terms`, for the two
+checks that decide what a quote supports; and `warn-patterns`, for the one warning that looks for a
+date. `html-elements` is read by `00_fetch/html_text.py`, the HTML routine, and by nothing else.
 `02_segmentation.md` holds no table, so the loader never opens it at all. A pattern is the one kind
 of cell the loader looks inside: a column named `pattern`, or ending `_pattern`, is linted and
 compiled as the contract loads, and `00_catalogue.md` states that convention.
 
-**Known debt.** A rule stated here that no pattern can carry is enforced by nothing until the tool
-that owns it exists. The checks table closed half of that: `05_checks.md` now gives almost every one of
-these rules a key and a code, so the thing they are waiting for is a tool and no longer a decision.
-**A key is not a check**, and today every key has one. `validate.py` enforces all nine phases, with
-the skips the header selects for the three shapes and the two modes (AD-10): reading the file — the
-encoding, the five header items, and their values against their patterns, against the mode, and a
-`body_range` that runs backwards or past the body; pairing, which is where the rules of AD-5 and
-FR-35 about the snapshot are; canonical form and grammar; the row states; quotes and values,
-`quote_input` among them, which searches a quote in the input text a file of the unnumbered mode
-was written from; ranges and ancestors; coverage — the six checks that hold `Unmapped` to the body;
-and the three warnings, the two that read an `Unmapped` line inside a ticket's range printing only
-on a run that reached coverage. No row is registered with nothing behind it, and every row but the
-two exempt ones has a committed fixture. What is below is what a key still does not reach. There are
-five groups.
+**Known debt.** A rule stated here that no pattern can carry is enforced by the tool that owns it,
+not by the loader. Every such rule a key can reach now has a key and a code in `05_checks.md` and a
+check behind that key: **a key is not a check**, and today every key has one. `validate.py` enforces
+all nine phases, with the skips the header selects for the three shapes and the two modes (AD-10):
+the contract, the tool's own failures; reading the file — the encoding, the five header items, and
+their values against their patterns, against the mode, and a `body_range` that runs backwards or
+past the body; pairing, which is where the rules of AD-5 and FR-35 about the snapshot are; canonical
+form and grammar; the row states; quotes and values, `quote_input` among them, which searches a
+quote in the input text a file of the unnumbered mode was written from; ranges and ancestors;
+coverage — the six checks that hold `Unmapped` to the body; and the three warnings, the two that
+read an `Unmapped` line inside a ticket's range printing only on a run that reached coverage. No row
+is registered with nothing behind it, and every row but the two exempt ones has a committed fixture.
+What is below is what a key still does not reach. There are five groups.
 
 - `04_snapshot-format.md` — the fence-pairing and open-item rules of `line-classes`, stated in
   `rule` cells, in English. **These get no key, and that is a decision of 2026-09-20**: they are the

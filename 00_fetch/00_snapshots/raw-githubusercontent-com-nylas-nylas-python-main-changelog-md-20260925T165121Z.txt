@@ -1,0 +1,576 @@
+source_url: https://raw.githubusercontent.com/nylas/nylas-python/main/CHANGELOG.md
+final_url: https://raw.githubusercontent.com/nylas/nylas-python/main/CHANGELOG.md
+http_status: 200
+content_type: text/plain; charset=utf-8
+retrieved: 20260925T165121Z
+routine: as-served
+routine_version: 1
+sha256: c6584caa0169489515c778a1ceb0a0bd8f4a9f4f805fffb4882e21ff3226caa3
+--- body ---
+      1: nylas-python Changelog
+      2: ======================
+      3: Unreleased
+      4: ----------
+      5: * Added optional `tracking_options.domain_name` support for custom link and open tracking hostnames in message sends, scheduled sends, drafts, and Transactional Send
+      6: * Added Contact metadata request/response models and `metadata_pair` filtering, with contact webhook compatibility documentation
+      7: 
+      8: v6.17.0
+      9: ----------
+     10: * Clarify that event `default` visibility is Google-only
+     11: * Added `resources` field to Event, CreateEventRequest, and UpdateEventRequest models
+     12: * Added tentative_as_busy field to GetFreeBusyRequest
+     13: 
+     14: v6.16.0
+     15: ----------
+     16: * Aligned Lists create support with the public `POST /v3/lists` schema and added create response/schema coverage
+     17: * Added Manage Domains service-account auth support with canonical signed request bodies, bearer-auth suppression, encoded domain path segments, and `dmarc`/`arc` verification types
+     18: * Added Workspaces resource (`client.workspaces`) with `list`, `find`, `create`, `update` (PATCH), `destroy`, `auto_group`, `manual_assign`, `invalid_also`, `default`, `policy_id`, and `rule_ids`
+     19: * Corrected Applications `update` to accept `callback_uris` with callback URI IDs for preserving existing callback URIs
+     20: * Corrected RedirectUris `update` to use PATCH instead of PUT; added `deleted_at` to the RedirectUri model and made `platform` optional on create
+     21: * Verified and extended Applications: added `update` (PATCH `/v3/applications`) and public response fields (`idp_settings`, hosted-authentication legal URLs, `domain`, `blocked`, timestamps)
+     22: * Fix draft and other JSON API requests failing with "only JSON and multipart supported" by sending `Content-Type: application/json` instead of `application/json; charset=utf-8`
+     23: 
+     24: v6.15.0
+     25: ----------
+     26: * Added Lists support (`Client.lists`, `/v3/lists`): list, create, find, update, and delete lists, plus `list_items`, `add_items`, and `remove_items` for `/v3/lists/{list_id}/items`, with typed request/response models in `nylas.models.lists`
+     27: * Added Manage Domains (`Client.domains`, `/v3/admin/domains`): list, create, find, update, delete, `get_info`, and `verify` with models in `nylas.models.domains`; optional `ServiceAccountSigner` (`nylas.handler.service_account`) for service-account auth headers (`X-Nylas-Kid`, `X-Nylas-Nonce`, `X-Nylas-Timestamp`, `X-Nylas-Signature`) on each `Domains` method; new `cryptography` dependency, RSA signing, bearer-auth suppression for signed domain requests, and `HttpClient` `serialized_json_body` so signed payloads match the wire body
+     28: * Added Transactional Send: `Client.transactional_send.send()` for `POST /v3/domains/{domain_name}/messages/send`, with `TransactionalSendMessageRequest` and `TransactionalTemplate` models (JSON and multipart send behavior aligned with grant `messages.send`)
+     29: * Added Policies support (`Client.policies`, `/v3/policies`): list, create, find, update, and delete, with typed request/response models in `nylas.models.policies`
+     30: * Added Rules support (`Client.rules`): list, create, find, update, and delete for `/v3/rules`, plus `list_evaluations` for `/v3/grants/{grant_id}/rule-evaluations`, with typed request/response models in `nylas.models.rules`
+     31: 
+     32: v6.14.3
+     33: ----------
+     34: * UAS multi-credential update
+     35: * Added `specific_time_availability` field to `AvailabilityParticipant` for overriding open hours on specific dates
+     36: * Added `smtp_required` option to hosted authentication config to require users to enter SMTP settings during IMAP authentication
+     37: * Clarified `ListEventQueryParams` documentation (attribute order, field descriptions, and `expand_recurring` wording)
+     38: 
+     39: v6.14.2
+     40: ----------
+     41: * Fix UTF-8 encoding for special characters (emoji, accented letters, etc.) by encoding JSON as UTF-8 bytes
+     42: 
+     43: v6.14.1
+     44: ----------
+     45: * Fix attachment id to not be a requirement
+     46: 
+     47: v6.14.0
+     48: ----------
+     49: * Added `message.deleted` to the Webhook enum, appended tests
+     50: * Fixed Participant.email not being optional, Microsoft events can now be represented 
+     51: * Clarified UTF-8 encoding behavior: ASCII characters are preserved as-is (not escaped) while non-ASCII characters are preserved as UTF-8 in JSON payloads
+     52: * Added support for metadata_pair query params to the messages and drafts list endpoints
+     53: 
+     54: v6.13.1
+     55: ----------
+     56: * Fixed UTF-8 character encoding for all API requests to preserve special characters (accented letters, emoji, etc.) instead of escaping them as unicode sequences
+     57: 
+     58: v6.13.0
+     59: ----------
+     60: * Fixed from field handling in messages.send() to properly map "from_" field to "from field
+     61: * Fixed content_id handling for large inline attachments to use content_id as field name instead of generic file{index}
+     62: 
+     63: v6.12.0
+     64: ----------
+     65: * Added Yahoo, Zoom, EWS as providers to models/auth.py
+     66: * Fixed grants.update() not using the correct "PATCH" method
+     67: * Added support for `is_plaintext` property in messages send and drafts create endpoints
+     68: 
+     69: v6.11.1
+     70: ----------
+     71: * Fixed KeyError when processing events with empty or incomplete conferencing objects
+     72: 
+     73: v6.11.0
+     74: ----------------
+     75: * Added `unknown` to ConferencingProvider
+     76: 
+     77: v6.10.0
+     78: ----------------
+     79: * Added support for `single_level` query parameter in `ListFolderQueryParams` for Microsoft accounts to control folder hierarchy traversal
+     80: * Added support for `earliest_message_date` query parameter for threads
+     81: * Fixed `earliest_message_date` not being an optional response field
+     82: * Added support for new message fields query parameter values: `include_tracking_options` and `raw_mime`
+     83: * Added `tracking_options` field to Message model for message tracking settings
+     84: * Added `raw_mime` field to Message model for Base64url-encoded message data
+     85: * Added TrackingOptions model for message tracking configuration
+     86: * Maintained backwards compatibility for existing message functionality
+     87: * Added support for `include_hidden_folders` query parameter for listing folders (Microsoft only)
+     88: 
+     89: v6.9.0
+     90: ----------------
+     91: * Added support for for tentative_as_busy parameter to the availability request
+     92: * Added missing webhook triggers
+     93: * Added support for Notetaker APIs
+     94: * Added support for Notetaker via the calendar and event APIs
+     95: 
+     96: v6.8.0
+     97: ----------------
+     98: * Added support for `list_import_events`
+     99: 
+    100: v6.7.0
+    101: ----------------
+    102: * Added support for `select` query parameter in list calendars, list events, and list messages.
+    103: 
+    104: v6.6.0
+    105: ----------------
+    106: * Added response headers to all responses from the Nylas API
+    107: 
+    108: v6.5.0
+    109: ----------------
+    110: * Added support for Scheduler APIs
+    111: * Added metadata field support for drafts and messages through CreateDraftRequest and Message model
+    112: * Fixed attachment download response handling
+    113: 
+    114: v6.4.0
+    115: ----------------
+    116: * Added support for from field for sending messages
+    117: * Added missing schedule-specific fields to Message model
+    118: * Added migration grant properties
+    119: * Fixed from field not being optional causing deserialization errors
+    120: * Fixed IMAP identifiers not encoding correctly
+    121: * Fixed NylasOAuthError not setting the status code properly
+    122: 
+    123: v6.3.1
+    124: ----------------
+    125: * Fixed typo on Clean Messages
+    126: * Fixed request session being reused across multiple requests
+    127: * Added Folder Webhooks
+    128: * Removed use of TestCommand
+    129: 
+    130: v6.3.0
+    131: ----------------
+    132: * Added Folder query param support
+    133: * Added `master_event_id` field to events
+    134: * Fixed issue with application models not being deserialized correctly
+    135: 
+    136: v6.2.0
+    137: ----------------
+    138: * Added support for custom headers field for drafts and messages
+    139: * Added support for overriding various fields of outgoing requests
+    140: * Added support for `provider` field in code exchange response
+    141: * Added support for `event_type` filtering field for listing events
+    142: * Added clean messages support
+    143: * Added additional webhook triggers
+    144: * Fixed issue where attachments < 3mb were not being encoded correctly
+    145: * Fixed issue deserializing event and code exchange responses
+    146: 
+    147: v6.1.1
+    148: ----------------
+    149: * Improved message sending and draft create/update performance
+    150: * Change default timeout to match API (90 seconds)
+    151: 
+    152: v6.1.0
+    153: ----------------
+    154: * Added support for `round_to` field in availability response
+    155: * Added support for `attributes` field in folder model
+    156: * Added support for icloud as an auth provider
+    157: * Fixed webhook secret not returning on creation of webhook
+    158: * Fixed issue with free busy and scheduled message responses not being deserialized correctly
+    159: * Removed `client_id` from `detect_provider()`
+    160: 
+    161: v6.0.1
+    162: ----------------
+    163: * Fix deserialization error when getting token info or verifying access token
+    164: * Fix schemas issue in the `Event` and `CodeExchangeResponse` models
+    165: 
+    166: v6.0.0
+    167: ----------------
+    168: * **BREAKING CHANGE**: Python SDK v6 supports the Nylas API v3 exclusively, dropping support for any endpoints that are not available in v3
+    169: * **BREAKING CHANGE**: Drop support for Python < v3.8
+    170: * **BREAKING CHANGE**: Dropped the use of 'Collections' in favor of 'Resources'
+    171: * **BREAKING CHANGE**: Removed all REST calls from models and moved them directly into resources
+    172: * **BREAKING CHANGE**: Models no longer inherit from `dict` but instead either are a `dataclass` or inherit from `TypedDict`
+    173: * **BREAKING CHANGE**: Renamed the SDK entrypoint from `APIClient` to `Client`
+    174: * **REMOVED**: Local Webhook development support is removed due to incompatibility
+    175: * Rewritten the majority of SDK to be more intuitive, explicit, and efficient
+    176: * Created models for all API resources and endpoints, for all HTTP methods to reduce confusion on which fields are available for each endpoint
+    177: * Created error classes for the different API errors as well as SDK-specific errors
+    178: 
+    179: v5.14.1
+    180: ----------------
+    181: * Fix error when trying to iterate on list after calling count
+    182: * Fix error when setting participant status on create event
+    183: 
+    184: v5.14.0
+    185: ----------------
+    186: * Add support for `view` parameter in `Threads.search()`
+    187: 
+    188: v5.14.1
+    189: ----------------
+    190: * Fix error when trying to iterate on list after calling count
+    191: * Fix error when setting participant status on create event
+    192: 
+    193: v5.14.0
+    194: ----------------
+    195: * Add support for verifying webhook signatures
+    196: * Add optional parameter for token-info endpoint
+    197: 
+    198: v5.13.1
+    199: ----------------
+    200: * Fix `send_authorization` not returning the correct dict
+    201: * Fix expanded threads not inflating the messages objects properly
+    202: * Fix class attributes with leading underscores not serializing as expected
+    203: 
+    204: v5.13.0
+    205: ----------------
+    206: * Add local webhook development support
+    207: * Use PEP508 syntax for conditional dependencies
+    208: 
+    209: v5.12.1
+    210: ----------------
+    211: * Only install enum34 on python34 and below
+    212: 
+    213: v5.12.0
+    214: ----------------
+    215: * Add support for sending raw MIME messages
+    216: 
+    217: v5.11.0
+    218: ----------------
+    219: * Add support for calendar colors (for Microsoft calendars)
+    220: * Add support for rate limit errors
+    221: * Add support for visibility field in Event
+    222: 
+    223: v5.10.2
+    224: ----------------
+    225: * Update package setup to be compatible with PEP 517
+    226: 
+    227: v5.10.1
+    228: ----------------
+    229: * Fix authentication for integrations
+    230: 
+    231: v5.10.0
+    232: ----------------
+    233: * Add `metadata` field to `JobStatus`
+    234: * Add missing hosted authentication parameters
+    235: * Add support for `calendar` field in free-busy, availability, and consecutive availability queries
+    236: 
+    237: v5.9.2
+    238: ----------------
+    239: * Add `enforce_read_only` parameter to overriding `as_json` functions
+    240: 
+    241: v5.9.1
+    242: ----------------
+    243: * Add option to include read only params in `as_json`
+    244: * Change config file in `hosted-oauth` example to match new Flask rules
+    245: * Fix unauthorized error for `revoke_token`
+    246: 
+    247: v5.9.0
+    248: ----------------
+    249: * Add support for collective and group events
+    250: 
+    251: v5.8.0
+    252: ----------------
+    253: * Add support for getting the number of queried objects (count view)
+    254: * Improve usage of read only fields in models
+    255: * Fix Calendar availability functions not using the correct authentication method
+    256: 
+    257: v5.7.0
+    258: ----------------
+    259: * Add Outbox support
+    260: * Add support for new (beta) Integrations authentication (Integrations API, Grants API, Hosted Authentication for Integrations)
+    261: * Add support for `limit` and `offset` for message/thread search
+    262: * Add `authentication_type` field to `Account`
+    263: * Enable Nylas API v2.5 support
+    264: * Fix `Draft` not sending metadata
+    265: 
+    266: v5.6.0
+    267: ----------------
+    268: * Add Delta support
+    269: * Add Webhook support
+    270: * Omit `None` values from resulting `as_json()` object
+    271: * Enable Nylas API v2.4 support
+    272: 
+    273: v5.5.1
+    274: ----------------
+    275: * Add validation for `send_authorization`
+    276: * Fix `native-authentication-gmail` example app
+    277: 
+    278: v5.5.0
+    279: ----------------
+    280: * Add support for `Event` to ICS
+    281: * Enable full payload response for exchanging the token for code
+    282: 
+    283: v5.4.2
+    284: ----------------
+    285: * Add missing `source` field in `Contact` class
+    286: 
+    287: v5.4.1
+    288: ----------------
+    289: * Fix issue where keyword arguments calling `_update_resource` were not correctly resolving to URL params
+    290: * Improved support for Application Details
+    291: 
+    292: v5.4.0
+    293: ----------------
+    294: * Add job status support
+    295: * Add `is_primary` field to Calendar
+    296: * Fix bug where updating an Event results in an API error
+    297: 
+    298: v5.3.0
+    299: ----------------
+    300: * Add support for Scheduler API
+    301: * Add support for Event notifications
+    302: * Add support for Component CRUD
+    303: * Add metadata support for `Calendar`, `Message` and `Account`
+    304: * Improve error details returned from the API
+    305: 
+    306: v5.2.0
+    307: ----------------
+    308: * Add support for calendar consecutive availability
+    309: * Add dynamic conferencing link creation support
+    310: 
+    311: v5.1.0
+    312: ----------------
+    313: * Add Event conferencing support
+    314: * Add filtering of "None" value attributes before making requests
+    315: * Fix `categorized_at` type to be `epoch` in `NeuralCategorizer`
+    316: 
+    317: v5.0.0
+    318: ----------------
+    319: * Transitioned from `app_id` and `app_secret` naming to `client_id` and `client_secret`
+    320: * Add support for the Nylas Neural API
+    321: * Add `metadata` field in the Event model to support new event metadata feature
+    322: * Add new Room Resource fields
+    323: * Add `Nylas-API-Version` header support
+    324: * Fix adding a tracking object to an existing `draft`
+    325: * Fix issue when converting offset-aware `datetime` objects to `timestamp`
+    326: * Fix `limit` value in filter not being used when making `.all()` call
+    327: * Fix `from_` field set by attribute on draft ignored
+    328: * Remove `bumpversion` from a required dependency to an extra dependency
+    329: 
+    330: v4.12.1
+    331: -------
+    332: * Bugfix: Previously, if you passed a timedelta to the calendar availability
+    333:   API endpoint, it was converted to a float. Now, it is coerced to an int.
+    334: 
+    335: v4.12.0
+    336: -------
+    337: * Add calendar availability information, available at `/calendars/availability` API endpoint
+    338: 
+    339: v4.11.0
+    340: -------
+    341: * Bugfix: Previously, if you specified a limit of 50 or more for any resource, you would receive ALL the resources available on the server. The SDK now properly respects the limit provided.
+    342: * Add `has_attachments` to Thread model
+    343: 
+    344: v4.10.0
+    345: -------
+    346: * Add `ical_uid` to Event model, only available on API version 2.1 or above. See https://headwayapp.co/nylas-changelog/icaluid-support-132816
+    347: * Add RoomResource model, available at `/resources` API endpoint
+    348: * Add free/busy information, available at `/calendars/free-busy` API endpoint
+    349: 
+    350: v4.9.0
+    351: ------
+    352: * Add `provider` to Account model
+    353: * Add `reply_to` to Message model
+    354: * Add `Event.rsvp()` method
+    355: 
+    356: v4.8.1
+    357: ------
+    358: * Bugfix: `/token-info` endpoint
+    359: 
+    360: v4.8.0
+    361: ------
+    362: * Add support for `/token-info` endpoint, which allows you to query the
+    363:   available scopes and validity of a given access token for an account.
+    364: * Add message.from_ alias
+    365: * Bugfix: contact.email_addresses renamed to contact.emails
+    366: 
+    367: v4.7.0
+    368: ------
+    369: * Add support for `/ip_addresses` endpoint.
+    370: 
+    371: v4.6.0
+    372: ------
+    373: * You can now pass a list of `scopes` when calling `APIClient.authentication_url()`
+    374:   in order to enable
+    375:   [selective sync](https://docs.nylas.com/docs/how-to-use-selective-sync).
+    376:   Previously, we only set `scope=email` by default; now, the default is to use
+    377:   all scopes.
+    378: * Add X-Nylas-Client-Id header for HTTP requests
+    379: 
+    380: v4.4.0
+    381: ------
+    382: * Add support for `revoke-all` endpoint.
+    383: 
+    384: 
+    385: v4.3.0
+    386: ------
+    387: * Raise `UnsyncedError` when a message isn't ready to be retrieved yet (HTTP 202) when
+    388: fetching a raw message.
+    389: 
+    390: 
+    391: v4.2.0
+    392: ------
+    393: 
+    394: 
+    395: 
+    396: v3.0.0
+    397: ------
+    398: 
+    399: ## Large changes
+    400: 
+    401: * The Nylas Python SDK now fully supports both Python 2.7 and Python 3.3+.
+    402: * The SDK has a new dependency: the
+    403:   [URLObject](https://pypi.python.org/pypi/URLObject) library.
+    404:   This dependency will be automatically installed when you upgrade.
+    405: * The SDK now automatically converts between timestamps and Python datetime
+    406:   objects. These automatic conversions are opt-in: your existing code should
+    407:   continue to work unmodified. See the "Timestamps and Datetimes"
+    408:   section of this document for more information.
+    409: 
+    410: ## Small changes
+    411: 
+    412: * The SDK now has over 95% automated test coverage.
+    413: * Previously, trying to access the following model properties would raise an error:
+    414:   `Folder.threads`, `Folder.messages`, `Label.threads`, `Label.messages`.
+    415:   These properties should now work as expected.
+    416: * The `Thread` model now exposes the `last_message_received_timestamp` and
+    417:   `last_message_sent_timestamp` properties, obtained from the Nylas API.
+    418: * Previously, if you created a `Draft` object, saved it, and then
+    419:   deleted it without modifying it further, the deletion would fail silently.
+    420:   Now, the SDK will actually attempt to delete a newly-saved `Draft` object,
+    421:   and will raise an error if it is unable to do so.
+    422: * Previously, you could initialize an `APIClient` with an `api_server`
+    423:   value set to an `http://` URL. Now, `APIClient` will verify that the
+    424:   `api_server` value starts with `https://`, and will raise an error if it
+    425:   does not.
+    426: * The `APIClient` constructor no longers accepts the `auth_server` argument,
+    427:   as it was never used for anything.
+    428: * The `nylas.client.util.url_concat` and `nylas.client.util.generate_id`
+    429:   functions have been removed. These functions were meant for internal use,
+    430:   and were never documented or expected to be used by others.
+    431: * You can now pass a `state` argument to `APIClient.authentication_url`,
+    432:   as per the OAuth 2.0 spec.
+    433: 
+    434: ## Timestamps and Datetimes
+    435: 
+    436: Some properties in the Nylas API use timestamp integers to represent a specific
+    437: moment in time, such as `Message.date`. The Python SDK now exposes new properties
+    438: that have converted these existing properties from integers to Python datetime
+    439: objects. You can still access the existing properties to get the timestamp
+    440: integer -- these new properties are just a convenient way to access Python
+    441: datetime objects, if you want them.
+    442: 
+    443: This table summarizes the new datetime properties, and which existing timestamp
+    444: properties they match up with.
+    445: 
+    446: | New Property (datetime)           | Existing Property (timestamp)            |
+    447: | --------------------------------- | ---------------------------------------- |
+    448: | `Message.received_at`             | `Message.date`                           |
+    449: | `Thread.first_message_at`         | `Thread.first_message_timestamp`         |
+    450: | `Thread.last_message_at`          | `Thread.last_message_timestamp`          |
+    451: | `Thread.last_message_received_at` | `Thread.last_message_received_timestamp` |
+    452: | `Thread.last_message_sent_at`     | `Thread.last_message_sent_timestamp`     |
+    453: | `Draft.last_modified_at`          | `Draft.date`                             |
+    454: | `Event.original_start_at`         | `Event.original_start_time`              |
+    455: 
+    456: You can also use datetime objects when filtering on models with the `.where()`
+    457: method. For example, if you wanted to find all messages that were received
+    458: before Jan 1, 2015, previously you would run this code:
+    459: 
+    460: ```python
+    461: client.messages.where(received_before=1420070400).all()
+    462: ```
+    463: 
+    464: That code will still work, but if you prefer, you can run this code instead:
+    465: 
+    466: ```python
+    467: from datetime import datetime
+    468: 
+    469: client.messages.where(received_before=datetime(2015, 1, 1)).all()
+    470: ```
+    471: 
+    472: You can now use datetimes with the following filters:
+    473: 
+    474: * `client.messages.where(received_before=datetime())`
+    475: * `client.messages.where(received_after=datetime())`
+    476: * `client.threads.where(last_message_before=datetime())`
+    477: * `client.threads.where(last_message_after=datetime())`
+    478: * `client.threads.where(started_before=datetime())`
+    479: * `client.threads.where(started_after=datetime())`
+    480: 
+    481: 
+    482: [Full Changelog](https://github.com/nylas/nylas-python/compare/v2.0.0...v3.0.0)
+    483: 
+    484: 
+    485: v2.0.0
+    486: ------
+    487: 
+    488: Release May 18, 2017:
+    489: - Add support for expanded message view
+    490: - Remove deprecated "Inbox" name
+    491: - Send correct auth headers for account management
+    492: - Respect the offset parameter for restfulmodelcollection
+    493: - Add ability to revoke token
+    494: 
+    495: [Full Changelog](https://github.com/nylas/nylas-python/compare/v1.2.3...v2.0.0)
+    496: 
+    497: 
+    498: v1.2.3
+    499: ------
+    500: 
+    501: Release August 9, 2016:
+    502: - Adds full-text search support for Messages and Threads
+    503: 
+    504: v1.2.2
+    505: ------
+    506: 
+    507: Released March 25, 2016:
+    508: - API client now uses Bearer Token Authorization headers instead of Basic Auth
+    509: 
+    510: v1.2.1
+    511: ------
+    512: 
+    513: Released February 5, 2016:
+    514: - Fixes a bug that prevented the offset parameter from being used in queries
+    515: 
+    516: v1.2.0
+    517: ------
+    518: 
+    519: Released December 17, 2015:
+    520: 
+    521: - Deprecate tags and tag-related functions.
+    522: - Return message object when sending a draft
+    523: - Support passing parameters and request bodies on delete
+    524: 
+    525: v1.1.0
+    526: ------
+    527: 
+    528: Released October 8, 2015:
+    529: 
+    530: - Add client.account property
+    531: 
+    532: v1.0.2
+    533: ------
+    534: 
+    535: Released September 22, 2015:
+    536: 
+    537: - Add handling for 405 responses
+    538: - Surface SMTP server errors
+    539: - Expose Message attributes: events, snippet
+    540: - Expose Folder and Label attributes: object, account_id
+    541: - Expose Thread attribute: received_recent_date
+    542: - Expose Draft attributes: reply_to_message_id, reply_to, starred, snippet
+    543: - Expose File attributes: content_id, message_ids
+    544: - Expose "object" attribute on Calendar, Event, and Contact
+    545: - Add local token for tests
+    546: 
+    547: v1.0.1
+    548: ------
+    549: 
+    550: Released September 17, 2015:
+    551: 
+    552: Expose "owner" attribute on Events
+    553: Clean up raw message data
+    554: 
+    555: v1.0.0
+    556: ------
+    557: 
+    558: Released August 28, 2015:
+    559: 
+    560: Don't first save draft objects when a direct send is possible.
+    561: Remove deprecated namespaces support from SDK
+    562: Account management fixes and upgrade/downgrade changes
+    563: Added tests
+    564: 
+    565: v0.3.5
+    566: ------
+    567: Drafts can now be sent without an implicit intermediate save to the mail provider.

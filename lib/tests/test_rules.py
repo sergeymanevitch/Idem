@@ -12,8 +12,8 @@ model reads them and `reference/`, and nothing else runs (FR-28). So what a test
 and is declared rather than hidden. It can hold the **absence** of contract - that neither file
 states a value, a phrase, a reason, a limit or a pattern that `reference/` owns - and it can hold
 the **structure**: six steps in one order under fixed titles, the self-check before the emit step,
-a draft notice above them all, five prohibitions below them, every cited file bare and present,
-every cited section resolving to a heading of the file named beside it.
+the notice **What is not settled** above them all, five prohibitions below them, every cited file
+bare and present, every cited section resolving to a heading of the file named beside it.
 
 WHAT NO TEST HERE HOLDS, DECLARED RATHER THAN HIDDEN
 
@@ -662,8 +662,8 @@ class TestTheDraftIsMarked(unittest.TestCase):
     def test_rules_states_what_is_not_settled_above_the_first_step(self):
         """What is still open is said where a reader meets it, not in a closing note under six
         steps of confident procedure, and the procedure no longer calls itself unfinished once
-        the shipped snapshots have been translated on it. The mutation: the notice moved to the
-        foot, or the old heading back."""
+        the three example snapshots have been translated on it. The mutation: the notice moved to
+        the foot, or the old heading back."""
         body = text(RULES)
         first_step = body.index("## Step 1 ")
         self.assertIn("## What is not settled\n", body[:first_step])
@@ -691,7 +691,7 @@ class TestTheDraftIsMarked(unittest.TestCase):
         body = text(RULES)
         notice = re.sub(r"\s+", " ", body[:body.index("## Step 1 ")]).lower()
         self.assertIn("have been run on real changelogs", notice)
-        self.assertIn("three snapshots shipped with idem", notice)
+        self.assertIn("three example snapshots shipped with idem", notice)
         self.assertNotIn("not yet been run", notice)
         self.assertNotIn("before the field rules", notice)
 

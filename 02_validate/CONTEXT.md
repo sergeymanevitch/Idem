@@ -1,18 +1,18 @@
 # 02_validate — tickets to pass or fail
 
-One job: prove that every quote sits on the line cited and every value sits inside its quote, or
-say with a stable code what does not. **`validate.py` is built, and every row of its frame is
-filled.** Every row of `../reference/05_checks.md` is registered as a callable under its key, and
-all nine phases are written — the reading stage, the pairing phase, canonical form and grammar, the
-row states, quotes and values, ranges and ancestors, coverage and the three warnings — with the
+One job: prove that every quote sits on the line cited and every value sits inside its quote, or say
+with a stable code what does not. **`validate.py` is built, and every row of its frame is filled.**
+Every row of `../reference/05_checks.md` is registered as a callable under its key, and all nine
+phases are written — the contract, the reading stage, the pairing phase, canonical form and grammar,
+the row states, quotes and values, ranges and ancestors, coverage and the three warnings — with the
 skips the header selects for the three shapes and the two modes (AD-10). `run_fixtures.py` runs the
 whole corpus and fails on any row whose file is missing; `00_fixtures/manifest.md` names every
-fixture and `test_manifest.py` holds it against the checks table. `compare_runs.py` is built:
-it says whether two tickets files of one input have one shape. The suite also holds the examples:
-every pair `../03_examples/examples-manifest.md` names passes the validator with nothing printed,
-its tickets header names the row's snapshot, and the committed `../examples.md` is byte for byte
-what `../03_examples/build_examples.py` writes — regenerated into a temporary directory, compared
-whole, the directory deleted; nothing is written into the repository.
+fixture and `test_manifest.py` holds it against the checks table. `compare_runs.py` is built: it
+says whether two tickets files of one input have one shape. The suite also holds the examples: every
+pair `../03_examples/examples-manifest.md` names passes the validator with nothing printed, its
+tickets header names the row's snapshot, and the committed `../examples.md` is byte for byte what
+`../03_examples/build_examples.py` writes — regenerated into a temporary directory, compared whole,
+the directory deleted; nothing is written into the repository.
 
 ## Inputs
 - Working: a tickets file, and the snapshot its header names — or, for a file whose header reads

@@ -1,0 +1,3144 @@
+source_url: https://raw.githubusercontent.com/twilio/twilio-oai/main/CHANGES.md
+final_url: https://raw.githubusercontent.com/twilio/twilio-oai/main/CHANGES.md
+http_status: 200
+content_type: text/plain; charset=utf-8
+retrieved: 20260925T163933Z
+routine: as-served
+routine_version: 1
+sha256: 39ea1bab544d3644c9c2fdab364720412328e98a06ca1ecb27ff9d69c2b816d3
+--- body ---
+      1: twilio-oai changelog
+      2: ====================
+      3: 
+      4: [2026-09-09] Version 2.8.2
+      5: --------------------------
+      6: **Audiences**
+      7: - ## 2026-09-01
+      8: - Backticked brace- and angle-bracket-bearing tokens in descriptions for MDX safety.
+      9: - Updated a prose reference to the renamed `FetchCohortSnapshot` operation.
+     10: - ## 2026-09-01
+     11: - Renamed 3 `Get*` operations to `Fetch*` to match the operationId standard: `FetchCohort`, `FetchCohortSnapshot`, `FetchCohortOperation`. The transpiler skips operations whose operationId does not start with a standard keyword, which had been dropping all three from generated output.
+     12: - Set `libraryVisibility` to `private` (was `hidden`) so the spec is eligible for the private docs pipeline.
+     13: - Backticked brace- and angle-bracket-bearing tokens in descriptions for MDX safety.
+     14: - ## 2026-08-28
+     15: - **Removed 6 path(s)**:
+     16: - `/preview/Audiences` (ListAudiences, CreateAudience)
+     17: - `/preview/Audiences/{audienceId}` (FetchAudience, UpdateAudience, DeleteAudience)
+     18: - `/preview/Snapshots` (ListSnapshots, CreateSnapshot)
+     19: - `/preview/Snapshots/{snapshotId}` (FetchSnapshot, DeleteSnapshot)
+     20: - `/preview/Snapshots/{snapshotId}/Profiles` (ListSnapshotProfiles)
+     21: - `/preview/Operations/{operationId}` (FetchOperation)
+     22: 
+     23: **Conversations**
+     24: - Add PATCH support for partial updates to Configuration
+     25: - Add `VIDEO` to the Conversations v2 Communication channel enum.
+     26: 
+     27: **Data-ingress**
+     28: - # API Changes
+     29: - ## 2026-09-01
+     30: - Minor updates (formatting, metadata)
+     31: - ## 2026-08-12
+     32: - Minor updates (formatting, metadata)
+     33: - ## 2026-08-12
+     34: - Initial release with 13 paths and 13 operations
+     35: 
+     36: **Destinations**
+     37: - ## 2026-09-08
+     38: - Added `prod-ie1` to `supportedRealms` and `iamOperationEnabledRealms` for all endpoints
+     39: - ## 2026-09-01
+     40: - Removed the unused `admin-api` placeholder from `supportedRealms` on the public endpoints;
+     41: - One Admin routes now live in `admin_openapi.yaml`.
+     42: - **Added 6 new path(s)** (admin_openapi.yaml):
+     43: - `/v1/ControlPlane/Destinations` (AdminListDestinations)
+     44: - `/v1/ControlPlane/Destinations/{destinationId}` (AdminGetDestination)
+     45: - `/v1/ControlPlane/Subscriptions` (AdminListSubscriptions)
+     46: - `/v1/ControlPlane/Subscriptions/{subscriptionId}` (AdminGetSubscription)
+     47: - `/v1/ControlPlane/Subscriptions/{subscriptionId}/EventTypes` (AdminListSubscribedEvents)
+     48: - `/v1/ControlPlane/Subscriptions/{subscriptionId}/EventTypes/{eventType}` (AdminGetSubscribedEvent)
+     49: - ## 2026-08-26
+     50: - Minor updates (formatting, metadata)
+     51: - ## 2026-08-26
+     52: - Minor updates (formatting, metadata)
+     53: - ## 2026-08-25
+     54: - **Content updates**:
+     55: - Updated description for `CreateDestination`
+     56: 
+     57: **Email**
+     58: - # API Changes
+     59: - ## 2026-09-02
+     60: - **Added 1 new path(s)**:
+     61: - `/v1/Sends/Cohorts` (sendCohort)
+     62: - ## 2026-08-28
+     63: - **Content updates**:
+     64: - Updated summary for `sendTransactional`
+     65: - Added parameter(s) to `sendTransactional`: X-Twilio-Version
+     66: - Updated schema description for `SuppressionsGroup`
+     67: - Added properties to `SuppressionsGroup`: type
+     68: - Removed properties from `SuppressionsGroup`: mode
+     69: - Updated schema description for `SuppressionsGlobal`
+     70: - Added properties to `SuppressionsGlobal`: type
+     71: - Removed properties from `SuppressionsGlobal`: mode
+     72: - Updated schema description for `Suppressions`
+     73: - Updated schema description for `LongRunningOperationResponse`
+     74: - ## 2026-08-27
+     75: - **Content updates**:
+     76: - Updated description for `SendEmail`
+     77: - Added parameter(s) to `SendEmail`: Content-Encoding, Idempotency-Key
+     78: - Updated schema description for `Envelope`
+     79: - Updated schema description for `SuppressionsGroup`
+     80: - Updated schema description for `SuppressionsGlobal`
+     81: 
+     82: **Iam**
+     83: - Removed redirect_urls from the GET /v1/Account/AuthorizedApps/{consentSid} response
+     84: - Added company_name, homepage_url, tos_url, and redirect_urls to the GET /v1/Account/AuthorizedApps/{consentSid} response
+     85: - Added GET /v1/Account/AuthorizedApps/{consentSid} - fetch authorized app details, including allowed permissions, by consent identifier SID
+     86: - added container-scoped entitlements endpoint (GET /v2/Container/{containerId}/Entitlements)
+     87: 
+     88: **Instrumentation**
+     89: - # API Changes
+     90: - ## 2026-09-04
+     91: - **Content updates**:
+     92: - Added `IdempotencyKeyHeader` to Create/Patch/Delete `AutoInstrumentationRule`; corrected the shared header's description
+     93: - Added `operationId`/`createdAt` to `LongRunningOperationResponse`; corrected example `status` from `RUNNING` to `PENDING`
+     94: - Renamed `Signal.timestamp` → `occurredAt`, `HourlyStats.hourTimestamp` → `hourAt`; uppercased `Signal.type` and `ListSignals`' `signalType` enums to SCREAMING_SNAKE_CASE
+     95: - Renamed `UserBehaviors` request/response fields to camelCase; added the `summaryDelivery` webhook callback
+     96: - Reshaped `PaginationMeta` (added required `key`, corrected `pageSize` bounds) and all 6 list operations (`ListEventSources`, `ListEventSourceDatasets`, `ListEventSchemas`, `ListAutoInstrumentationRules`, `ListSignals`, `ListSignalStats`) to the `meta` envelope; added `ListSignalStats`' `500` response
+     97: - Narrowed the domain's default `supportedRealms` to `dev-us1` only; `POST /v1/UserBehaviors` (`AnalyzeUserBehaviors`) keeps its own `dev-us1`/`stage-us1` override (prod withheld pending stage validation) — every other operation is now dev-only
+     98: - ## 2026-08-31
+     99: - **Content updates**:
+    100: - Fixed stale `tdi_` TTID prefix throughout (path params, examples, transaction URLs) to `events_`; unified dataset/schema ID formats (`tdi_dat_`/`tdi_dataset_` → `events_dataset_`, `tdi_schema_` → `events_evsch_`); fixed rule-version examples to match the real `version: integer` field
+    101: - Fixed `operationId` to use the domain-agnostic `proc_job_` TTID prefix; corrected the `OperationId` parameter's length constraint (`max=34` → `max=35`) and added a `pattern`
+    102: - Fixed two length constraints hardcoded for the old `tdi_` prefix length: `IngestEventBatch`'s `sourceId` path parameter (`maxLength` 37 → 40); removed the stale, redundant `Twilio-Write-Key` header parameter
+    103: - Added the missing `AutoInstrumentationRuleId` regex `pattern`
+    104: - Fixed `info.title` ("Twilio Data Ingress - Instrumentation API" → "Events Domain - Instrumentation API")
+    105: - **Added 1 new API path**:
+    106: - `/v1/UserBehaviors` (AnalyzeUserBehaviors)
+    107: - ## 2026-07-28
+    108: - **Initial release** — 21 paths, 37 operations across three API surfaces:
+    109: - **Control Plane** (`/v1/ControlPlane/…`):
+    110: - `/v1/ControlPlane/EventSources` (CreateEventSource, ListEventSources)
+    111: - `/v1/ControlPlane/EventSources/{sourceId}` (FetchEventSource, PatchEventSource, DeleteEventSource)
+    112: - `/v1/ControlPlane/EventSources/{sourceId}/WriteKeys` (CreateWriteKey, ListWriteKeys)
+    113: - `/v1/ControlPlane/EventSources/{sourceId}/WriteKeys/{writeKey}` (DeleteWriteKey)
+    114: - `/v1/ControlPlane/EventSources/{sourceId}/Datasets` (CreateEventSourceDataset, ListEventSourceDatasets)
+    115: - `/v1/ControlPlane/EventSources/{sourceId}/Datasets/{datasetId}` (FetchEventSourceDataset, PatchEventSourceDataset, DeleteEventSourceDataset)
+    116: - `/v1/ControlPlane/EventSources/{sourceId}/EventSchemas` (CreateEventSchema, ListEventSchemas)
+    117: - `/v1/ControlPlane/EventSources/{sourceId}/EventSchemas/{schemaId}` (FetchEventSchema, PatchEventSchema, DeleteEventSchema)
+    118: - `/v1/ControlPlane/EventSources/{sourceId}/AutoInstrumentationRules` (CreateAutoInstrumentationRule, ListAutoInstrumentationRules)
+    119: - `/v1/ControlPlane/EventSources/{sourceId}/AutoInstrumentationRules/{autoInstrumentationRuleId}` (FetchAutoInstrumentationRule, PatchAutoInstrumentationRule, DeleteAutoInstrumentationRule)
+    120: - `/v1/ControlPlane/EventSources/{sourceId}/AutoInstrumentationRules/{autoInstrumentationRuleId}/Versions` (ListAutoInstrumentationRuleVersions)
+    121: - `/v1/ControlPlane/EventSources/{sourceId}/AutoInstrumentationRules/{autoInstrumentationRuleId}/Versions/{version}` (FetchAutoInstrumentationRuleVersion)
+    122: - `/v1/ControlPlane/Datasets` (ListDatasets)
+    123: - `/v1/ControlPlane/Datasets/{datasetId}` (FetchDataset)
+    124: - `/v1/ControlPlane/Operations/{operationId}` (FetchControlPlaneOperationStatus)
+    125: - `/v1/ControlPlane/Datasets` (ListDatasets)
+    126: - `/v1/ControlPlane/Datasets/{datasetId}` (FetchDataset)
+    127: - **Event Ingestion** (`/v1/EventSources/…`):
+    128: - `/v1/EventSources/{sourceId}/Batch` (IngestEventBatch)
+    129: - `/v1/EventSources/{sourceId}/AutoInstrumentationRules/{autoInstrumentationRuleId}/Preview` (TriggerAutoInstrumentationPreview)
+    130: - `/v1/EventSources/{sourceId}/AutoInstrumentationRules/{autoInstrumentationRuleId}/Preview/{operationId}` (GetAutoInstrumentationPreviewResult)
+    131: - **Signal API** (`/v1/EventSources/…`):
+    132: - `/v1/EventSources/{sourceId}/Signals` (IngestSignals, ListSignals)
+    133: - `/v1/EventSources/{sourceId}/Signals/{signalKey}` (GetSignalBySignalKey)
+    134: - `/v1/EventSources/{sourceId}/SignalStats` (ListSignalStats)
+    135: 
+    136: **Memory**
+    137: - ## 2026-08-27
+    138: - **Added 2 new path(s)** for Trait Extraction Strategies:
+    139: - `/v1/ControlPlane/TraitExtractionStrategies` (ListTraitExtractionStrategies, CreateTraitExtractionStrategy)
+    140: - `/v1/ControlPlane/TraitExtractionStrategies/{traitStrategyId}` (FetchTraitExtractionStrategy, UpdateTraitExtractionStrategy, DeleteTraitExtractionStrategy)
+    141: 
+    142: **Messaging**
+    143: - Remove the WhatsApp Senders v1 endpoints (`/v1/Channels/WhatsApp/Senders`) from RestProxy; the sender was routed to the sunsetting `messaging-whatsapp-k8s-orch` downstream. Use the Senders v2 API (`/v2/Channels/Senders`) instead.
+    144: 
+    145: **Voice**
+    146: - ## 2026-09-03
+    147: - Added `links.conversation` to Transcription resources as the absolute Conversations API URL for the
+    148: - transcript's `conversationId`. It is present once the transcript has been stored; the `links` object
+    149: - is omitted otherwise.
+    150: - ## 2026-09-01
+    151: - Removed `mediaUrl` from `CreateRequestWithMediaUrl`'s required fields so a request with neither `sourceId` nor `mediaUrl` reaches the downstream service, which rejects it with the specific error code 17500 instead of a generic gateway 400
+    152: - Set `additionalProperties: false` on both `CreateRequestWithSourceId` and `CreateRequestWithMediaUrl` so the two `oneOf` variants stay mutually exclusive: `sourceId` is undeclared on the media-URL variant and `mediaUrl` is undeclared on the source-ID variant, keeping every request shape resolvable to exactly one variant
+    153: 
+    154: 
+    155: [2026-08-27] Version 2.8.1
+    156: --------------------------
+    157: **Conversations**
+    158: - Restructured the `StartConversation` request body: removed the top-level `channel`, `from`, `to`, `content`, and `orchestratorPolicy` fields in favor of a `participants` roster plus a single dispatched `action` (`SEND_MESSAGE`, `START_FLOW`, or `CALL`) **(breaking change)**
+    159: - Removed the `VOICE` value from the `start_conversation_channel` enum and dropped the `orchestratorPolicy`/`orchestratorPolicyAction` schemas; voice calls are now placed via the new `CALL` action and Studio Flow dispatch via the new `START_FLOW` action **(breaking change)**
+    160: - Added AI agent calling support: a new `agentConnectConnectionId` on participants and an `AGENT_CONNECT` call handler that connects an answered call to an AI agent over ConversationRelay
+    161: - Added `callSettings` (curated passthrough to Voice's `POST /Calls`) and per-conversation `configuration` overrides (`intelligenceConfigurationIds`, `statusCallbacks`) to `StartConversation`
+    162: - Added `READ` to the `recipient_delivery_status` enum for channels that support read receipts (e.g. WhatsApp/RCS); `COMPLETED` is now deprecated
+    163: 
+    164: **Messaging**
+    165: - Removed the `whatsapp_template_enum_category` enum and the WhatsApp Template resource from the spec **(breaking change)**
+    166: 
+    167: **Intelligence**
+    168: - Minor updates (metadata only)
+    169: 
+    170: **Knowledge**
+    171: - Minor updates (metadata only)
+    172: 
+    173: **Memory**
+    174: - Minor updates (metadata only)
+    175: 
+    176: **Numbers**
+    177: - Minor updates (metadata only)
+    178: 
+    179: 
+    180: [2026-08-25] Version 2.8.0
+    181: --------------------------
+    182: **Twiml**
+    183: - Remove `<Assistant>` noun from `<Connect>` verb as part of the AI Assistants deprecation **(breaking change)**
+    184: - Add `passports` attribute to `<Dial>` verb for SHAKEN/STIR passport passthrough
+    185: 
+    186: **Destinations**
+    187: - Minor updates (formatting, metadata)
+    188: - ## 2026-08-12
+    189: 
+    190: **Memory**
+    191: - ## 2026-08-18
+    192: - **Breaking change**:
+    193: - Removed the deprecated `CSV` and `DATASET` values from the `DataMappingType` enum.
+    194: - `INGRESS`, `DATASET_CLOUDAPP`, and `DATASET_WAREHOUSE` are the only valid values now.
+    195: - Removed the `DataMappingFromCSV` and `DataMappingFromDataSet` schemas and their
+    196: - `oneOf`/discriminator entries on `DataMappingFromTypes`, along with the corresponding
+    197: - `CSV`/`DATASET` discriminator mapping keys.
+    198: - Any caller still sending `type: CSV` or `type: DATASET` on `CreateDataMapping` or
+    199: - `UpdateDataMapping` (or filtering `ListDataMappings`/`ListDataMappingSuggestions` by
+    200: - those values) will get a 400.
+    201: 
+    202: **Voice**
+    203: - ## 2026-08-05
+    204: - Added GET /v3/Transcriptions to list and filter transcriptions (status, sourceId, languageCode, createdAfter/createdBefore) with pageSize/pageToken pagination. createdAfter is inclusive and createdBefore exclusive. Returns 422 (error code 17535) when a sourceId's historical item count exceeds the service scan cap
+    205: 
+    206: **Webhooks**
+    207: - # API Changes
+    208: - ## 2026-08-24
+    209: - **Changed**: Created Webhooks Config API ( https://docs.google.com/document/d/1zkAJD8a8MgoxWifdYDl_d465Az3W6CcD9fuCC2xlSXE/edit?tab=t.0#heading=h.u9e0ry6oe89j ), that includes 7 new resource(s)**: SharedKeys, AuthProfiles, Settings, Rules, Operations, Tests, EdgeZones in /v1/Webhooks referencing webhooks-config downstream.
+    210: 
+    211: 
+    212: [2026-08-13] Version 2.7.1
+    213: --------------------------
+    214: **Destinations**
+    215: - ## 2026-08-12
+    216: - **Content updates**:
+    217: - Added properties to `DestinationType`: releaseStatus
+    218: - Removed properties from `DestinationType`: maturity
+    219: 
+    220: **Memory**
+    221: - No path changes (updated metadata only)
+    222: - `DataMappingType` gains `INGRESS`, `DATASET_CLOUDAPP`, and `DATASET_WAREHOUSE`.
+    223: - `CSV` and `DATASET` remain valid and unchanged; they are deprecated aliases and
+    224: - will be removed in a follow-up change.
+    225: - `DataMappingFromTypes` gains three `oneOf` members and three discriminator keys:
+    226: - `DataMappingFromIngress` (renames `DataMappingFromCSV`),
+    227: - `DataMappingFromCloudAppDataSet` and `DataMappingFromWarehouseDataSet`
+    228: - (both split from `DataMappingFromDataSet`, distinguishing a cloud-app-backed
+    229: - TDI dataset from a warehouse-backed one).
+    230: - Additive and backwards compatible: existing `CSV` and `DATASET` payloads are
+    231: - unaffected.
+    232: - ## 2026-08-10
+    233: 
+    234: [2026-08-11] Version 2.7.0
+    235: --------------------------
+    236: **Library - Chore**
+    237: - [PR #149](https://github.com/twilio/twilio-oai/pull/149): Update test-and-deploy.yml. Thanks to [@shrutiburman](https://github.com/shrutiburman)!
+    238: - [PR #141](https://github.com/twilio/twilio-oai/pull/141): oas3-valid-schema-example check validation. Thanks to [@shrutiburman](https://github.com/shrutiburman)!
+    239: 
+    240: **Library - Fix**
+    241: - [PR #147](https://github.com/twilio/twilio-oai/pull/147): remove Events API from memory V1 specs. Thanks to [@shrutiburman](https://github.com/shrutiburman)!
+    242: - [PR #142](https://github.com/twilio/twilio-oai/pull/142): pin spectral-rulesets to 1.22.2 to fix Node 18 compatibility. Thanks to [@shrutiburman](https://github.com/shrutiburman)!
+    243: 
+    244: **Twiml**
+    245: - Remove `<Assistant>` noun from `<Connect>` verb as part of the AI Assistants deprecation **(breaking change)**
+    246: - Add `passports` attribute to `<Dial>` verb for SHAKEN/STIR passport passthrough
+    247: 
+    248: **Accounts**
+    249: - Add `SuppressEmailNotification` parameter to the Secondary Auth Token and Auth Token promotion endpoints. Set it to `true` to suppress the email notification sent to account owners and administrators. Defaults to `false`, preserving existing behavior.
+    250: - Add SMS Pumping Protection GET and POST API
+    251: 
+    252: **Ai**
+    253: - Removing ai workbench apis
+    254: 
+    255: **Api**
+    256: - Add missing `uri` property to the `twiml_session` resource
+    257: 
+    258: **Data-ingress**
+    259: - ## 2026-08-07
+    260: - **Removed 1 API path**:
+    261: - `/v1/DataQuery` (Realtime DataQuery)
+    262: - ## 2026-07-07
+    263: - **Added 1 new API path  (data plane)**:
+    264: - `/v1/DataQuery` (Realtime DataQuery)
+    265: - ## 2026-06-17
+    266: - **Content updates**:
+    267: - Added properties to `OAuthJWTBearerCredentials`: privateKey, privateKeyPassphrase
+    268: - ## 2026-06-12
+    269: - **Added 16 new path(s)**:
+    270: - `/v1/DataSyncs/{syncId}` (FetchDataSync)
+    271: - `/v1/CloudAppSources/{sourceId}/Objects` (ListCloudAppObjects)
+    272: - `/v1/WarehouseSources/{sourceId}/Preview` (CreateWarehousePreview)
+    273: - `/v1/WarehouseSources/{sourceId}/Preview/{operationId}` (FetchWarehousePreview)
+    274: - `/v1/DataSample/{operationId}` (FetchDataSample)
+    275: - `/v1/ControlPlane/CloudAppSources/{sourceId}` (FetchCloudAppSource, PatchCloudAppSource, DeleteCloudAppSource)
+    276: - `/v1/ControlPlane/CloudAppSources/{sourceId}/Datasets` (ListCloudAppDatasets, CreateCloudAppDataset)
+    277: - `/v1/ControlPlane/CloudAppSources/{sourceId}/Datasets/{datasetId}` (FetchCloudAppDataset, PatchCloudAppDataset, DeleteCloudAppDataset)
+    278: - `/v1/ControlPlane/WarehouseSources/{sourceId}` (FetchWarehouseSource, PatchWarehouseSource, DeleteWarehouseSource)
+    279: - `/v1/ControlPlane/WarehouseSources/{sourceId}/Datasets` (ListWarehouseDatasets, CreateWarehouseDataset)
+    280: - ...and 6 more paths
+    281: - **Removed 16 path(s)**:
+    282: - `/v1/DataSyncs/{SyncId}` (FetchDataSync)
+    283: - `/v1/CloudAppSources/{SourceId}/Objects` (ListCloudAppObjects)
+    284: - `/v1/WarehouseSources/{SourceId}/Preview` (CreateWarehousePreview)
+    285: - `/v1/WarehouseSources/{SourceId}/Preview/{OperationId}` (FetchWarehousePreview)
+    286: - `/v1/DataSample/{OperationId}` (FetchDataSample)
+    287: - `/v1/ControlPlane/CloudAppSources/{SourceId}` (FetchCloudAppSource, PatchCloudAppSource, DeleteCloudAppSource)
+    288: - `/v1/ControlPlane/CloudAppSources/{SourceId}/Datasets` (ListCloudAppDatasets, CreateCloudAppDataset)
+    289: - `/v1/ControlPlane/CloudAppSources/{SourceId}/Datasets/{DatasetId}` (FetchCloudAppDataset, PatchCloudAppDataset, DeleteCloudAppDataset)
+    290: - `/v1/ControlPlane/WarehouseSources/{SourceId}` (FetchWarehouseSource, PatchWarehouseSource, DeleteWarehouseSource)
+    291: - `/v1/ControlPlane/WarehouseSources/{SourceId}/Datasets` (ListWarehouseDatasets, CreateWarehouseDataset)
+    292: - ...and 6 more paths
+    293: - ## 2026-06-11
+    294: - **Added 3 new Signal API path(s) for public exposure (data plane)**:
+    295: - `/v1/EventSources/{sourceId}/Signals` (ListSignals)
+    296: - `/v1/EventSources/{sourceId}/Signals/{signalKey}` (GetSignalBySignalKey)
+    297: - `/v1/EventSources/{sourceId}/SignalStats` (ListSignalStats)
+    298: - **Added new Signal API schemas**:
+    299: - Signal, SignalListResponse, HourlyStats, SignalStatsResponse
+    300: - ## 2026-05-26
+    301: - **Added 12 new path(s) for public exposure**:
+    302: - `/v1/ControlPlane/EventSources` (CreateEventSource, ListEventSources)
+    303: - `/v1/ControlPlane/EventSources/{SourceId}` (FetchEventSource, PatchEventSource, DeleteEventSource)
+    304: - `/v1/ControlPlane/EventSources/{SourceId}/WriteKeys` (CreateWriteKey, ListWriteKeys)
+    305: - `/v1/ControlPlane/EventSources/{SourceId}/WriteKeys/{WriteKey}` (DeleteWriteKey)
+    306: - `/v1/ControlPlane/EventSources/{SourceId}/Datasets` (CreateEventSourceDataset, ListEventSourceDatasets)
+    307: - `/v1/ControlPlane/EventSources/{SourceId}/Datasets/{DatasetId}` (FetchEventSourceDataset, PatchEventSourceDataset, DeleteEventSourceDataset)
+    308: - `/v1/ControlPlane/EventSources/{SourceId}/EventSchemas` (CreateEventSchema, ListEventSchemas)
+    309: - `/v1/ControlPlane/EventSources/{SourceId}/EventSchemas/{SchemaId}` (FetchEventSchema, PatchEventSchema, DeleteEventSchema)
+    310: - `/v1/ControlPlane/AutoInstrumentationRule` (CreateAutoInstrumentationRule, ListAutoInstrumentationRules)
+    311: - `/v1/ControlPlane/AutoInstrumentationRule/{AutoInstrumentationRuleId}` (FetchAutoInstrumentationRule, PatchAutoInstrumentationRule, DeleteAutoInstrumentationRule)
+    312: - `/v1/ControlPlane/AutoInstrumentationRule/{AutoInstrumentationRuleId}/Versions` (ListAutoInstrumentationRuleVersions)
+    313: - `/v1/ControlPlane/AutoInstrumentationRule/{AutoInstrumentationRuleId}/Versions/{Version}` (FetchAutoInstrumentationRuleVersion)
+    314: - **Added new schemas**:
+    315: - EventSource, EventSourceCreate, EventSourceUpdate
+    316: - WriteKey, WriteKeyCreate
+    317: - EventSourceDataset, EventSourceDatasetCreate, EventSourceDatasetUpdate
+    318: - EventSchema, EventSchemaCreate, EventSchemaUpdate, EventSchemaField, EventSchemaProperty
+    319: - AutoInstrumentationRule, AutoInstrumentationRuleCreate, AutoInstrumentationRuleUpdate
+    320: - AutoInstrumentationRuleVersion, AutoInstrumentationRuleVersionsResponse
+    321: - ## 2026-06-12
+    322: - **Added 16 new path(s)**:
+    323: - `/v1/DataSyncs/{syncId}` (FetchDataSync)
+    324: - `/v1/CloudAppSources/{sourceId}/Objects` (ListCloudAppObjects)
+    325: - `/v1/WarehouseSources/{sourceId}/Preview` (CreateWarehousePreview)
+    326: - `/v1/WarehouseSources/{sourceId}/Preview/{operationId}` (FetchWarehousePreview)
+    327: - `/v1/DataSample/{operationId}` (FetchDataSample)
+    328: - `/v1/ControlPlane/CloudAppSources/{sourceId}` (FetchCloudAppSource, PatchCloudAppSource, DeleteCloudAppSource)
+    329: - `/v1/ControlPlane/CloudAppSources/{sourceId}/Datasets` (ListCloudAppDatasets, CreateCloudAppDataset)
+    330: - `/v1/ControlPlane/CloudAppSources/{sourceId}/Datasets/{datasetId}` (FetchCloudAppDataset, PatchCloudAppDataset, DeleteCloudAppDataset)
+    331: - `/v1/ControlPlane/WarehouseSources/{sourceId}` (FetchWarehouseSource, PatchWarehouseSource, DeleteWarehouseSource)
+    332: - `/v1/ControlPlane/WarehouseSources/{sourceId}/Datasets` (ListWarehouseDatasets, CreateWarehouseDataset)
+    333: - ...and 6 more paths
+    334: - **Removed 16 path(s)**:
+    335: - `/v1/DataSyncs/{SyncId}` (FetchDataSync)
+    336: - `/v1/CloudAppSources/{SourceId}/Objects` (ListCloudAppObjects)
+    337: - `/v1/WarehouseSources/{SourceId}/Preview` (CreateWarehousePreview)
+    338: - `/v1/WarehouseSources/{SourceId}/Preview/{OperationId}` (FetchWarehousePreview)
+    339: - `/v1/DataSample/{OperationId}` (FetchDataSample)
+    340: - `/v1/ControlPlane/CloudAppSources/{SourceId}` (FetchCloudAppSource, PatchCloudAppSource, DeleteCloudAppSource)
+    341: - `/v1/ControlPlane/CloudAppSources/{SourceId}/Datasets` (ListCloudAppDatasets, CreateCloudAppDataset)
+    342: - `/v1/ControlPlane/CloudAppSources/{SourceId}/Datasets/{DatasetId}` (FetchCloudAppDataset, PatchCloudAppDataset, DeleteCloudAppDataset)
+    343: - `/v1/ControlPlane/WarehouseSources/{SourceId}` (FetchWarehouseSource, PatchWarehouseSource, DeleteWarehouseSource)
+    344: - `/v1/ControlPlane/WarehouseSources/{SourceId}/Datasets` (ListWarehouseDatasets, CreateWarehouseDataset)
+    345: - ...and 6 more paths
+    346: 
+    347: **Deletions**
+    348: - # API Changes
+    349: - ## 2026-06-23
+    350: - Initial public Rest Proxy registration for the User Data Deletions API
+    351: - (`POST` / `GET /v1/UserDataDeletions`, `GET /v1/UserDataDeletions/{deletionId}`,
+    352: - `GET /v1/Operations/{operationId}`).
+    353: - A single request may mix identifier formats: E.164 phone numbers, email
+    354: - addresses, and profile IDs.
+    355: 
+    356: **Destinations**
+    357: - # API Changes
+    358: - ## 2026-08-07
+    359: - **Content updates**:
+    360: - Updated summary for `ListDestinationSupportedEventTypes`
+    361: - ## 2026-08-07
+    362: - **Content updates**:
+    363: - Updated summary for `ListDestinationSupportedEventTypes`
+    364: - ## 2026-08-07
+    365: - **Added 3 new path(s)**:
+    366: - `/v1/Catalog/DestinationSupportedEventTypes` (ListDestinationSupportedEventTypes)
+    367: - `/v1/ControlPlane/Subscriptions/{subscriptionId}/EventTypes` (ListSubscribedEvents, CreateSubscribedEvent)
+    368: - `/v1/ControlPlane/Subscriptions/{subscriptionId}/EventTypes/{eventType}` (GetSubscribedEvent, UpdateSubscribedEvent, DeleteSubscribedEvent)
+    369: - **Removed 3 path(s)**:
+    370: - `/v1/ControlPlane/Subscriptions/{subscriptionId}/SubscribedEvents` (ListSubscribedEvents, CreateSubscribedEvent)
+    371: - `/v1/ControlPlane/Subscriptions/{subscriptionId}/SubscribedEvents/{eventType}` (GetSubscribedEvent, UpdateSubscribedEvent, DeleteSubscribedEvent)
+    372: - `/v1/Catalog/DestinationEventTypes` (ListDestinationEventTypes)
+    373: - ## 2026-08-04
+    374: - Minor updates (formatting, metadata)
+    375: - ## 2026-08-04
+    376: - Minor updates (formatting, metadata)
+    377: - ## 2026-08-04
+    378: - Minor updates (formatting, metadata)
+    379: - ## 2026-08-04
+    380: - Minor updates (formatting, metadata)
+    381: - ## 2026-08-04
+    382: - **Content updates**:
+    383: - Added properties to `SubscriptionResponse`: eventTypes
+    384: - ## 2026-08-03
+    385: - **Content updates**:
+    386: - Added properties to `DestinationType`: documentationUrl, maturity, tier, categories
+    387: - ## 2026-07-27
+    388: - Minor updates (formatting, metadata)
+    389: - ## 2026-07-23
+    390: - **Content updates**:
+    391: - `meta` is now a required property in the response of `ListDestinations`, `ListSubscriptions`, and `ListSubscribedEvents`
+    392: - `CreateSubscribedEvent` request body schema consolidated onto `SubscribedEventInput` (previously `SubscribedEventCreate`, a duplicate schema)
+    393: - Added response examples for `ListDestinations`, `ListSubscriptions`, and `ListSubscribedEvents`
+    394: - ## 2026-07-23
+    395: - **Added 1 new path(s)**:
+    396: - `/v1/Catalog/DestinationEventTypes` (ListDestinationEventTypes)
+    397: - ## 2026-07-22
+    398: - **Content updates**:
+    399: - Added parameter(s) to `ListDestinations`: namePrefix
+    400: - Updated description for `UpdateSubscription`
+    401: - Added properties to `SubscriptionUpdate`: eventTypes
+    402: - ## 2026-07-16
+    403: - Initial release with 9 paths and 18 operations
+    404: 
+    405: **Events**
+    406: - Add `stage-ie1` realm support for EventTypes and Schemas endpoints (datataps-catalog)
+    407: 
+    408: **Memory**
+    409: - ## 2026-08-10
+    410: - Removed `Events` endpoints from the spec, as they were hidden, never implemented, and are not part of the public API
+    411: - ## 2026-08-07
+    412: - **New functionality**:
+    413: - Added `pageSize`, `pageToken`, and `orderBy` query parameters to `ListProfileImportsV2`, plus a `meta` object in its response, to support pagination.
+    414: - **Content updates**:
+    415: - Updated the `ListProfileImportsV2` description to document the new pagination behavior.
+    416: - Corrected the example presigned upload URL on `CreateProfilesImportV2` to match the real S3 bucket naming convention.
+    417: - Corrected the `meta.key` example on `ListProfileTraits`'s response (was `profiles`, now `traits`) to accurately describe which response field it points to.
+    418: - ## 2026-08-07
+    419: - **Content updates**:
+    420: - Updated `matchingRules` description in `IdentityResolutionSettingsCore` to remove compound `AND` rule documentation
+    421: - ## 2026-07-30
+    422: - **Content updates**:
+    423: - Increased the maximum value for the Twilio error `code` from `99999` to `999999`
+    424: - ## 2026-07-28
+    425: - **Content updates**:
+    426: - Updated the `pageSize` description on the pagination `Meta` schema to clarify it reflects the number of items actually returned, not the requested or default page size.
+    427: - ## 2026-07-13
+    428: - **Content updates**:
+    429: - Renamed `ListProfiles` response schema references from `ProfileID`/`ProfilesMeta` to `IdentityProfileID`/`IdentityProfilesMeta` (new `IdentityProfilesMeta` schema added; `ProfileID`/`ProfilesMeta` retained for other operations).
+    430: - ## 2026-07-08
+    431: - **Content updates**:
+    432: - Updated description for `CreateDataMappingSuggestion`
+    433: - Updated description for `FetchDataMappingSuggestion`
+    434: - ## 2026-07-06
+    435: - **Added 2 new path(s)**:
+    436: - `/v1/ControlPlane/Stores/{storeId}/DataMappings/Suggestions` (ListDataMappingSuggestions, CreateDataMappingSuggestion)
+    437: - `/v1/ControlPlane/Stores/{storeId}/DataMappings/Suggestions/{suggestionId}` (FetchDataMappingSuggestion)
+    438: - ## 2026-06-26
+    439: - **Content updates**:
+    440: - Minor updates (formatting, metadata)
+    441: - Updated x-twilio location parameter from `instance` to `list` for all endpoints that don't end with a /{param}
+    442: - Updated description for `UpdateProfileTraits`
+    443: - Updated summary for `UpdateProfileTraits`
+    444: - Removed properties from `MappingTraitItem`: fieldName
+    445: - Removed `additionalProperties` from `allof` schemas since it isn't supported and causes invalid lint errors on example blocks.
+    446: - matruity ga and libraryVisibility public
+    447: - ## 2026-06-24
+    448: - **Content updates**:
+    449: - Add ConversationID as an optional query parameter for ListObservations and ListConversationSummaries
+    450: - ## 2026-05-01
+    451: - **Content updates**:
+    452: - Updated description & summary for `UpdateProfileTraits`
+    453: - Updated description for `FetchIdentityResolutionSettings`
+    454: - Removed properties from `MappingTraitItem`: fieldName
+    455: - Updated patch Observations to not require `occurredAt`, `content`, or `source`
+    456: - ## 2026-04-28
+    457: - **Content updates**:
+    458: - Updated description for `UpdateProfileTraits`
+    459: - Updated summary for `UpdateProfileTraits`
+    460: - Added properties to `TraitDefinition`: validationRule
+    461: - Removed properties from `MappingTraitItem`: fieldName
+    462: 
+    463: **Messaging_admin**
+    464: - Add Intelligent Alerts endpoints at `/v1/Messaging/IntelligentAlertsEvents/*`, routing to intelligent-alerts-api via messaging-monkey-backend. Account SID is a required query parameter (`accountSid`) on all three endpoints.
+    465: 
+    466: 
+    467: [2026-05-07] Version 2.6.9
+    468: --------------------------
+    469: **Conversations**
+    470: - update actions api visibility
+    471: 
+    472: **Memory**
+    473: - ## 2026-05-07
+    474: - **Content updates**:
+    475: - include store api
+    476: 
+    477: 
+    478: [2026-05-06] Version 2.6.8
+    479: --------------------------
+    480: **Twiml**
+    481: - Set `recording_configuration_id` attribute to public visibility in `<Conference>`, `<Dial>`, `<Record>` verbs and `<Recording>` noun
+    482: 
+    483: **Api**
+    484: - Add RecordingConfigurationId parameter for CreateCall, CreateCallRecording, CreateConferenceRecording, and CreateParticipant endpoints
+    485: 
+    486: **Authy**
+    487: - # Changelog
+    488: - ## v1
+    489: - Added Authy API v1 under `/v1` — initial onboarding of Public API (`/v1/protected/*`), Device API (`/v1/json/*`), and Dashboard API (`/v1/dashboard/*`) behind REST Proxy using transparent proxy mode.
+    490: 
+    491: **Data-ingress**
+    492: - ## 2026-04-21
+    493: - **Content updates**:
+    494: - Updated description for `CreateDataSync`
+    495: - Updated description for `DeleteCloudAppDataset`
+    496: - Updated description for `DeleteWarehouseDataset`
+    497: - ## 2026-04-20
+    498: - Minor updates (formatting, metadata)
+    499: - ## 2026-04-17
+    500: - updated operationId for dataplane APIs,Minor updates (formatting, metadata)
+    501: - ## 2026-04-15
+    502: - libraryVisibility to private
+    503: - ## 2026-04-14
+    504: - **Added 1 new path(s)**:
+    505: - `/v1/DataSyncs/Latest` (GetLatestDataSyncs)
+    506: 
+    507: **Memory**
+    508: - ## 2026-04-21
+    509: - **Content updates**:
+    510: - Remove Prefer/Async-Operation headers
+    511: - ## 2026-04-21
+    512: - **Content updates**:
+    513: - Added 301 response for `ListIdentifiers` and `GetIdentifier`
+    514: - Added 308 response for `DeleteProfile`, `CreateIdentifier`, `PatchIdentifier`, and `DeleteIdentifier`
+    515: - ## 2026-04-14
+    516: - **Modified 1 path(s)**:
+    517: - `/v1/ControlPlane/Stores/{storeId}` (added delete)
+    518: - Minor updates (formatting, metadata)
+    519: 
+    520: **Voice**
+    521: - ## 2026-04-17
+    522: - Added `I-Twilio-Auth-Account` to `downstreamRequest` headers in POST /v3/Transcriptions transactions to document RestProxy account header injection
+    523: - ## 2026-04-10
+    524: - Added initial version of Transcriptions V3 API
+    525: - Added POST /v3/Transcriptions endpoint to create a new transcription from a source ID or media URL
+    526: 
+    527: 
+    528: [2026-04-14] Version 2.6.7
+    529: --------------------------
+    530: **Library - Fix**
+    531: - [PR #140](https://github.com/twilio/twilio-oai/pull/140): operation validation. Thanks to [@sbansla](https://github.com/sbansla)!
+    532: 
+    533: **Twiml**
+    534: - Add `backgroundNoiseReduction`, `speechTimeout`, `deepgramSmartFormat`, `ignoreBackchannel`, `events` attributes to `<ConversationRelay>`
+    535: 
+    536: **Api**
+    537: - Enabled incoming phone numbers(IPN) public apis in stage-ie1
+    538: 
+    539: **Data-ingress**
+    540: - ## 2026-04-09
+    541: - **Content updates**:
+    542: - Added parameter(s) to `GetDataSync`: datasetId
+    543: - ## 2026-04-09
+    544: - Minor updates (formatting, metadata)
+    545: - ## 2026-04-06
+    546: - Minor updates (formatting, metadata)
+    547: - ## 2026-04-06
+    548: - Minor updates (formatting, metadata)
+    549: - ## 2026-04-06
+    550: - Minor updates (formatting, metadata)
+    551: - ## 2026-04-06
+    552: - Minor updates (formatting, metadata)
+    553: - ## 2026-04-06
+    554: - **Content updates**:
+    555: - Added properties to `CloudAppSourceUpdate`: config
+    556: - Added properties to `CloudAppDatasetUpdate`: schedule
+    557: - Added properties to `WarehouseSourceUpdate`: config
+    558: - Added properties to `WarehouseDatasetUpdate`: schedule
+    559: - ## 2026-04-06
+    560: - **Content updates**:
+    561: - Updated description for `GetCloudAppPreviewResult`
+    562: - Updated description for `GetWarehousePreviewResult`
+    563: - Updated description for `GetDataSampleResult`
+    564: - ## 2026-03-27
+    565: - Add schema oneOf back without discriminator
+    566: - ## 2026-03-26
+    567: - Minor updates (formatting, metadata)
+    568: - ## 2026-03-26
+    569: - Added prod-us1 to supportedRealms for all endpoints
+    570: - ## 2026-03-25
+    571: - Minor updates (formatting, metadata)
+    572: - ## 2026-03-24
+    573: - Minor updates (formatting, metadata)
+    574: - ## 2026-03-24
+    575: - Minor updates (formatting, metadata)
+    576: - ## 2026-03-24
+    577: - Minor updates (formatting, metadata)
+    578: - ## 2026-03-24
+    579: - **Added 10 new path(s)**:
+    580: - `/v1/DataSyncs` (ListDataSyncs, TriggerDataSync)
+    581: - `/v1/DataSyncs/{SyncId}` (GetDataSync)
+    582: - `/v1/CloudAppSources/{SourceId}/Objects` (ListCloudAppObjects)
+    583: - `/v1/CloudAppSources/{SourceId}/Objects/{Name}/Properties` (ListCloudAppObjectProperties)
+    584: - `/v1/CloudAppSources/{SourceId}/Objects/{Name}/Preview` (PreviewCloudAppObjectData)
+    585: - `/v1/CloudAppSources/{SourceId}/Objects/{Name}/Preview/{OperationId}` (GetCloudAppPreviewResult)
+    586: - `/v1/WarehouseSources/{SourceId}/Preview` (PreviewWarehouseData)
+    587: - `/v1/WarehouseSources/{SourceId}/Preview/{OperationId}` (GetWarehousePreviewResult)
+    588: - `/v1/DataSample` (TriggerDataSample)
+    589: - `/v1/DataSample/{OperationId}` (GetDataSampleResult)
+    590: - ## 2026-03-24
+    591: - Minor updates (formatting, metadata)
+    592: - ## 2026-03-24
+    593: - Use `explode: true` for query params when getting by ids and limit max items to 25
+    594: - Make schema description for `Schema` more specific by using oneOf without discriminator for now.
+    595: 
+    596: **Insights**
+    597: - Added Insights Domains endpoints under `/v3/InsightsDomains/*` (Query + Metadata) to provide a versioned, GA-ready namespace alongside existing `/preview` endpoints.
+    598: 
+    599: **Mcp**
+    600: - # API Changes
+    601: - ## 2026-04-07
+    602: - **Added 1 new path(s)**:
+    603: - `/v1/docs` (InvokeDocsMcp)
+    604: 
+    605: **Memory**
+    606: - ## 2026-04-09
+    607: - **Removed 2 path(s)**:
+    608: - `/v1/Stores/{storeId}/Profiles/Import` (ListProfileImports, CreateProfilesImport)
+    609: - `/v1/Stores/{storeId}/Profiles/Import/{importId}` (FetchProfileImport)
+    610: - libraryVisibility: private, docsVisibility: private
+    611: - ## 2026-04-08
+    612: - **Content updates**:
+    613: - Added 301 response for `GetProfile` and `GetProfileTraits`
+    614: - Added canonical ID header to response for `GetProfile` and `GetProfileTraits`
+    615: - Add 308 response for `PatchProfile`
+    616: - ## 2026-04-07
+    617: - Added `AGENT` and `UNKNOWN` values to `ParticipantType` enum
+    618: - ## 2026-04-06
+    619: - **Content updates**:
+    620: - Added async operation support to `UpdateTraitGroup` 202 response (Operation-Id, Location, Retry-After headers; statusUrl in body)
+    621: - Added async operation support to `CreateDataMapping`, `UpdateDataMapping`, `DeleteDataMapping` 202 responses (Operation-Id, Location, Retry-After headers; statusUrl in body)
+    622: - ## 2026-03-30
+    623: - **Content updates**:
+    624: - Updated description for `FetchProfileMemory`
+    625: - ## 2026-03-27
+    626: - **Content updates**:
+    627: - Updated schema description for `TraitGroupCore`
+    628: - ## 2026-03-25
+    629: - **Content updates**:
+    630: - Removed properties from `TraitDefinition`: displayName
+    631: - ## 2026-03-25
+    632: - **Content updates**:
+    633: - Updated description for `UpdateProfileTraits`
+    634: - Updated description for `FetchIdentityResolutionSettings`
+    635: - Updated description for `UpdateIdentityResolutionSettings`
+    636: - Updated schema description for `IdentityResolutionSettingsCore`
+    637: - Updated schema description for `TraitGroupCore`
+    638: - Made all fields besides `idType` optional w/ defaults for schema `IdentifierConfig`
+    639: - ## 2026-03-24
+    640: - **Content updates**:
+    641: - Added properties to `OperationStatus`: result
+    642: 
+    643: 
+    644: [2026-03-24] Version 2.6.6
+    645: --------------------------
+    646: **Data-ingress**
+    647: - # API Changes
+    648: - ## 2026-03-23
+    649: - Added stage-us1 to supportedRealms for all endpoints
+    650: - ## 2026-03-20
+    651: - **Content updates**:
+    652: - Removed estimatedCompletionTime from `LongRunningOperationResponse`
+    653: - Moved operationId from `LongRunningOperationResponse` to headers
+    654: - ## 2026-03-18
+    655: - **Added 1 new path(s)**:
+    656: - `/v1/ControlPlane/Operations/{OperationId}` (GetControlPlaneOperationStatus)
+    657: - ## 2026-03-11
+    658: - Minor updates (formatting, metadata)
+    659: - ## 2026-03-11
+    660: - Minor updates (formatting, metadata)
+    661: - ## 2026-03-11
+    662: - Minor updates (formatting, metadata)
+    663: - ## 2026-03-11
+    664: - Minor updates (formatting, metadata)
+    665: - ## 2026-03-11
+    666: - Minor updates (formatting, metadata)
+    667: - ## 2026-03-05
+    668: - Initial release with 10 paths and 22 operations
+    669: 
+    670: **Memory**
+    671: - ## 2026-03-19
+    672: - **Added 1 new path(s)**:
+    673: - `/v1/ControlPlane/Operations/{operationId}` (FetchOperation)
+    674: - ## 2026-03-11
+    675: - Minor updates (formatting, metadata)
+    676: 
+    677: 
+    678: [2026-03-10] Version 2.6.5
+    679: --------------------------
+    680: **Twiml**
+    681: - Rename `recording_configuration` to `recording_configuration_id` attribute in `<Conference>`, `<Dial>`, `<Record>` verbs and `<Recording>` noun
+    682: 
+    683: **Ace**
+    684: - # ACE Signals API Changes
+    685: - ## 2026-02-18
+    686: - Initial release: POST /signals, GET/POST /signals/{signal_id}/results, GET /health
+    687: - Enables OneAdmin integration for synchronous signal ingestion and policy result polling
+    688: - Supports permission-based authorization for signal operations
+    689: - Health endpoint available for monitoring without authentication
+    690: 
+    691: **Api**
+    692: - Added optional parameter `Confirmation` to Payments create endpoint to enable payment confirmation prompt before gateway submission
+    693: - Added optional parameter `RequireMatchingInputs` to Payments create endpoint for input confirmation in agent-assisted payment flows
+    694: - Added matcher capture types (`payment-card-number-matcher`, `expiration-date-matcher`, `security-code-matcher`, `postal-code-matcher`) to Payments update endpoint
+    695: 
+    696: **Memory**
+    697: - ## 2026-03-06
+    698: - **Modified 1 path(s)**:
+    699: - `/v1/Stores/{storeId}/Profiles/{profileId}/ConversationSummaries/{summaryId}` (added patch, get)
+    700: 
+    701: 
+    702: [2026-02-18] Version 2.6.4
+    703: --------------------------
+    704: **Api**
+    705: - Remove inequality examples from Calls StartTime and EndTime filter descriptions
+    706: 
+    707: **Memory**
+    708: - ## 2026-02-06
+    709: - Minor updates (formatting, metadata)
+    710: - ## 2026-02-06
+    711: - Minor updates (formatting, metadata)
+    712: - ## 2026-02-06
+    713: - ## 2026-01-23
+    714: - ## 2026-01-23
+    715: - **Added 3 new path(s)**:
+    716: - `/v1/Stores/{storeId}/Profiles/Imports` (ListProfileImportsV2, CreateProfilesImportV2)
+    717: - `/v1/Stores/{storeId}/Profiles/Imports/{importId}` (FetchProfileImportV2)
+    718: - **Removed 6 path(s)**:
+    719: - `/v1/KnowledgeBases/{kbId}/Knowledge` (ListKnowledge, CreateKnowledge)
+    720: - `/v1/KnowledgeBases/{kbId}/Search` (KnowledgeSearch)
+    721: - `/v1/KnowledgeBases/{kbId}/Knowledge/{knowledgeId}` (RetrieveKnowledge, PatchKnowledge, DeleteKnowledge)
+    722: - `/v1/KnowledgeBases/{kbId}/Knowledge/{knowledgeId}/Chunks` (ListKnowledgeChunks)
+    723: - `/v1/ControlPlane/KnowledgeBases` (ListKnowledgeBases, CreateKnowledgeBase)
+    724: - `/v1/ControlPlane/KnowledgeBases/{kbId}` (GetKnowledgeBase, UpdateKnowledgeBase, DeleteKnowledgeBase)
+    725: - ## 2026-01-05
+    726: - ## 2026-01-05
+    727: - Initial release with 26 paths and 48 operations
+    728: 
+    729: 
+    730: [2026-02-05] Version 2.6.3
+    731: --------------------------
+    732: **Twiml**
+    733: - Add `recording_configuration` attribute to `<Recording>` noun
+    734: 
+    735: **Api**
+    736: - Clarify the behavior of date filters with the Calls API
+    737: - Added Phone Number `type` property to `/IncomingPhoneNumbers` resource
+    738: 
+    739: **Memory**
+    740: - ## 2026-01-23
+    741: - No path changes (updated metadata only)
+    742: - ## 2026-01-22
+    743: - No path changes (updated metadata only)
+    744: - ## 2026-01-22
+    745: - **Modified 1 path(s)**:
+    746: - `/v1/Stores/{storeId}/Profiles/{profileId}` (added delete)
+    747: 
+    748: 
+    749: [2026-01-22] Version 2.6.2
+    750: --------------------------
+    751: **Twiml**
+    752: - Added support for <Uri> and <Headers> inside <Dial><Sip>
+    753: 
+    754: **Assistants**
+    755: - AI Assistants v1 release
+    756: 
+    757: **Autopilot**
+    758: - Remove Export resource from Autopilot Assistant
+    759: - Add dialogue_sid param to Query list resource
+    760: - Add Restore resource to Autopilot Assistant
+    761: - Add one new property in Query i.e dialogue_sid
+    762: - Add Export resource to Autopilot Assistant.
+    763: - Adds two new properties in Assistant i.e needs_model_build and development_stage
+    764: - Add Webhooks resource to Autopilot Assistant.
+    765: - Introduce `autopilot` subdomain with all resources from `preview.understand`
+    766: 
+    767: **Compliance**
+    768: - Added the new InventoryComplianceInsights API under version `/v1`.
+    769: 
+    770: **Content**
+    771: - changes for adding v2 endpoints
+    772: 
+    773: **Marketplace**
+    774: - Initial transition to Marketplace domain
+    775: 
+    776: **Memory**
+    777: - # API Changes
+    778: - ## 2026-01-15
+    779: - No path changes (updated metadata only)
+    780: - ## 2026-01-13
+    781: - **Added 1 new path(s)**:
+    782: - `/v1/Stores/{storeId}/Profiles/{profileId}/ConversationSummaries/{summaryId}` (DeleteProfileConversationSummary)
+    783: - ## 2026-01-12
+    784: - No path changes (updated metadata only)
+    785: - ## 2026-01-12
+    786: - No path changes (updated metadata only)
+    787: - ## 2026-01-12
+    788: - No path changes (updated metadata only)
+    789: - ## 2026-01-12
+    790: - **Added 2 new path(s)**:
+    791: - `/v1/Stores/{storeId}/Profiles/Imports` (ListProfileImportsV2, ImportProfilesV2)
+    792: - `/v1/Stores/{storeId}/Profiles/Imports/{importId}` (GetProfileImportV2)
+    793: - ## 2026-01-13
+    794: - No path changes (updated metadata only)
+    795: - ## 2026-01-07
+    796: - No path changes (updated metadata only)
+    797: - ## 2026-01-05
+    798: - No path changes (updated metadata only)
+    799: - ## 2025-12-17
+    800: - No path changes (updated metadata only)
+    801: - ## 2025-12-17
+    802: - No path changes (updated metadata only)
+    803: - ## 2025-12-17
+    804: - **Added 1 new path(s)**:
+    805: - `/v1/Stores/{storeId}/Profiles/{profileId}/Observations/{observationId}/Revisions` (ListObservationRevisions)
+    806: 
+    807: **Sender-ids**
+    808: - Added all v2 sender-id-service endpoints
+    809: 
+    810: **Trusthub**
+    811: - Add new delete endpoint for compliance_registration.
+    812: 
+    813: **Voice**
+    814: - Add ProvisioningStatus public API endpoints.
+    815: 
+    816: **Wise_owl**
+    817: - Init API as open-api spec
+    818: - Updated Get Chat, Send Message and Create Chat to include `contexts` in Message, instead of root Chat
+    819: 
+    820: **Www**
+    821: - Port APIs from oauth.twilio.com to www.twilio.com
+    822: 
+    823: 
+    824: [2026-01-07] Version 2.6.1
+    825: --------------------------
+    826: **Api**
+    827: - Added optional parameter `clientNotificationUrl` for create call api
+    828: - Added optional parameter `clientNotificationUrl` for create participant api
+    829: 
+    830: 
+    831: [2025-12-17] Version 2.6.0
+    832: --------------------------
+    833: **Trunking**
+    834: - Corrected the type used for phone number capabilities when accessed through a Trunk. **(breaking change)**
+    835: - Corrected the type used for phone number capabilities when accessed through a Trunk. **(breaking change)**
+    836: 
+    837: **Trusthub**
+    838: - Added new parameters in in toll-free initialize api payload.
+    839: - Remove the invalid status transition to Draft from the examples
+    840: - Change the value of email to a valid one in the examples.
+    841: 
+    842: 
+    843: [2025-12-03] Version 2.5.8
+    844: --------------------------
+    845: **Api**
+    846: - Add `twiml_session` resource for calls
+    847: - Add `twiml_session` resource for calls
+    848: 
+    849: **Monitor**
+    850: - Update default output properties
+    851: 
+    852: **Trusthub**
+    853: - Added customer_profile_sid in toll-free initialize api payload.
+    854: 
+    855: 
+    856: [2025-11-20] Version 2.5.7
+    857: --------------------------
+    858: **Memory**
+    859: - # Memory API Changes
+    860: - Added initial Memory API endpoints with darkseagreen badge status
+    861: 
+    862: 
+    863: [2025-11-11] Version 2.5.6
+    864: --------------------------
+    865: **Twiml**
+    866: - Add new noun `<ConversationRelaySession>`
+    867: - Add support for `<Recording>` noun under `<Start>` verb
+    868: 
+    869: 
+    870: [2025-10-28] Version 2.5.5
+    871: --------------------------
+    872: **Ai**
+    873: - Add `error` as possible transcript status
+    874: - Add `error` as possible transcript status
+    875: 
+    876: **Chat**
+    877: - Updated v2 UserChannel `channel_status` from `not_participating` to `notParticipating`
+    878: 
+    879: **Intelligence**
+    880: - Make intelligence work with RestProxy
+    881: - Add additional enums to better represent the possible states
+    882: - Add `error` enum to transcription status to better align with possible outputs
+    883: - Add `json` output type to text classification
+    884: 
+    885: **Trusthub**
+    886: - Remove required parameter Primary Profile Sid from compliance_inquiry and compliance_inquiry_individual
+    887: 
+    888: **Accounts**
+    889: - Add Messaging GeoPermissions API changes
+    890: 
+    891: 
+    892: [2025-10-14] Version 2.5.4
+    893: --------------------------
+    894: **Api**
+    895: - Updated description for property `CallerDisplayName` for participant create request
+    896: 
+    897: 
+    898: [2025-09-30] Version 2.5.3
+    899: --------------------------
+    900: **Insights**
+    901: - Replace `field` with `key` in Request Filters and Response Metadata Filters and  for Reports API
+    902: 
+    903: 
+    904: [2025-09-25] Version 2.5.2
+    905: --------------------------
+    906: **Api**
+    907: - Added optional parameter `CallerDisplayName` for conference participant outbound
+    908: - Updated description for property `to` in the participant create request
+    909: 
+    910: 
+    911: [2025-09-18] Version 2.5.1
+    912: --------------------------
+    913: **Api**
+    914: - Add `date_created` property to media resource and date_created filtering parameters for read action
+    915: - Updated the Recordings Resource `channels` property to clarify channels = # of channels in the recording resource and how to specify the # of channels in recording download
+    916: 
+    917: **Intelligence**
+    918: - Add encryption_credential_sid field in transcripts and services in v2
+    919: 
+    920: **Trusthub**
+    921: - Remove beta feature flag for all TH APIs
+    922: - Remove beta feature flag for ComplianceInquiries API to support OneConsole traffic
+    923: 
+    924: **Twiml**
+    925: - Add new noun `<AiSession>`
+    926: 
+    927: 
+    928: [2025-09-04] Version 2.5.0
+    929: --------------------------
+    930: **Api**
+    931: - Remove usage category enum from usage record and usage triggers API **(breaking change)**
+    932: 
+    933: 
+    934: [2025-08-28] Version 2.4.2
+    935: --------------------------
+    936: **Studio**
+    937: - Add `type` to Step resource APIs
+    938: 
+    939: **Verify**
+    940: - Allow to update all passkeys parameters in the service update
+    941: 
+    942: 
+    943: [2025-08-18] Version 2.4.1
+    944: --------------------------
+    945: **Accounts**
+    946: - Update beta feature flag for consent and contact bulk upsert APIs
+    947: 
+    948: **Api**
+    949: - Add multiple missing usage categories to usage records and usage triggers api
+    950: - Add `channels-whatsapp-template-marketing` and `channels-whatsapp-template-utility` to usage categories
+    951: 
+    952: **Conversations**
+    953: - Fix `state` spelling for `initializing` enum value
+    954: - Update `state` to include `intializing` for ServiceConversationWithParticipants and ConversationWithParticipants
+    955: 
+    956: **Flex**
+    957: - Adding new optional parameter `identity` to `web_channels` API in version `v2`
+    958: 
+    959: **Trusthub**
+    960: - Add required Permissions to the ComplianceInquiries API
+    961: 
+    962: **Verify**
+    963: - Add passkeys support to Verify API creating and updating services.
+    964: - Update `ienum` type for Factor creation
+    965: - Add passkeys as challenge and factor type
+    966: 
+    967: 
+    968: [2025-07-24] Version 2.4.0
+    969: --------------------------
+    970: **Events**
+    971: - Remove `SinkSid` parameter when updating subscriptions. **(breaking change)**
+    972: 
+    973: **Twiml**
+    974: - Remove Duplicates.
+    975: - Add Polly Generative voices.
+    976: - Add Latest Google (Chirp3-HD) voices.
+    977: 
+    978: 
+    979: [2025-07-10] Version 2.3.5
+    980: --------------------------
+    981: **Flex**
+    982: - update team name for web_channel, webchat_init_token, webchat_refresh_token
+    983: 
+    984: 
+    985: [2025-07-03] Version 2.3.4
+    986: --------------------------
+    987: **Bulkexports**
+    988: - Changed the type of 'details' field to be a list of objects instead of a single object
+    989: 
+    990: **Conversations**
+    991: - Updates to `method` casing for ConfgurationAddress, ConversationScopedWebhook, and ServiceConversationScopedWebhook for RestProxy compatibility
+    992: 
+    993: **Proxy**
+    994: - remove shortcodes resource as its no longer used
+    995: 
+    996: **Serverless**
+    997: - Change log field level from type `ienum` to `string` in Logs api
+    998: 
+    999: **Taskrouter**
+   1000: - Remove `URL-encoded` from attributes param definition in tasks
+   1001: 
+   1002: **Trunking**
+   1003: - Added `symmetric_rtp_enabled` property on Trunks.
+   1004: 
+   1005: **Twiml**
+   1006: - Add support for `<WhatsApp>` noun under `<Dial>` verb
+   1007: 
+   1008: 
+   1009: [2025-06-12] Version 2.3.3
+   1010: --------------------------
+   1011: **Api**
+   1012: - Change DependentPhoneNumber `capabilities` type `object` and `date_created`, `date_updated` to `date_time<rfc2822>`
+   1013: - Updated the `Default` value from 0 to 1 in the Recordings Resource `channels` property
+   1014: 
+   1015: **Serverless**
+   1016: - Update `ienum` type level in Logs api
+   1017: 
+   1018: **Verify**
+   1019: - Update Channel list in Verify Attempst API
+   1020: - Update `ienum` type for Conversion_Status in Verify Attempts API
+   1021: 
+   1022: **Twiml**
+   1023: - Add `us2` to the list of supported values for the region attribute in the `<Conference>` TwiML noun.
+   1024: 
+   1025: 
+   1026: [2025-05-29] Version 2.3.2
+   1027: --------------------------
+   1028: **Api**
+   1029: - Added several usage category enums to `usage_record` API
+   1030: 
+   1031: **Numbers**
+   1032: - Update the porting documentation
+   1033: 
+   1034: **Verify**
+   1035: - Update `ienum` type for Channels in Verify Attempts API
+   1036: 
+   1037: 
+   1038: [2025-05-13] Version 2.3.1
+   1039: --------------------------
+   1040: **Accounts**
+   1041: - Changes to add date_of_consent param in Bulk Consent API
+   1042: 
+   1043: **Api**
+   1044: - Change `friendly_name`, `date_created` and `date_updated` properties to type `string`.
+   1045: 
+   1046: **Twiml**
+   1047: - Update twiml definition for `<ConversationRelay>` and `<Assistant>`
+   1048: 
+   1049: 
+   1050: [2025-05-05] Version 2.3.0
+   1051: --------------------------
+   1052: **Api**
+   1053: - Add `response_key` for `Usage Triggers` fetch endpoint.
+   1054: 
+   1055: **Flex**
+   1056: - Add Update Interaction API
+   1057: - Adding `webhook_ttid` as optional parameter in Interactions API
+   1058: 
+   1059: **Serverless**
+   1060: - Add node22 as a valid Build runtime
+   1061: - Add node20 as a valid Build runtime
+   1062: 
+   1063: **Video**
+   1064: - removed `transcribe_participants_on_connect` and `transcriptions_configuration` from the room resource **(breaking change)**
+   1065: - Added `transcribe_participants_on_connect` and `transcriptions_configuration` to the room resource
+   1066: 
+   1067: 
+   1068: [2025-04-07] Version 2.2.3
+   1069: --------------------------
+   1070: **Library - Chore**
+   1071: - [PR #131](https://github.com/twilio/twilio-oai/pull/131): Trigger cli core release. Thanks to [@sbansla](https://github.com/sbansla)!
+   1072: 
+   1073: **Library - Fix**
+   1074: - [PR #130](https://github.com/twilio/twilio-oai/pull/130): added a commit to trigger cli-core release. Thanks to [@sbansla](https://github.com/sbansla)!
+   1075: 
+   1076: **Studio**
+   1077: - Add documentation for parent_step_sid field in Step resource
+   1078: 
+   1079: 
+   1080: [2025-03-26] Version 2.2.2
+   1081: --------------------------
+   1082: **Accounts**
+   1083: - Dummy update for cli-core release
+   1084: 
+   1085: 
+   1086: [2025-03-20] Version 2.2.1
+   1087: --------------------------
+   1088: **Accounts**
+   1089: - Update Safelist API docs as part of prefix supoort
+   1090: 
+   1091: **Flex**
+   1092: - Removing `first_name`, `last_name`, and `friendly_name` from the Flex User API
+   1093: 
+   1094: **Messaging**
+   1095: - Add missing tests under transaction/phone_numbers and transaction/short_code
+   1096: 
+   1097: 
+   1098: [2025-03-11] Version 2.2.0
+   1099: --------------------------
+   1100: **Api**
+   1101: - Add the missing `emergency_enabled` field for `Address Service` endpoints
+   1102: 
+   1103: **Messaging**
+   1104: - Add missing enums for A2P and TF
+   1105: 
+   1106: **Numbers**
+   1107: - add missing enum values to hosted_number_order_status
+   1108: 
+   1109: **Twiml**
+   1110: - Convert Twiml Attribute `speechModel` of type enum to string **(breaking change)**
+   1111: 
+   1112: 
+   1113: [2025-02-20] Version 2.1.13
+   1114: ---------------------------
+   1115: **Flex**
+   1116: - Adding Digital Transfers APIs under v1/Interactions
+   1117: 
+   1118: **Numbers**
+   1119: - Convert webhook_type to ienum type in v1/Porting/Configuration/Webhook/{webhook_type}
+   1120: 
+   1121: **Trusthub**
+   1122: - Changing TrustHub SupportingDocument status enum from lowercase to uppercase since kyc-orch returns status capitalized and rest proxy requires strict casing
+   1123: 
+   1124: 
+   1125: [2025-02-11] Version 2.1.12
+   1126: ---------------------------
+   1127: **Api**
+   1128: - Change downstream url and change media type for file `base/api/v2010/validation_request.json`.
+   1129: 
+   1130: **Intelligence**
+   1131: - Add json_results for Generative JSON operator results
+   1132: 
+   1133: **Messaging**
+   1134: - Add DestinationAlphaSender API to support Country-Specific Alpha Senders
+   1135: 
+   1136: **Video**
+   1137: - Change codec type from enum to case-insensitive enum in recording and room_recording apis
+   1138: 
+   1139: 
+   1140: [2025-01-28] Version 2.1.11
+   1141: ---------------------------
+   1142: **Api**
+   1143: - Add open-api file tag to `conference/call recordings` and `recording_transcriptions`.
+   1144: 
+   1145: **Events**
+   1146: - Add support for subaccount subscriptions (beta)
+   1147: 
+   1148: **Insights**
+   1149: - add new region to conference APIs
+   1150: 
+   1151: **Lookups**
+   1152: - Add new `parnter_sub_id` query parameter to the lookup request
+   1153: 
+   1154: 
+   1155: [2025-01-13] Version 2.1.10
+   1156: ---------------------------
+   1157: **Messaging**
+   1158: - Adds validity period Default value in service resource documentation
+   1159: 
+   1160: 
+   1161: [2025-01-09] Version 2.1.9
+   1162: --------------------------
+   1163: **Numbers**
+   1164: - Change beta feature flag to use v2/BulkHostedNumberOrders
+   1165: 
+   1166: 
+   1167: [2024-12-12] Version 2.1.8
+   1168: --------------------------
+   1169: **Library - Chore**
+   1170: - [PR #126](https://github.com/twilio/twilio-oai/pull/126): release twilio-oai. Thanks to [@tiwarishubham635](https://github.com/tiwarishubham635)!
+   1171: 
+   1172: 
+   1173: [2024-12-05] Version 2.1.7
+   1174: --------------------------
+   1175: **Api**
+   1176: - Add optional parameter `intelligence_service` to `transcription`
+   1177: - Updated `phone_number_sid` to be populated for sip trunking terminating calls.
+   1178: 
+   1179: **Numbers**
+   1180: - Add Update Hosted Number Order V2 API endpoint
+   1181: - Update Port in docs
+   1182: 
+   1183: **Twiml**
+   1184: - Add optional parameter `intelligence_service` to `<Transcription>`
+   1185: - Add support for new `<ConversationRelay>` and `<Assistant>` noun
+   1186: - Add `events` attribute to `<Dial>` verb
+   1187: 
+   1188: 
+   1189: [2024-11-15] Version 2.1.6
+   1190: --------------------------
+   1191: **Api**
+   1192: - Added `ivr-virtual-agent-custom-voices` and `ivr-virtual-agent-genai` to `usage_record` API.
+   1193: - Add open-api file tag to realtime_transcriptions
+   1194: 
+   1195: **Taskrouter**
+   1196: - Add `api-tag` property to workers reservation
+   1197: - Add `api-tag` property to task reservation
+   1198: 
+   1199: 
+   1200: [2024-10-24] Version 2.1.5
+   1201: --------------------------
+   1202: **Conversations**
+   1203: - Expose ConversationWithParticipants resource that allows creating a conversation with participants
+   1204: 
+   1205: 
+   1206: [2024-10-17] Version 2.1.4
+   1207: --------------------------
+   1208: **Api**
+   1209: - Add response key `country` to fetch AvailablePhoneNumber resource by specific country.
+   1210: 
+   1211: **Messaging**
+   1212: - Make library and doc public for requestManagedCert Endpoint
+   1213: 
+   1214: 
+   1215: [2024-10-03] Version 2.1.3
+   1216: --------------------------
+   1217: **Messaging**
+   1218: - Add A2P external campaign CnpMigration flag
+   1219: 
+   1220: **Numbers**
+   1221: - Add address sid to portability API
+   1222: 
+   1223: **Verify**
+   1224: - Add `SnaClientToken` optional parameter on Verification check.
+   1225: - Add `EnableSnaClientToken` optional parameter for Verification creation.
+   1226: 
+   1227: 
+   1228: [2024-09-25] Version 2.1.2
+   1229: --------------------------
+   1230: **Library - Chore**
+   1231: - [PR #121](https://github.com/twilio/twilio-oai/pull/121): content sdk changes moved to content v1 in internal open api repo. Thanks to [@sbansla](https://github.com/sbansla)!
+   1232: 
+   1233: **Accounts**
+   1234: - Update docs and mounts.
+   1235: - Change library visibility to public
+   1236: - Enable consent and contact bulk upsert APIs in prod.
+   1237: 
+   1238: **Serverless**
+   1239: - Add is_plugin parameter in deployments api to check if it is plugins deployment
+   1240: 
+   1241: 
+   1242: [2024-09-18] Version 2.1.1
+   1243: --------------------------
+   1244: **Intelligence**
+   1245: - Remove public from operator_type
+   1246: - Update operator_type to include general-availablity and deprecated
+   1247: 
+   1248: **Numbers**
+   1249: - Remove beta flag for bundle clone API
+   1250: 
+   1251: 
+   1252: [2024-09-05] Version 2.1.0
+   1253: --------------------------
+   1254: **Iam**
+   1255: - updated library_visibility public for new public apikeys
+   1256: 
+   1257: **Numbers**
+   1258: - Add new field in Error Codes for Regulatory Compliance.
+   1259: - Change typing of Port In Request date_created field to date_time instead of date **(breaking change)**
+   1260: 
+   1261: 
+   1262: [2024-08-26] Version 2.0.3
+   1263: --------------------------
+   1264: **Library - Fix**
+   1265: - [PR #116](https://github.com/twilio/twilio-oai/pull/116): Removing pascal case rule for query and path params. Changing the spec files for orgs api. Thanks to [@AsabuHere](https://github.com/AsabuHere)!
+   1266: 
+   1267: **Api**
+   1268: - Update documentation of `error_code` and `error_message` on the Message resource.
+   1269: - Remove generic parameters from `transcription` resource
+   1270: - Added public documentation for Payload Data retrieval API
+   1271: 
+   1272: **Flex**
+   1273: - Adding update Flex User api
+   1274: 
+   1275: **Insights**
+   1276: - Added 'branded', 'business_profile' and 'voice_integrity' fields in List Call Summary
+   1277: 
+   1278: **Intelligence**
+   1279: - Add `words` array information to the Sentences v2 entity.
+   1280: - Add `X-Rate-Limit-Limit`, `X-Rate-Limit-Remaining`, and `X-Rate-Limit-Config` headers for Operator Results.
+   1281: - Change the path parameter when fetching an `/OperatorType/{}` from `sid<EY>` to `string` to support searching by SID or by name
+   1282: - Add `X-Rate-Limit-Limit`, `X-Rate-Limit-Remaining`, and `X-Rate-Limit-Config` headers for Transcript and Service endpoints.
+   1283: 
+   1284: **Messaging**
+   1285: - Adds two new channel senders api to add/remove channel senders to/from a messaging service
+   1286: - Extend ERC api to accept an optional attribute in request body to indicate CNP migration for an ERC
+   1287: 
+   1288: **Numbers**
+   1289: - Modify visibility to public in bundle clone API
+   1290: - Add `port_date` field to Port In Request and Port In Phone Numbers Fetch APIs
+   1291: - Change properties docs for port in phone numbers api
+   1292: - Add is_test body param to the Bundle Create API
+   1293: - Change properties docs for port in api
+   1294: 
+   1295: **Trusthub**
+   1296: - Add new field in themeSetId in compliance_inquiry.
+   1297: 
+   1298: **Verify**
+   1299: - Update `custom_code_enabled` description on verification docs
+   1300: 
+   1301: 
+   1302: [2024-07-02] Version 2.0.2
+   1303: --------------------------
+   1304: **Library - Chore**
+   1305: - [PR #114](https://github.com/twilio/twilio-oai/pull/114): remove empty models. Thanks to [@tiwarishubham635](https://github.com/tiwarishubham635)!
+   1306: 
+   1307: **Intelligence**
+   1308: - Deprecate account flag api.twilio-intelligence.v2
+   1309: 
+   1310: 
+   1311: [2024-06-27] Version 2.0.1
+   1312: --------------------------
+   1313: **Library - Chore**
+   1314: - [PR #113](https://github.com/twilio/twilio-oai/pull/113): regenerated from open-api. Thanks to [@sbansla](https://github.com/sbansla)!
+   1315: - [PR #112](https://github.com/twilio/twilio-oai/pull/112): disable example validation. Thanks to [@sbansla](https://github.com/sbansla)!
+   1316: 
+   1317: **Api**
+   1318: - Add `transcription` resource
+   1319: - Add beta feature request managed cert
+   1320: 
+   1321: **Flex**
+   1322: - Changed mount name for flex_team v2 api
+   1323: 
+   1324: **Intelligence**
+   1325: - Add `X-Rate-Limit-Limit`, `X-Rate-Limit-Remaining`, and `X-Rate-Limit-Config` as Response Headers to Operator resources
+   1326: 
+   1327: **Numbers**
+   1328: - Added include_constraints query parameter to the Regulations API
+   1329: 
+   1330: **Twiml**
+   1331: - Add support for `<Transcription>` noun
+   1332: 
+   1333: 
+   1334: [2024-06-18] Version 2.0.0
+   1335: --------------------------
+   1336: **Note:** This release contains breaking changes, check our [upgrade guide](./UPGRADE.md#2024-06-18-156x-to-2xx) for detailed migration notes.
+   1337: 
+   1338: **Library - Feature**
+   1339: - [PR #111](https://github.com/twilio/twilio-oai/pull/111): Merge branch '2.0.0-rc' into main. Thanks to [@tiwarishubham635](https://github.com/tiwarishubham635)! **(breaking change)**
+   1340: - [PR #110](https://github.com/twilio/twilio-oai/pull/110): Merge branch '2.0.0-rc' into main. Thanks to [@tiwarishubham635](https://github.com/tiwarishubham635)! **(breaking change)**
+   1341: 
+   1342: **Events**
+   1343: - Add `status` and `documentation_url` to Event Types
+   1344: 
+   1345: **Lookups**
+   1346: - Removed unused `fraud` lookups in V1 only to facilitate rest proxy migration
+   1347: 
+   1348: **Numbers**
+   1349: - Add date_created field to the Get Port In Request API
+   1350: - Rename the `status_last_time_updated_timestamp` field to `last_updated` in the Get Port In Phone Number API **(breaking change)**
+   1351: - Add Rejection reason and rejection reason code to the Get Port In Phone Number API
+   1352: - Remove the carrier information from the Portability API
+   1353: 
+   1354: **Proxy**
+   1355: - Change property `type` from enum to ienum
+   1356: 
+   1357: **Trusthub**
+   1358: - Add skipMessagingUseCase field in compliance_tollfree_inquiry.
+   1359: 
+   1360: 
+   1361: [2024-06-06] Version 1.56.1
+   1362: ---------------------------
+   1363: **Api**
+   1364: - Mark MaxPrice as obsolete
+   1365: 
+   1366: **Lookups**
+   1367: - Update examples for `phone_number_quality_score`
+   1368: 
+   1369: **Messaging**
+   1370: - List tollfree verifications on parent account and all sub-accounts
+   1371: 
+   1372: 
+   1373: [2024-05-24] Version 1.56.0
+   1374: ---------------------------
+   1375: **Api**
+   1376: - Add ie1 as supported region for UserDefinedMessage and UserDefinedMessageSubscription.
+   1377: 
+   1378: **Flex**
+   1379: - Adding validated field to `plugin_versions`
+   1380: - Corrected the data type for `runtime_domain`, `call_recording_webhook_url`, `crm_callback_url`, `crm_fallback_url`, `flex_url` in Flex Configuration
+   1381: - Making `routing` optional in Create Interactions endpoint
+   1382: 
+   1383: **Intelligence**
+   1384: - Expose operator authoring apis to public visibility
+   1385: - Deleted `language_code` parameter from updating service in v2 **(breaking change)**
+   1386: - Add read_only_attached_operator_sids to v2 services
+   1387: 
+   1388: **Numbers**
+   1389: - Add API endpoint for GET Porting Webhook Configurations By Account SID
+   1390: - Remove bulk portability api under version `/v1`. **(breaking change)**
+   1391: - Removed porting_port_in_fetch.json files and move the content into porting_port_in.json files
+   1392: - Add API endpoint to deleting Webhook Configurations
+   1393: - Add Get Phone Number by Port in request SID and Phone Number SID api
+   1394: - Add Create Porting webhook configuration API
+   1395: - Added bundle_sid and losing_carrier_information fields to Create PortInRequest api to support Japan porting
+   1396: 
+   1397: **Taskrouter**
+   1398: - Add back `routing_target` property to tasks
+   1399: - Add back `ignore_capacity` property to tasks
+   1400: - Removing `routing_target` property to tasks due to revert
+   1401: - Removing `ignore_capacity` property to tasks due to revert
+   1402: - Add `routing_target` property to tasks
+   1403: - Add `ignore_capacity` property to tasks
+   1404: 
+   1405: **Trusthub**
+   1406: - Add new field errors to bundle as part of public API response in customer_profile.json and trust_product.json **(breaking change)**
+   1407: - Add themeSetId field in compliance_tollfree_inquiry.
+   1408: 
+   1409: **Verify**
+   1410: - Update `friendly_name` description on service docs
+   1411: 
+   1412: 
+   1413: [2024-04-18] Version 1.55.5
+   1414: ---------------------------
+   1415: **Flex**
+   1416: - Add header `ui_version` to `web_channels` API
+   1417: 
+   1418: **Messaging**
+   1419: - Redeploy after failed pipeline
+   1420: 
+   1421: **Numbers**
+   1422: - Add Delete Port In request phone number api and Add Delete Port In request api
+   1423: 
+   1424: 
+   1425: [2024-04-04] Version 1.55.4
+   1426: ---------------------------
+   1427: **Api**
+   1428: - Correct conference filtering by date_created and date_updated documentation, clarifying that times are UTC.
+   1429: 
+   1430: **Flex**
+   1431: - Remove optional parameter from `plugins` and it to `plugin_versions`
+   1432: 
+   1433: **Lookups**
+   1434: - Add new `pre_fill` package to the lookup response
+   1435: 
+   1436: **Messaging**
+   1437: - Cleanup api.messaging.next-gen from Messaging Services endpoints
+   1438: - Readd Sending-Window after fixing test failure
+   1439: 
+   1440: **Verify**
+   1441: - Add `whatsapp.msg_service_sid` and `whatsapp.from` parameters to create, update, get and list of services endpoints
+   1442: 
+   1443: **Voice**
+   1444: - Correct conference filtering by date_created and date_updated documentation, clarifying that times are UTC.
+   1445: 
+   1446: **Twiml**
+   1447: - Add new `token_type` value `payment-method` for `Pay` verb
+   1448: 
+   1449: 
+   1450: [2024-04-01] Version 1.55.3
+   1451: ---------------------------
+   1452: **Api**
+   1453: - Add property `queue_time` to conference participant resource
+   1454: - Update RiskCheck documentation
+   1455: - Correct call filtering by start and end time documentation, clarifying that times are UTC.
+   1456: 
+   1457: **Flex**
+   1458: - Adding optional parameter to `plugins`
+   1459: 
+   1460: **Media**
+   1461: - Remove API: MediaProcessor
+   1462: 
+   1463: **Messaging**
+   1464: - Remove Sending-Window due to test failure
+   1465: - Add Sending-Window as a response property to Messaging Services, gated by a beta feature flag
+   1466: 
+   1467: **Numbers**
+   1468: - Correct valid_until_date field to be visible in Bundles resource
+   1469: - Adding port_in_status field to the Port In resource and phone_number_status and sid fields to the Port In Phone Number resource
+   1470: 
+   1471: **Oauth**
+   1472: - Modified token endpoint response
+   1473: - Added refresh_token and scope as optional parameter to token endpoint
+   1474: 
+   1475: **Trusthub**
+   1476: - Add update inquiry endpoint in compliance_registration.
+   1477: - Add new field in themeSetId in compliance_registration.
+   1478: 
+   1479: **Voice**
+   1480: - Correct call filtering by start and end time documentation, clarifying that times are UTC.
+   1481: 
+   1482: **Twiml**
+   1483: - Add support for new Google voices (Q1 2024) for `Say` verb - gu-IN voices
+   1484: - Add support for new Amazon Polly and Google voices (Q1 2024) for `Say` verb - Niamh (en-IE) and Sofie (da-DK) voices
+   1485: 
+   1486: 
+   1487: [2024-03-14] Version 1.55.2
+   1488: ---------------------------
+   1489: **Oauth**
+   1490: - Add new APIs for vendor authorize and token endpoints
+   1491: 
+   1492: 
+   1493: [2024-03-12] Version 1.55.1
+   1494: ---------------------------
+   1495: **Api**
+   1496: - Correct precedence documentation for application_sid vs status_callback in message creation
+   1497: - Mark MaxPrice as deprecated
+   1498: 
+   1499: **Flex**
+   1500: - Making `plugins` visibility to public
+   1501: 
+   1502: **Messaging**
+   1503: - Add new `errors` attribute to the Brand Registration resource.
+   1504: - Mark `brand_feedback` attribute as deprecated.
+   1505: - Mark `failure_reason` attribute as deprecated.
+   1506: - The new `errors` attribute is expected to provide additional information about Brand registration failures and feedback (if any has been provided by The Campaign Registry). Consumers should use this attribute instead of `brand_feedback` and `failure_reason`.
+   1507: 
+   1508: **Numbers**
+   1509: - Correcting mount_name for porting port in fetch API
+   1510: 
+   1511: **Trusthub**
+   1512: - Add new field in statusCallbackUrl in compliance_registration.
+   1513: - Add new field in isvRegisteringForSelfOrTenant in compliance_registration.
+   1514: 
+   1515: **Twiml**
+   1516: - Expanded description of Action parameter for Message verb
+   1517: 
+   1518: 
+   1519: [2024-02-27] Version 1.55.0
+   1520: ---------------------------
+   1521: **Api**
+   1522: - remove feedback and feedback summary from call resource
+   1523: 
+   1524: **Flex**
+   1525: - Adding `routing_properties` to Interactions Channels Participant
+   1526: 
+   1527: **Lookups**
+   1528: - Add new `line_status` package to the lookup response
+   1529: - Remove `live_activity` package from the lookup response **(breaking change)**
+   1530: 
+   1531: **Messaging**
+   1532: - Add tollfree multiple rejection reasons response array
+   1533: 
+   1534: **Trusthub**
+   1535: - Add ENUM for businessRegistrationAuthority in compliance_registration. **(breaking change)**
+   1536: - Add new field in isIsvEmbed in compliance_registration.
+   1537: - Add additional optional fields in compliance_registration for Individual business type.
+   1538: 
+   1539: **Twiml**
+   1540: - Add support for new Amazon Polly and Google voices (Q1 2024) for `Say` verb
+   1541: 
+   1542: 
+   1543: [2024-02-09] Version 1.54.0
+   1544: ---------------------------
+   1545: **Library - Chore**
+   1546: - [PR #103](https://github.com/twilio/twilio-oai/pull/103): initiate cli release commit. Thanks to [@sbansla](https://github.com/sbansla)!
+   1547: 
+   1548: **Api**
+   1549: - Updated service base url for connect apps and authorized connect apps APIs **(breaking change)**
+   1550: - Update documentation to reflect RiskCheck GA
+   1551: - Added optional parameter `CallToken` for create participant api
+   1552: 
+   1553: **Events**
+   1554: - Marked as GA
+   1555: 
+   1556: **Flex**
+   1557: - Adding `flex_instance_sid` to Flex Configuration
+   1558: - Adding `provisioning_status` for Email Manager
+   1559: - Adding `offline_config` to Flex Configuration
+   1560: 
+   1561: **Insights**
+   1562: - add flag to restrict access to unapid customers
+   1563: - decommission voice-qualitystats-endpoint role
+   1564: 
+   1565: **Intelligence**
+   1566: - Add text-generation operator (for example conversation summary) results to existing OperatorResults collection.
+   1567: 
+   1568: **Lookups**
+   1569: - Remove `carrier` field from `sms_pumping_risk` and leave `carrier_risk_category` **(breaking change)**
+   1570: - Remove carrier information from call forwarding package **(breaking change)**
+   1571: 
+   1572: **Messaging**
+   1573: - Add update instance endpoints to us_app_to_person api
+   1574: - Add tollfree edit_allowed and edit_reason fields
+   1575: - Update Phone Number, Short Code, Alpha Sender, US A2P and Channel Sender documentation
+   1576: - Add DELETE support to Tollfree Verification resource
+   1577: 
+   1578: **Numbers**
+   1579: - Add Get Port In request api
+   1580: 
+   1581: **Push**
+   1582: - Migrated to new Push API V4 with Resilient Notification Delivery.
+   1583: 
+   1584: **Serverless**
+   1585: - Add node18 as a valid Build runtime
+   1586: 
+   1587: **Taskrouter**
+   1588: - Add `jitter_buffer_size` param in update reservation
+   1589: - Add container attribute to task_queue_bulk_real_time_statistics endpoint
+   1590: - Remove beta_feature check on task_queue_bulk_real_time_statistics endpoint
+   1591: 
+   1592: **Trusthub**
+   1593: - Add optional field NotificationEmail to the POST /v1/ComplianceInquiries/Customers/Initialize API
+   1594: - Add additional optional fields in compliance_tollfree_inquiry.json
+   1595: - Rename did to tollfree_phone_number in compliance_tollfree_inquiry.json
+   1596: - Add new optional field notification_email to compliance_tollfree_inquiry.json
+   1597: 
+   1598: **Verify**
+   1599: - `Tags` property added again to Public Docs **(breaking change)**
+   1600: - Remove `Tags` from Public Docs **(breaking change)**
+   1601: - Add `VerifyEventSubscriptionEnabled` parameter to service create and update endpoints.
+   1602: - Add `Tags` optional parameter on Verification creation.
+   1603: - Update Verify TOTP maturity to GA.
+   1604: 
+   1605: 
+   1606: [2024-01-25] Version 1.53.0
+   1607: ---------------------------
+   1608: **Oauth**
+   1609: - updated openid discovery endpoint uri **(breaking change)**
+   1610: - Added device code authorization endpoint
+   1611: - added oauth JWKS endpoint
+   1612: - Get userinfo resource
+   1613: - OpenID discovery resource
+   1614: - Add new API for token endpoint
+   1615: 
+   1616: 
+   1617: [2024-01-14] Version 1.52.1
+   1618: ---------------------------
+   1619: **Push**
+   1620: - Migrated to new Push API V4 with Resilient Notification Delivery.
+   1621: 
+   1622: 
+   1623: [2023-12-14] Version 1.52.0
+   1624: ---------------------------
+   1625: **Api**
+   1626: - Updated service base url for connect apps and authorized connect apps APIs **(breaking change)**
+   1627: 
+   1628: **Events**
+   1629: - Marked as GA
+   1630: 
+   1631: **Insights**
+   1632: - decommission voice-qualitystats-endpoint role
+   1633: 
+   1634: **Numbers**
+   1635: - Add Get Port In request api
+   1636: 
+   1637: **Taskrouter**
+   1638: - Add `jitter_buffer_size` param in update reservation
+   1639: 
+   1640: **Trusthub**
+   1641: - Add additional optional fields in compliance_tollfree_inquiry.json
+   1642: 
+   1643: **Verify**
+   1644: - Remove `Tags` from Public Docs **(breaking change)**
+   1645: 
+   1646: 
+   1647: [2023-12-01] Version 1.51.3
+   1648: ---------------------------
+   1649: **Verify**
+   1650: - Add `VerifyEventSubscriptionEnabled` parameter to service create and update endpoints.
+   1651: 
+   1652: 
+   1653: [2023-11-17] Version 1.51.2
+   1654: ---------------------------
+   1655: **Library - Chore**
+   1656: - [PR #98](https://github.com/twilio/twilio-oai/pull/98): removing oauth. Thanks to [@sbansla](https://github.com/sbansla)!
+   1657: 
+   1658: **Api**
+   1659: - Update documentation to reflect RiskCheck GA
+   1660: 
+   1661: **Messaging**
+   1662: - Add tollfree edit_allowed and edit_reason fields
+   1663: - Update Phone Number, Short Code, Alpha Sender, US A2P and Channel Sender documentation
+   1664: 
+   1665: **Taskrouter**
+   1666: - Add container attribute to task_queue_bulk_real_time_statistics endpoint
+   1667: 
+   1668: **Trusthub**
+   1669: - Rename did to tollfree_phone_number in compliance_tollfree_inquiry.json
+   1670: - Add new optional field notification_email to compliance_tollfree_inquiry.json
+   1671: 
+   1672: **Verify**
+   1673: - Add `Tags` optional parameter on Verification creation.
+   1674: 
+   1675: 
+   1676: [2023-11-06] Version 1.51.1
+   1677: ---------------------------
+   1678: **Flex**
+   1679: - Adding `provisioning_status` for Email Manager
+   1680: 
+   1681: **Intelligence**
+   1682: - Add text-generation operator (for example conversation summary) results to existing OperatorResults collection.
+   1683: 
+   1684: **Messaging**
+   1685: - Add DELETE support to Tollfree Verification resource
+   1686: 
+   1687: **Serverless**
+   1688: - Add node18 as a valid Build runtime
+   1689: 
+   1690: **Verify**
+   1691: - Update Verify TOTP maturity to GA.
+   1692: 
+   1693: 
+   1694: [2023-10-19] Version 1.51.0
+   1695: ---------------------------
+   1696: **Accounts**
+   1697: - Updated Safelist metadata to correct the docs.
+   1698: - Add Global SafeList API changes
+   1699: 
+   1700: **Api**
+   1701: - Added optional parameter `CallToken` for create participant api
+   1702: 
+   1703: **Flex**
+   1704: - Adding `offline_config` to Flex Configuration
+   1705: 
+   1706: **Intelligence**
+   1707: - Deleted `redacted` parameter from fetching transcript in v2 **(breaking change)**
+   1708: 
+   1709: **Lookups**
+   1710: - Add new `phone_number_quality_score` package to the lookup response
+   1711: - Remove `disposable_phone_number_risk` package **(breaking change)**
+   1712: 
+   1713: **Messaging**
+   1714: - Update US App To Person documentation with current `message_samples` requirements
+   1715: 
+   1716: **Taskrouter**
+   1717: - Remove beta_feature check on task_queue_bulk_real_time_statistics endpoint
+   1718: - Add `virtual_start_time` property to tasks
+   1719: - Updating `task_queue_data` format from `map` to `array` in the response of bulk get endpoint of TaskQueue Real Time Statistics API **(breaking change)**
+   1720: 
+   1721: 
+   1722: [2023-10-05] Version 1.50.1
+   1723: ---------------------------
+   1724: **Lookups**
+   1725: - Add test api support for Lookup v2
+   1726: 
+   1727: 
+   1728: [2023-09-21] Version 1.50.0
+   1729: ---------------------------
+   1730: **Conversations**
+   1731: - Enable conversation email bindings, email address configurations and email message subjects
+   1732: 
+   1733: **Flex**
+   1734: - Adding `console_errors_included` to Flex Configuration field `debugger_integrations`
+   1735: - Introducing new channel status as `inactive` in modify channel endpoint for leave functionality **(breaking change)**
+   1736: - Adding `citrix_voice_vdi` to Flex Configuration
+   1737: 
+   1738: **Taskrouter**
+   1739: - Add Update Queues, Workers, Workflow Real Time Statistics API to flex-rt-data-api-v2 endpoint
+   1740: - Add Update Workspace Real Time Statistics API to flex-rt-data-api-v2 endpoint
+   1741: 
+   1742: 
+   1743: [2023-09-07] Version 1.49.0
+   1744: ---------------------------
+   1745: **Api**
+   1746: - Make message tagging parameters public **(breaking change)**
+   1747: 
+   1748: **Flex**
+   1749: - Adding `agent_conv_end_methods` to Flex Configuration
+   1750: 
+   1751: **Messaging**
+   1752: - Mark Mesasging Services fallback_to_long_code feature obsolete
+   1753: 
+   1754: **Numbers**
+   1755: - Add Create Port In request api
+   1756: - Renaming sid for bulk_hosting_sid and remove account_sid response field in numbers/v2/BulkHostedNumberOrders **(breaking change)**
+   1757: 
+   1758: **Pricing**
+   1759: - gate resources behind a beta_feature
+   1760: 
+   1761: 
+   1762: [2023-08-24] Version 1.48.0
+   1763: ---------------------------
+   1764: **Api**
+   1765: - Add new property `RiskCheck` for SMS pumping protection feature only (public beta to be available soon): Include this parameter with a value of `disable` to skip any kind of risk check on the respective message request
+   1766: 
+   1767: **Flex**
+   1768: - Changing `sid<UO>` path param to `sid<UT>` in interaction channel participant update endpoint **(breaking change)**
+   1769: 
+   1770: **Messaging**
+   1771: - Add Channel Sender api
+   1772: - Fixing country code docs and removing Zipwhip references
+   1773: 
+   1774: **Numbers**
+   1775: - Request status changed in numbers/v2/BulkHostedNumberOrders **(breaking change)**
+   1776: - Add bulk hosting orders API under version `/v2
+   1777: 
+   1778: 
+   1779: [2023-08-10] Version 1.47.0
+   1780: ---------------------------
+   1781: **Insights**
+   1782: - Normalize annotations parameters in list summary api to be prefixed
+   1783: 
+   1784: **Numbers**
+   1785: - Change Bulk_hosted_sid from BHR to BH prefix in HNO and dependent under version `/v2` API's. **(breaking change)**
+   1786: - Added parameter target_account_sid to portability and account_sid to response body
+   1787: 
+   1788: **Verify**
+   1789: - Remove beta feature flag to list attempts API.
+   1790: - Remove beta feature flag to verifications summary attempts API.
+   1791: 
+   1792: 
+   1793: [2023-07-27] Version 1.46.1
+   1794: ---------------------------
+   1795: **Api**
+   1796: - Added `voice-intelligence`, `voice-intelligence-transcription` and `voice-intelligence-operators` to `usage_record` API.
+   1797: - Added `tts-google` to `usage_record` API.
+   1798: 
+   1799: **Lookups**
+   1800: - Add new `disposable_phone_number_risk` package to the lookup response
+   1801: 
+   1802: **Verify**
+   1803: - Documentation of list attempts API was improved by correcting `date_created_after` and `date_created_before` expected date format.
+   1804: - Documentation was improved by correcting `date_created_after` and `date_created_before` expected date format parameter on attempts summary API.
+   1805: - Documentation was improved by adding `WHATSAPP` as optional valid parameter on attempts summary API.
+   1806: 
+   1807: **Twiml**
+   1808: - Added support for he-il inside of ssm_lang.json that was missing
+   1809: - Added support for he-il language in say.json that was missing
+   1810: - Add `statusCallback` and `statusCallbackMethod` attributes to `<Siprec>`.
+   1811: 
+   1812: 
+   1813: [2023-07-13] Version 1.46.0
+   1814: ---------------------------
+   1815: **Flex**
+   1816: - Adding `interaction_context_sid` as optional parameter in Interactions API
+   1817: 
+   1818: **Messaging**
+   1819: - Making visiblity public for tollfree_verification API
+   1820: 
+   1821: **Numbers**
+   1822: - Remove Sms capability property from HNO creation under version `/v2` of HNO API. **(breaking change)**
+   1823: - Update required properties in LOA creation under version `/v2` of Authorization document API. **(breaking change)**
+   1824: 
+   1825: **Taskrouter**
+   1826: - Add api to fetch task queue statistics for multiple TaskQueues
+   1827: 
+   1828: **Verify**
+   1829: - Add `RiskCheck` optional parameter on Verification creation.
+   1830: 
+   1831: **Twiml**
+   1832: - Add Google Voices and languages
+   1833: 
+   1834: 
+   1835: [2023-06-28] Version 1.45.0
+   1836: ---------------------------
+   1837: **Lookups**
+   1838: - Add `reassigned_number` package to the lookup response
+   1839: 
+   1840: **Numbers**
+   1841: - Add hosted_number_order under version `/v2`.
+   1842: - Update properties in Porting and Bulk Porting APIs. **(breaking change)**
+   1843: - Added bulk Portability API under version `/v1`.
+   1844: - Added Portability API under version `/v1`.
+   1845: 
+   1846: 
+   1847: [2023-06-15] Version 1.44.0
+   1848: ---------------------------
+   1849: **Api**
+   1850: - Added `content_sid` as conditional parameter
+   1851: - Removed `content_sid` as optional field **(breaking change)**
+   1852: 
+   1853: **Insights**
+   1854: - Added `annotation` to list summary output
+   1855: 
+   1856: 
+   1857: [2023-06-01] Version 1.43.2
+   1858: ---------------------------
+   1859: **Api**
+   1860: - Add `Trim` to create Conference Participant API
+   1861: 
+   1862: **Intelligence**
+   1863: - First public beta release for Voice Intelligence APIs with client libraries
+   1864: 
+   1865: **Messaging**
+   1866: - Add new `errors` attribute to us_app_to_person resource. This attribute will provide additional information about campaign registration errors.
+   1867: 
+   1868: 
+   1869: [2023-05-18] Version 1.43.1
+   1870: ---------------------------
+   1871: **Conversations**
+   1872: - Added  `AddressCountry` parameter to Address Configuration endpoint, to support regional short code addresses
+   1873: - Added query parameters `start_date`, `end_date` and `state` in list Conversations resource for filtering
+   1874: 
+   1875: **Insights**
+   1876: - Added annotations parameters to list summary api
+   1877: 
+   1878: **Messaging**
+   1879: - Add GET domainByMessagingService endpoint to linkShortening service
+   1880: - Add `disable_https` to link shortening domain_config properties
+   1881: 
+   1882: **Numbers**
+   1883: - Add bulk_eligibility api under version `/v1`.
+   1884: 
+   1885: 
+   1886: [2023-05-04] Version 1.43.0
+   1887: ---------------------------
+   1888: **Conversations**
+   1889: - Remove `start_date`, `end_date` and `state` query parameters from list operation on Conversations resource **(breaking change)**
+   1890: 
+   1891: **Twiml**
+   1892: - Add support for new Amazon Polly voices (Q1 2023) for `Say` verb
+   1893: 
+   1894: 
+   1895: [2023-04-19] Version 1.42.0
+   1896: ---------------------------
+   1897: **Messaging**
+   1898: - Remove `messaging_service_sids` and `messaging_service_sid_action` from domain config endpoint **(breaking change)**
+   1899: - Add error_code and rejection_reason properties to tollfree verification API response
+   1900: 
+   1901: **Numbers**
+   1902: - Added the new Eligibility API under version `/v1`.
+   1903: 
+   1904: 
+   1905: [2023-04-05] Version 1.41.0
+   1906: ---------------------------
+   1907: **Conversations**
+   1908: - Expose query parameters `start_date`, `end_date` and `state` in list operation on Conversations resource for sorting and filtering
+   1909: 
+   1910: **Insights**
+   1911: - Added answered by filter in Call Summaries
+   1912: 
+   1913: **Lookups**
+   1914: - Remove `disposable_phone_number_risk` package **(breaking change)**
+   1915: 
+   1916: **Messaging**
+   1917: - Add support for `SOLE_PROPRIETOR` brand type and `SOLE_PROPRIETOR` campaign use case.
+   1918: - New Sole Proprietor Brands should be created with `SOLE_PROPRIETOR` brand type. Brand registration requests with `STARTER` brand type will be rejected.
+   1919: - New Sole Proprietor Campaigns should be created with `SOLE_PROPRIETOR` campaign use case. Campaign registration requests with `STARTER` campaign use case will be rejected.
+   1920: - Add Brand Registrations OTP API
+   1921: 
+   1922: 
+   1923: [2023-03-22] Version 1.40.0
+   1924: ---------------------------
+   1925: **Api**
+   1926: - Revert Corrected the data type for `friendly_name` in Available Phone Number Local, Mobile and TollFree resources
+   1927: - Corrected the data type for `friendly_name` in Available Phone Number Local, Mobile and TollFree resources **(breaking change)**
+   1928: 
+   1929: **Messaging**
+   1930: - Add `linkshortening_messaging_service` resource
+   1931: - Add new endpoint for GetDomainConfigByMessagingServiceSid
+   1932: - Remove `validated` parameter and add `cert_in_validation` parameter to Link Shortening API **(breaking change)**
+   1933: 
+   1934: 
+   1935: [2023-03-09] Version 1.39.2
+   1936: ---------------------------
+   1937: **Api**
+   1938: - Add new categories for whatsapp template
+   1939: 
+   1940: **Lookups**
+   1941: - Remove `validation_results` from the `default_output_properties`
+   1942: 
+   1943: **Supersim**
+   1944: - Add ESimProfile's `matching_id` and `activation_code` parameters to libraries
+   1945: 
+   1946: 
+   1947: [2023-02-22] Version 1.39.1
+   1948: ---------------------------
+   1949: **Api**
+   1950: - Remove `scheduled_for` property from message resource
+   1951: - Add `scheduled_for` property to message resource
+   1952: 
+   1953: 
+   1954: [2023-02-08] Version 1.39.0
+   1955: ---------------------------
+   1956: **Library - Feature**
+   1957: - [PR #88](https://github.com/twilio/twilio-oai/pull/88): add Page and PageToken parameters to read operations. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   1958: 
+   1959: **Lookups**
+   1960: - Add `disposable_phone_number_risk` package to the lookup response
+   1961: - Add `sms_pumping_risk` package to the lookup response
+   1962: 
+   1963: 
+   1964: [2023-01-25] Version 1.38.3
+   1965: ---------------------------
+   1966: **Library - Fix**
+   1967: - [PR #87](https://github.com/twilio/twilio-oai/pull/87): use long property descriptions if available. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   1968: - [PR #85](https://github.com/twilio/twilio-oai/pull/85): Nullable Page URLs. Thanks to [@claudiachua](https://github.com/claudiachua)!
+   1969: 
+   1970: **Api**
+   1971: - Add `public_application_connect_enabled` param to Application resource
+   1972: 
+   1973: **Messaging**
+   1974: - Add new tollfree verification API property (ExternalReferenceId)]
+   1975: 
+   1976: **Verify**
+   1977: - Add `device_ip` parameter and channel `auto` for sna/sms orchestration
+   1978: 
+   1979: **Twiml**
+   1980: - Add support for `<Application>` noun and `<ApplicationSid>` noun, nested `<Parameter>` to `<Hangup>` and `<Leave>` verb
+   1981: 
+   1982: 
+   1983: [2023-01-11] Version 1.38.2
+   1984: ---------------------------
+   1985: **Conversations**
+   1986: - Add support for creating Multi-Channel Rich Content Messages
+   1987: 
+   1988: **Lookups**
+   1989: - Changed the no data message for match postal code from `no_data` to `data_not_available` in identity match package
+   1990: 
+   1991: **Messaging**
+   1992: - Add update/edit tollfree verification API
+   1993: 
+   1994: 
+   1995: [2022-12-28] Version 1.38.1
+   1996: ---------------------------
+   1997: **Library - Fix**
+   1998: - [PR #83](https://github.com/twilio/twilio-oai/pull/83): singularize ice-server. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   1999: 
+   2000: 
+   2001: [2022-12-14] Version 1.38.0
+   2002: ---------------------------
+   2003: **Api**
+   2004: - Add `street_secondary` param to address create and update
+   2005: - Make `method` optional for user defined message subscription **(breaking change)**
+   2006: 
+   2007: **Flex**
+   2008: - Flex Conversations is now Generally Available
+   2009: - Adding the ie1 mapping for authorization api, updating service base uri and base url response attribute **(breaking change)**
+   2010: - Change web channels to GA and library visibility to public
+   2011: - Changing the uri for authorization api from using Accounts to Insights **(breaking change)**
+   2012: 
+   2013: **Media**
+   2014: - Gate Twilio Live endpoints behind beta_feature for EOS
+   2015: 
+   2016: **Messaging**
+   2017: - Mark `MessageFlow` as a required field for Campaign Creation **(breaking change)**
+   2018: 
+   2019: **Oauth**
+   2020: - updated openid discovery endpoint uri **(breaking change)**
+   2021: - Added device code authorization endpoint
+   2022: 
+   2023: **Supersim**
+   2024: - Allow filtering the SettingsUpdates resource by `status`
+   2025: 
+   2026: **Twiml**
+   2027: - Add new Polly Neural voices
+   2028: - Add tr-TR, ar-AE, yue-CN, fi-FI languages to SSML `<lang>` element.
+   2029: - Add x-amazon-jyutping, x-amazon-pinyin, x-amazon-pron-kana, x-amazon-yomigana alphabets to SSML `<phoneme>` element.
+   2030: - Rename `character` value for SSML `<say-as>` `interpret-as` attribute to `characters`. **(breaking change)**
+   2031: - Rename `role` attribute to `format` in SSML `<say-as>` element. **(breaking change)**
+   2032: 
+   2033: 
+   2034: [2022-11-30] Version 1.37.4
+   2035: ---------------------------
+   2036: **Flex**
+   2037: - Adding new `assessments` api in version `v1`
+   2038: 
+   2039: **Lookups**
+   2040: - Add `identity_match` package to the lookup response
+   2041: 
+   2042: **Messaging**
+   2043: - Added `validated` parameter to Link Shortening API
+   2044: 
+   2045: **Serverless**
+   2046: - Add node16 as a valid Build runtime
+   2047: - Add ie1 and au1 as supported regions for all endpoints.
+   2048: 
+   2049: 
+   2050: [2022-11-16] Version 1.37.3
+   2051: ---------------------------
+   2052: **Api**
+   2053: - Set the Content resource to have public visibility as Preview
+   2054: 
+   2055: **Flex**
+   2056: - Adding new parameter `base_url` to 'gooddata' response in version `v1`
+   2057: 
+   2058: **Insights**
+   2059: - Added `answered_by` field in List Call Summary
+   2060: - Added `answered_by` field in call summary
+   2061: 
+   2062: 
+   2063: [2022-11-10] Version 1.37.2
+   2064: ---------------------------
+   2065: **Library - Fix**
+   2066: - [PR #81](https://github.com/twilio/twilio-oai/pull/81): add mount names when they cannot be derived from the path. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   2067: 
+   2068: **Flex**
+   2069: - Adding two new authorization API 'user_roles' and 'gooddata' in version `v1`
+   2070: 
+   2071: **Messaging**
+   2072: - Add new Campaign properties (MessageFlow, OptInMessage, OptInKeywords, OptOutMessage, OptOutKeywords, HelpMessage, HelpKeywords)
+   2073: 
+   2074: **Twiml**
+   2075: - Add new speech models to `Gather`.
+   2076: 
+   2077: 
+   2078: [2022-10-31] Version 1.37.1
+   2079: ---------------------------
+   2080: **Library - Fix**
+   2081: - [PR #80](https://github.com/twilio/twilio-oai/pull/80): update parent logic for handling of parents vs. containers. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   2082: 
+   2083: **Api**
+   2084: - Added `contentSid` and `contentVariables` to Message resource with public visibility as Beta
+   2085: - Add `UserDefinedMessageSubscription` and `UserDefinedMessage` resource
+   2086: 
+   2087: **Proxy**
+   2088: - Remove FailOnParticipantConflict param from Proxy Session create and update and Proxy Participant create
+   2089: 
+   2090: **Supersim**
+   2091: - Update SettingsUpdates resource to remove PackageSid
+   2092: 
+   2093: **Taskrouter**
+   2094: - Add `Ordering` query parameter to Workers and TaskQueues for sorting by
+   2095: - Add `worker_sid` query param for list reservations endpoint
+   2096: 
+   2097: **Twiml**
+   2098: - Add `url` and `method` attributes to `<Conversation>`
+   2099: 
+   2100: 
+   2101: [2022-10-19] Version 1.37.0
+   2102: ---------------------------
+   2103: **Library - Chore**
+   2104: - [PR #79](https://github.com/twilio/twilio-oai/pull/79): update mountName and className extensions. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   2105: 
+   2106: **Library - Fix**
+   2107: - [PR #78](https://github.com/twilio/twilio-oai/pull/78): updating property order for yaml files. Thanks to [@kridai](https://github.com/kridai)!
+   2108: 
+   2109: **Api**
+   2110: - Make link shortening parameters public **(breaking change)**
+   2111: 
+   2112: **Oauth**
+   2113: - added oauth JWKS endpoint
+   2114: - Get userinfo resource
+   2115: - OpenID discovery resource
+   2116: - Add new API for token endpoint
+   2117: 
+   2118: **Supersim**
+   2119: - Add SettingsUpdates resource
+   2120: 
+   2121: **Verify**
+   2122: - Update Verify Push endpoints to `ga` maturity
+   2123: - Verify BYOT add Channels property to the Get Templates response
+   2124: 
+   2125: **Twiml**
+   2126: - Add `requireMatchingInputs` attribute and `input-matching-failed` errorType to `<Prompt>`
+   2127: 
+   2128: 
+   2129: [2022-10-05] Version 1.36.0
+   2130: ---------------------------
+   2131: **Library - Feature**
+   2132: - [PR #77](https://github.com/twilio/twilio-oai/pull/77): add helper libs semantic types configuration. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   2133: 
+   2134: **Api**
+   2135: - Added `virtual-agent` to `usage_record` API.
+   2136: - Add AMD attributes to participant create request
+   2137: 
+   2138: **Twiml**
+   2139: - Add AMD attributes to `Number` and `Sip`
+   2140: 
+   2141: 
+   2142: [2022-09-07] Version 1.35.0
+   2143: ---------------------------
+   2144: **Flex**
+   2145: - Removed redundant `close` status from Flex Interactions flow **(breaking change)**
+   2146: - Adding `debugger_integration` and `flex_ui_status_report` to Flex Configuration
+   2147: 
+   2148: **Messaging**
+   2149: - Add create, list and get tollfree verification API
+   2150: 
+   2151: **Verify**
+   2152: - Verify SafeList API endpoints added.
+   2153: 
+   2154: **Video**
+   2155: - Add `Anonymize` API
+   2156: 
+   2157: **Twiml**
+   2158: - Update `event` value `call-in-progress` to `call-answered`
+   2159: 
+   2160: 
+   2161: [2022-08-24] Version 1.34.0
+   2162: ---------------------------
+   2163: **Library - Test**
+   2164: - [PR #73](https://github.com/twilio/twilio-oai/pull/73): add test-docker rule. Thanks to [@beebzz](https://github.com/beebzz)!
+   2165: 
+   2166: **Api**
+   2167: - Remove `beta feature` from scheduling params and remove optimize parameters. **(breaking change)**
+   2168: 
+   2169: **Routes**
+   2170: - Remove Duplicate Create Method - Update Method will work even if Inbound Processing Region is currently empty/404. **(breaking change)**
+   2171: 
+   2172: **Twiml**
+   2173: - Add new Polly Neural voices
+   2174: - Add new languages to SSML `<lang>`.
+   2175: 
+   2176: 
+   2177: [2022-08-10] Version 1.33.0
+   2178: ---------------------------
+   2179: **Library - Feature**
+   2180: - [PR #72](https://github.com/twilio/twilio-oai/pull/72): Addition of spec files for preview domain. Thanks to [@AsabuHere](https://github.com/AsabuHere)!
+   2181: 
+   2182: **Routes**
+   2183: - Inbound Proccessing Region API - Public GA
+   2184: 
+   2185: **Supersim**
+   2186: - Allow updating `DataLimit` on a Fleet
+   2187: 
+   2188: 
+   2189: [2022-07-21] Version 1.32.0
+   2190: ---------------------------
+   2191: **Flex**
+   2192: - Add `status`, `error_code`, and `error_message` fields to Interaction `Channel`
+   2193: - Adding `messenger` and `gbm` as supported channels for Interactions API
+   2194: 
+   2195: **Messaging**
+   2196: - Update alpha_sender docs with new valid characters
+   2197: 
+   2198: **Verify**
+   2199: - Reorder Verification Check parameters so `code` stays as the first parameter **(breaking change)**
+   2200: - Rollback List Attempts API V2 back to pilot stage.
+   2201: 
+   2202: 
+   2203: [2022-07-13] Version 1.31.0
+   2204: ---------------------------
+   2205: **Library - Test**
+   2206: - [PR #67](https://github.com/twilio/twilio-oai/pull/67): Adding misc as PR type. Thanks to [@rakatyal](https://github.com/rakatyal)!
+   2207: 
+   2208: **Library - Fix**
+   2209: - [PR #63](https://github.com/twilio/twilio-oai/pull/63): move the className extension to the operation when necessary. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   2210: 
+   2211: **Conversations**
+   2212: - Allowed to use `identity` as part of Participant's resource **(breaking change)**
+   2213: 
+   2214: **Lookups**
+   2215: - Remove `enhanced_line_type` from the lookup response **(breaking change)**
+   2216: 
+   2217: **Supersim**
+   2218: - Add support for `sim_ip_addresses` resource to helper libraries
+   2219: 
+   2220: **Verify**
+   2221: - Changed summary param `service_sid` to `verify_service_sid` to be consistent with list attempts API **(breaking change)**
+   2222: - Make `code` optional on Verification check to support `sna` attempts.
+   2223: 
+   2224: 
+   2225: [2022-06-29] Version 1.30.0
+   2226: ---------------------------
+   2227: **Library - Chore**
+   2228: - [PR #64](https://github.com/twilio/twilio-oai/pull/64): adding the preview spec back. Thanks to [@shrutiburman](https://github.com/shrutiburman)!
+   2229: - [PR #61](https://github.com/twilio/twilio-oai/pull/61): drop unneeded class names. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   2230: 
+   2231: **Api**
+   2232: - Added `amazon-polly` to `usage_record` API.
+   2233: 
+   2234: **Insights**
+   2235: - Added `annotation` field in call summary
+   2236: - Added new endpoint to fetch/create/update Call Annotations
+   2237: 
+   2238: **Verify**
+   2239: - Remove `api.verify.totp` beta flag and set maturity to `beta` for Verify TOTP properties and parameters. **(breaking change)**
+   2240: - Changed summary param `verify_service_sid` to `service_sid` to be consistent with list attempts API **(breaking change)**
+   2241: 
+   2242: **Twiml**
+   2243: - Add `maxQueueSize` to `Enqueue`
+   2244: 
+   2245: 
+   2246: [2022-06-15] Version 1.29.2
+   2247: ---------------------------
+   2248: **Lookups**
+   2249: - Adding support for Lookup V2 API
+   2250: 
+   2251: **Studio**
+   2252: - Corrected PII labels to be 30 days and added context to be PII
+   2253: 
+   2254: **Twiml**
+   2255: - Add `statusCallbackMethod` attribute, nested `<Config` and `<Parameter>` elements to `<VirtualAgent>` noun.
+   2256: - Add support for new Amazon Polly voices (Q2 2022) for `Say` verb
+   2257: - Add support for `<Conversation>` noun
+   2258: 
+   2259: 
+   2260: [2022-05-18] Version 1.29.1
+   2261: ---------------------------
+   2262: **Library - Fix**
+   2263: - [PR #57](https://github.com/twilio/twilio-oai/pull/57): add parent field to twilio vendor extensions. Thanks to [@charan678](https://github.com/charan678)!
+   2264: 
+   2265: **Api**
+   2266: - Add property `media_url` to the recording resources
+   2267: 
+   2268: **Verify**
+   2269: - Include `silent` as a channel type in the verifications API.
+   2270: 
+   2271: 
+   2272: [2022-05-04] Version 1.29.0
+   2273: ---------------------------
+   2274: **Library - Fix**
+   2275: - [PR #56](https://github.com/twilio/twilio-oai/pull/56): add class_name property to twilio vendor extension. Thanks to [@charan678](https://github.com/charan678)!
+   2276: 
+   2277: **Conversations**
+   2278: - Expose query parameter `type` in list operation on Address Configurations resource
+   2279: 
+   2280: **Supersim**
+   2281: - Add `data_total_billed` and `billed_units` fields to Super SIM UsageRecords API response.
+   2282: - Change ESimProfiles `Eid` parameter to optional to enable Activation Code download method support **(breaking change)**
+   2283: 
+   2284: **Verify**
+   2285: - Deprecate `push.include_date` parameter in create and update service.
+   2286: 
+   2287: 
+   2288: [2022-04-20] Version 1.28.2
+   2289: ---------------------------
+   2290: **Library - Fix**
+   2291: - [PR #54](https://github.com/twilio/twilio-oai/pull/54): switch api-def object types to open-api any types. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   2292: 
+   2293: 
+   2294: [2022-04-06] Version 1.28.1
+   2295: ---------------------------
+   2296: **Api**
+   2297: - Updated `provider_sid` visibility to private
+   2298: 
+   2299: **Verify**
+   2300: - Verify List Attempts API summary endpoint added.
+   2301: - Update PII documentation for `AccessTokens` `factor_friendly_name` property.
+   2302: 
+   2303: **Voice**
+   2304: - make annotation parameter from /Calls API private
+   2305: 
+   2306: 
+   2307: [2022-03-23] Version 1.28.0
+   2308: ---------------------------
+   2309: **Api**
+   2310: - Change `stream` url parameter to non optional
+   2311: - Add `verify-totp` and `verify-whatsapp-conversations-business-initiated` categories to `usage_record` API
+   2312: 
+   2313: **Chat**
+   2314: - Added v3 Channel update endpoint to support Public to Private channel migration
+   2315: 
+   2316: **Flex**
+   2317: - Private Beta release of the Interactions API to support the upcoming release of Flex Conversations at the end of Q1 2022.
+   2318: - Adding `channel_configs` object to Flex Configuration
+   2319: 
+   2320: **Media**
+   2321: - Add max_duration param to PlayerStreamer
+   2322: 
+   2323: **Supersim**
+   2324: - Remove Commands resource, use SmsCommands resource instead **(breaking change)**
+   2325: 
+   2326: **Taskrouter**
+   2327: - Add limits to `split_by_wait_time` for Cumulative Statistics Endpoint
+   2328: 
+   2329: **Video**
+   2330: - Change recording `status_callback_method` type from `enum` to `http_method` **(breaking change)**
+   2331: - Add `status_callback` and `status_callback_method` to composition
+   2332: - Add `status_callback` and `status_callback_method` to recording
+   2333: 
+   2334: 
+   2335: [2022-03-09] Version 1.27.2
+   2336: ---------------------------
+   2337: **Library - Chore**
+   2338: - [PR #52](https://github.com/twilio/twilio-oai/pull/52): push Datadog Release Metric upon deploy success. Thanks to [@eshanholtz](https://github.com/eshanholtz)!
+   2339: 
+   2340: **Api**
+   2341: - Add optional boolean include_soft_deleted parameter to retrieve soft deleted recordings
+   2342: 
+   2343: **Chat**
+   2344: - Add `X-Twilio-Wehook-Enabled` header to `delete` method in UserChannel resource
+   2345: 
+   2346: **Numbers**
+   2347: - Expose `failure_reason` in the Supporting Documents resources
+   2348: 
+   2349: **Verify**
+   2350: - Add optional `metadata` parameter to "verify challenge" endpoint, so the SDK/App can attach relevant information from the device when responding to challenges.
+   2351: - remove beta feature flag to list atempt api operations.
+   2352: - Add `ttl` and `date_created` properties to `AccessTokens`.
+   2353: 
+   2354: 
+   2355: [2022-02-23] Version 1.27.1
+   2356: ---------------------------
+   2357: **Api**
+   2358: - Add `uri` to `stream` resource
+   2359: - Add A2P Registration Fee category (`a2p-registration-fee`) to usage records
+   2360: 
+   2361: **Verify**
+   2362: - Remove outdated documentation commentary to contact sales. Product is already in public beta.
+   2363: 
+   2364: 
+   2365: [2022-02-17] Version 1.27.0
+   2366: ---------------------------
+   2367: **Api**
+   2368: - Detected a bug and removed optional boolean include_soft_deleted parameter to retrieve soft deleted recordings. **(breaking change)**
+   2369: - Add optional boolean include_soft_deleted parameter to retrieve soft deleted recordings.
+   2370: 
+   2371: **Numbers**
+   2372: - Unrevert valid_until and sort filter params added to List Bundles resource
+   2373: - Revert valid_until and sort filter params added to List Bundles resource
+   2374: - Update sorting params added to List Bundles resource in the previous release
+   2375: 
+   2376: **Preview**
+   2377: - Moved `web_channels` from preview to beta under `flex-api` **(breaking change)**
+   2378: 
+   2379: **Taskrouter**
+   2380: - Add `ETag` as Response Header to List of Task, Reservation & Worker
+   2381: 
+   2382: **Verify**
+   2383: - Add optional `metadata` to factors.
+   2384: 
+   2385: **Twiml**
+   2386: - Add new Polly Neural voices
+   2387: 
+   2388: 
+   2389: [2022-02-09] Version 1.26.0
+   2390: ---------------------------
+   2391: **Api**
+   2392: - Add `stream` resource
+   2393: 
+   2394: **Conversations**
+   2395: - Fixed DELETE request to accept "sid_like" params in Address Configuration resources **(breaking change)**
+   2396: - Expose Address Configuration resource for `sms` and `whatsapp`
+   2397: 
+   2398: **Fax**
+   2399: - Removed deprecated Programmable Fax Create and Update methods **(breaking change)**
+   2400: 
+   2401: **Insights**
+   2402: - Rename `call_state` to `call_status` and remove `whisper` in conference participant summary **(breaking change)**
+   2403: 
+   2404: **Numbers**
+   2405: - Expose valid_until filters as part of provisionally-approved compliance feature on the List Bundles resource
+   2406: 
+   2407: **Supersim**
+   2408: - Fix typo in Fleet resource docs
+   2409: - Updated documentation for the Fleet resource indicating that fields related to commands have been deprecated and to use sms_command fields instead.
+   2410: - Add support for setting and reading `ip_commands_url` and `ip_commands_method` on Fleets resource for helper libraries
+   2411: - Changed `sim` property in requests to create an SMS Command made to the /SmsCommands to accept SIM UniqueNames in addition to SIDs
+   2412: 
+   2413: **Verify**
+   2414: - Update list attempts API to include new filters and response fields.
+   2415: 
+   2416: 
+   2417: [2022-01-26] Version 1.25.1
+   2418: ---------------------------
+   2419: **Insights**
+   2420: - Added new endpoint to fetch Conference Participant Summary
+   2421: - Added new endpoint to fetch Conference Summary
+   2422: 
+   2423: **Messaging**
+   2424: - Add government_entity parameter to brand apis
+   2425: 
+   2426: **Verify**
+   2427: - Add Access Token fetch endpoint to retrieve a previously created token.
+   2428: - Add Access Token payload to the Access Token creation endpoint, including a unique Sid, so it's addressable while it's TTL is valid.
+   2429: 
+   2430: 
+   2431: [2022-01-12] Version 1.25.0
+   2432: ---------------------------
+   2433: **Library - Feature**
+   2434: - [PR #51](https://github.com/twilio/twilio-oai/pull/51): add GitHub release step during deploy. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   2435: 
+   2436: **Api**
+   2437: - Make fixed time scheduling parameters public **(breaking change)**
+   2438: 
+   2439: **Messaging**
+   2440: - Add update brand registration API
+   2441: 
+   2442: **Numbers**
+   2443: - Add API endpoint for List Bundle Copies resource
+   2444: 
+   2445: **Video**
+   2446: - Enable external storage for all customers
+   2447: 
+   2448: 
+   2449: [2021-12-15] Version 1.24.0
+   2450: ---------------------------
+   2451: **Api**
+   2452: - Add optional boolean send_as_mms parameter to the create action of Message resource **(breaking change)**
+   2453: - Change team ownership for `call` delete
+   2454: 
+   2455: **Conversations**
+   2456: - Change wording for `Service Webhook Configuration` resource fields
+   2457: 
+   2458: **Insights**
+   2459: - Added new APIs for updating and getting voice insights flags by accountSid.
+   2460: 
+   2461: **Media**
+   2462: - Add max_duration param to MediaProcessor
+   2463: 
+   2464: **Video**
+   2465: - Add `EmptyRoomTimeout` and `UnusedRoomTimeout` properties to a room; add corresponding parameters to room creation
+   2466: 
+   2467: **Voice**
+   2468: - Add endpoint to delete archived Calls
+   2469: 
+   2470: 
+   2471: [2021-12-01] Version 1.23.2
+   2472: ---------------------------
+   2473: **Conversations**
+   2474: - Add `Service Webhook Configuration` resource
+   2475: 
+   2476: **Flex**
+   2477: - Adding `flex_insights_drilldown` and `flex_url` objects to Flex Configuration
+   2478: 
+   2479: **Messaging**
+   2480: - Update us_app_to_person endpoints to remove beta feature flag based access
+   2481: 
+   2482: **Supersim**
+   2483: - Add IP Commands resource
+   2484: 
+   2485: **Verify**
+   2486: - Add optional `factor_friendly_name` parameter to the create access token endpoint.
+   2487: 
+   2488: **Video**
+   2489: - Add maxParticipantDuration param to Rooms
+   2490: 
+   2491: **Twiml**
+   2492: - Unrevert Add supported SSML children to `<emphasis>`, `<lang>`, `<p>`, `<prosody>`, `<s>`, and `<w>`.
+   2493: - Revert Add supported SSML children to `<emphasis>`, `<lang>`, `<p>`, `<prosody>`, `<s>`, and `<w>`.
+   2494: 
+   2495: 
+   2496: [2021-11-17] Version 1.23.1
+   2497: ---------------------------
+   2498: **Frontline**
+   2499: - Added `is_available` to User's resource
+   2500: 
+   2501: **Messaging**
+   2502: - Added GET vetting API
+   2503: 
+   2504: **Verify**
+   2505: - Add `WHATSAPP` to the attempts API.
+   2506: - Allow to update `config.notification_platform` from `none` to `apn` or `fcm` and viceversa for Verify Push
+   2507: - Add `none` as a valid `config.notification_platform` value for Verify Push
+   2508: 
+   2509: **Twiml**
+   2510: - Add supported SSML children to `<emphasis>`, `<lang>`, `<p>`, `<prosody>`, `<s>`, and `<w>`.
+   2511: 
+   2512: 
+   2513: [2021-11-03] Version 1.23.0
+   2514: ---------------------------
+   2515: **Library - Chore**
+   2516: - [PR #46](https://github.com/twilio/twilio-oai/pull/46): migrate from travis over to gh actions. Thanks to [@shwetha-manvinkurke](https://github.com/shwetha-manvinkurke)!
+   2517: 
+   2518: **Api**
+   2519: - Updated `media_url` property to be treated as PII
+   2520: 
+   2521: **Messaging**
+   2522: - Added a new enum for brand registration status named DELETED **(breaking change)**
+   2523: - Add a new K12_EDUCATION use case in us_app_to_person_usecase api transaction
+   2524: - Added a new enum for brand registration status named IN_REVIEW
+   2525: 
+   2526: **Serverless**
+   2527: - Add node14 as a valid Build runtime
+   2528: 
+   2529: **Verify**
+   2530: - Fix typos in Verify Push Factor documentation for the `config.notification_token` parameter.
+   2531: - Added `TemplateCustomSubstitutions` on verification creation
+   2532: - Make `TemplateSid` parameter public for Verification resource and `DefaultTemplateSid` parameter public for Service resource. **(breaking change)**
+   2533: 
+   2534: 
+   2535: [2021-10-18] Version 1.22.0
+   2536: ---------------------------
+   2537: **Api**
+   2538: - Corrected enum values for `emergency_address_status` values in `/IncomingPhoneNumbers` response. **(breaking change)**
+   2539: - Clarify `emergency_address_status` values in `/IncomingPhoneNumbers` response.
+   2540: 
+   2541: **Messaging**
+   2542: - Add PUT and List brand vettings api
+   2543: - Removes beta feature flag based visibility for us_app_to_person_registered and usecase field.Updates test cases to add POLITICAL usecase. **(breaking change)**
+   2544: - Add brand_feedback as optional field to BrandRegistrations
+   2545: 
+   2546: **Video**
+   2547: - Add `AudioOnly` to create room
+   2548: 
+   2549: 
+   2550: [2021-10-06] Version 1.21.0
+   2551: ---------------------------
+   2552: **Library - Fix**
+   2553: - [PR #44](https://github.com/twilio/twilio-oai/pull/44): fix naming of params. Thanks to [@shwetha-manvinkurke](https://github.com/shwetha-manvinkurke)!
+   2554: 
+   2555: **Api**
+   2556: - Add `emergency_address_status` attribute to `/IncomingPhoneNumbers` response.
+   2557: - Add `siprec` resource
+   2558: 
+   2559: **Conversations**
+   2560: - Added attachment parameters in configuration for `NewMessage` type of push notifications
+   2561: 
+   2562: **Flex**
+   2563: - Adding `flex_insights_hr` object to Flex Configuration
+   2564: 
+   2565: **Numbers**
+   2566: - Add API endpoint for Bundle ReplaceItems resource
+   2567: - Add API endpoint for Bundle Copies resource
+   2568: 
+   2569: **Serverless**
+   2570: - Add domain_base field to Service response
+   2571: 
+   2572: **Taskrouter**
+   2573: - Add `If-Match` Header based on ETag for Worker Delete **(breaking change)**
+   2574: - Add `If-Match` Header based on Etag for Reservation Update
+   2575: - Add `If-Match` Header based on ETag for Worker Update
+   2576: - Add `If-Match` Header based on ETag for Worker Delete
+   2577: - Add `ETag` as Response Header to Worker
+   2578: 
+   2579: **Trunking**
+   2580: - Added `transfer_caller_id` property on Trunks.
+   2581: 
+   2582: **Verify**
+   2583: - Document new pilot `whatsapp` channel.
+   2584: 
+   2585: 
+   2586: [2021-09-22] Version 1.20.3
+   2587: ---------------------------
+   2588: **Events**
+   2589: - Add segment sink
+   2590: 
+   2591: **Messaging**
+   2592: - Add post_approval_required attribute in GET us_app_to_person_usecase api response
+   2593: - Add Identity Status, Russell 3000, Tax Exempt Status and Should Skip SecVet fields for Brand Registrations
+   2594: - Add Should Skip Secondary Vetting optional flag parameter to create Brand API
+   2595: 
+   2596: 
+   2597: [2021-09-08] Version 1.20.2
+   2598: ---------------------------
+   2599: **Api**
+   2600: - Revert adding `siprec` resource
+   2601: - Add `siprec` resource
+   2602: 
+   2603: **Messaging**
+   2604: - Add 'mock' as an optional field to brand_registration api
+   2605: - Add 'mock' as an optional field to us_app_to_person api
+   2606: - Adds more Use Cases in us_app_to_person_usecase api transaction and updates us_app_to_person_usecase docs
+   2607: 
+   2608: **Verify**
+   2609: - Verify List Templates API endpoint added.
+   2610: 
+   2611: 
+   2612: [2021-08-25] Version 1.20.1
+   2613: ---------------------------
+   2614: **Api**
+   2615: - Add Programmabled Voice SIP Refer call transfers (`calls-transfers`) to usage records
+   2616: - Add Flex Voice Usage category (`flex-usage`) to usage records
+   2617: 
+   2618: **Conversations**
+   2619: - Add `Order` query parameter to Message resource read operation
+   2620: 
+   2621: **Insights**
+   2622: - Added `partial` to enum processing_state_request
+   2623: - Added abnormal session filter in Call Summaries
+   2624: 
+   2625: **Messaging**
+   2626: - Add brand_registration_sid as an optional query param for us_app_to_person_usecase api
+   2627: 
+   2628: **Pricing**
+   2629: - add trunking_numbers resource (v2)
+   2630: - add trunking_country resource (v2)
+   2631: 
+   2632: **Verify**
+   2633: - Changed to private beta the `TemplateSid` optional parameter on Verification creation.
+   2634: - Added the optional parameter `Order` to the list Challenges endpoint to define the list order.
+   2635: 
+   2636: 
+   2637: [2021-08-11] Version 1.20.0
+   2638: ---------------------------
+   2639: **Api**
+   2640: - Corrected the `price`, `call_sid_to_coach`, and `uri` data types for Conference, Participant, and Recording **(breaking change)**
+   2641: - Made documentation for property `time_limit` in the call api public. **(breaking change)**
+   2642: - Added `domain_sid` in sip_credential_list_mapping and sip_ip_access_control_list_mapping APIs **(breaking change)**
+   2643: 
+   2644: **Insights**
+   2645: - Added new endpoint to fetch Call Summaries
+   2646: 
+   2647: **Messaging**
+   2648: - Add brand_type field to a2p brand_registration api
+   2649: - Revert brand registration api update to add brand_type field
+   2650: - Add brand_type field to a2p brand_registration api
+   2651: 
+   2652: **Taskrouter**
+   2653: - Add `X-Rate-Limit-Limit`, `X-Rate-Limit-Remaining`, and `X-Rate-Limit-Config` as Response Headers to all TaskRouter endpoints
+   2654: 
+   2655: **Verify**
+   2656: - Add `TemplateSid` optional parameter on Verification creation.
+   2657: - Include `whatsapp` as a channel type in the verifications API.
+   2658: 
+   2659: 
+   2660: [2021-07-28] Version 1.19.1
+   2661: ---------------------------
+   2662: **Conversations**
+   2663: - Expose ParticipantConversations resource
+   2664: 
+   2665: **Taskrouter**
+   2666: - Adding `links` to the activity resource
+   2667: 
+   2668: **Verify**
+   2669: - Added a `Version` to Verify Factors `Webhooks` to add new fields without breaking old Webhooks.
+   2670: 
+   2671: 
+   2672: [2021-07-14] Version 1.19.0
+   2673: ---------------------------
+   2674: **Library - Chore**
+   2675: - [PR #40](https://github.com/twilio/twilio-oai/pull/40): make sure spectral is installed. Thanks to [@thinkingserious](https://github.com/thinkingserious)!
+   2676: - [PR #39](https://github.com/twilio/twilio-oai/pull/39): add spectral target alias test. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   2677: 
+   2678: **Conversations**
+   2679: - Changed `last_read_message_index` and `unread_messages_count` type in User Conversation's resource **(breaking change)**
+   2680: - Expose UserConversations resource
+   2681: 
+   2682: **Messaging**
+   2683: - Add brand_score field to brand registration responses
+   2684: 
+   2685: 
+   2686: [2021-06-30] Version 1.18.0
+   2687: ---------------------------
+   2688: **Conversations**
+   2689: - Read-only Conversation Email Binding property `binding`
+   2690: 
+   2691: **Supersim**
+   2692: - Add Billing Period resource for the Super Sim Pilot
+   2693: - Add List endpoint to Billing Period resource for Super Sim Pilot
+   2694: - Add Fetch endpoint to Billing Period resource for Super Sim Pilot
+   2695: 
+   2696: **Taskrouter**
+   2697: - Update `transcribe` & `transcription_configuration` form params in Reservation update endpoint to have private visibility **(breaking change)**
+   2698: - Add `transcribe` & `transcription_configuration` form params to Reservation update endpoint
+   2699: 
+   2700: **Twiml**
+   2701: - Add `modify` event to `statusCallbackEvent` for `<Conference>`.
+   2702: 
+   2703: 
+   2704: [2021-06-16] Version 1.17.0
+   2705: ---------------------------
+   2706: **Library - Feature**
+   2707: - [PR #38](https://github.com/twilio/twilio-oai/pull/38): add sidKey, if present, to the OpenAPI docs. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   2708: 
+   2709: **Library - Chore**
+   2710: - [PR #37](https://github.com/twilio/twilio-oai/pull/37): refactor the Twilio vendor extensions into single object. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   2711: 
+   2712: **Api**
+   2713: - Update `status` enum for Messages to include 'canceled'
+   2714: - Update `update_status` enum for Messages to include 'canceled'
+   2715: 
+   2716: **Trusthub**
+   2717: - Corrected the sid for policy sid in customer_profile_evaluation.json and trust_product_evaluation.json **(breaking change)**
+   2718: 
+   2719: 
+   2720: [2021-06-02] Version 1.16.1
+   2721: ---------------------------
+   2722: **Events**
+   2723: - join Sinks and Subscriptions service
+   2724: 
+   2725: **Verify**
+   2726: - Improved the documentation of `challenge` adding the maximum and minimum expected lengths of some fields.
+   2727: - Improve documentation regarding `notification` by updating the documentation of the field `ttl`.
+   2728: 
+   2729: 
+   2730: [2021-05-19] Version 1.16.0
+   2731: ---------------------------
+   2732: **Events**
+   2733: - add query param to return types filtered by Schema Id
+   2734: - Add query param to return sinks filtered by status
+   2735: - Add query param to return sinks used/not used by a subscription
+   2736: 
+   2737: **Messaging**
+   2738: - Add fetch and delete instance endpoints to us_app_to_person api **(breaking change)**
+   2739: - Remove delete list endpoint from us_app_to_person api **(breaking change)**
+   2740: - Update read list endpoint to return a list of us_app_to_person compliance objects **(breaking change)**
+   2741: - Add `sid` field to Preregistered US App To Person response
+   2742: 
+   2743: **Supersim**
+   2744: - Mark `unique_name` in Sim, Fleet, NAP resources as not PII
+   2745: 
+   2746: **Video**
+   2747: - [Composer] GA maturity level
+   2748: 
+   2749: 
+   2750: [2021-05-05] Version 1.15.0
+   2751: ---------------------------
+   2752: **Api**
+   2753: - Corrected the data types for feedback summary fields **(breaking change)**
+   2754: - Update the conference participant create `from` and `to` param to be endpoint type for supporting client identifier and sip address
+   2755: 
+   2756: **Bulkexports**
+   2757: - promoting API maturity to GA
+   2758: 
+   2759: **Events**
+   2760: - Add endpoint to update description in sink
+   2761: - Remove beta-feature account flag
+   2762: 
+   2763: **Messaging**
+   2764: - Update `status` field in us_app_to_person api to `campaign_status` **(breaking change)**
+   2765: 
+   2766: **Verify**
+   2767: - Improve documentation regarding `push` factor and include extra information about `totp` factor.
+   2768: 
+   2769: 
+   2770: [2021-04-21] Version 1.14.0
+   2771: ---------------------------
+   2772: **Library - Feature**
+   2773: - [PR #32](https://github.com/twilio/twilio-oai/pull/32): add baseUrls to the top-level documents. Thanks to [@childish-sambino](https://github.com/childish-sambino)!
+   2774: 
+   2775: **Library - Fix**
+   2776: - [PR #31](https://github.com/twilio/twilio-oai/pull/31): format for date type should be 'date' and not 'date-time'. Thanks to [@shwetha-manvinkurke](https://github.com/shwetha-manvinkurke)!
+   2777: 
+   2778: **Api**
+   2779: - Revert Update the conference participant create `from` and `to` param to be endpoint type for supporting client identifier and sip address
+   2780: - Update the conference participant create `from` and `to` param to be endpoint type for supporting client identifier and sip address
+   2781: 
+   2782: **Bulkexports**
+   2783: - moving enum to doc root for auto generating documentation
+   2784: - adding status enum and default output properties
+   2785: 
+   2786: **Events**
+   2787: - Change schema_versions prop and key to versions **(breaking change)**
+   2788: 
+   2789: **Messaging**
+   2790: - Add `use_inbound_webhook_on_number` field in Service API for fetch, create, update, read
+   2791: 
+   2792: **Taskrouter**
+   2793: - Add `If-Match` Header based on ETag for Task Delete
+   2794: 
+   2795: **Verify**
+   2796: - Add `AuthPayload` parameter to support verifying a `Challenge` upon creation. This is only supported for `totp` factors.
+   2797: - Add support to resend the notifications of a `Challenge`. This is only supported for `push` factors.
+   2798: 
+   2799: 
+   2800: [2021-04-07] Version 1.13.0
+   2801: ---------------------------
+   2802: **Api**
+   2803: - Added `announcement` event to conference status callback events
+   2804: - Removed optional property `time_limit` in the call create request. **(breaking change)**
+   2805: 
+   2806: **Messaging**
+   2807: - Add rate_limits field to Messaging Services US App To Person API
+   2808: - Add usecase field in Service API for fetch, create, update, read
+   2809: - Add us app to person api and us app to person usecase api as dependents in service
+   2810: - Add us_app_to_person_registered field in service api for fetch, read, create, update
+   2811: - Add us app to person api
+   2812: - Add us app to person usecase api
+   2813: - Add A2P external campaign api
+   2814: - Add Usecases API
+   2815: 
+   2816: **Supersim**
+   2817: - Add Create endpoint to Sims resource
+   2818: 
+   2819: **Verify**
+   2820: - The `Binding` field is now returned when creating a `Factor`. This value won't be returned for other endpoints.
+   2821: 
+   2822: **Video**
+   2823: - [Rooms] max_concurrent_published_tracks has got GA maturity
+   2824: 
+   2825: 
+   2826: [2021-03-24] Version 1.12.0
+   2827: ---------------------------
+   2828: **Api**
+   2829: - Added optional parameter `CallToken` for create calls api
+   2830: - Add optional property `time_limit` in the call create request.
+   2831: 
+   2832: **Bulkexports**
+   2833: - adding two new fields with job api queue_position and estimated_completion_time
+   2834: 
+   2835: **Events**
+   2836: - Add new endpoints to manage subscribed_events in subscriptions
+   2837: 
+   2838: **Numbers**
+   2839: - Remove feature flags for RegulatoryCompliance endpoints
+   2840: 
+   2841: **Supersim**
+   2842: - Add SmsCommands resource
+   2843: - Add fields `SmsCommandsUrl`, `SmsCommandsMethod` and `SmsCommandsEnabled` to a Fleet resource
+   2844: 
+   2845: **Taskrouter**
+   2846: - Add `If-Match` Header based on ETag for Task Update
+   2847: - Add `ETag` as Response Headers to Tasks and Reservations
+   2848: 
+   2849: **Video**
+   2850: - Recording rule beta flag **(breaking change)**
+   2851: - [Rooms] Add RecordingRules param to Rooms
+   2852: 
+   2853: 
+   2854: [2021-03-15] Version 1.11.0
+   2855: ---------------------------
+   2856: **Library - Feature**
+   2857: - [PR #30](https://github.com/twilio/twilio-oai/pull/30): add property descriptions to OAI. Thanks to [@JenniferMah](https://github.com/JenniferMah)!
+   2858: 
+   2859: **Library - Chore**
+   2860: - [PR #29](https://github.com/twilio/twilio-oai/pull/29): add spectral linting to TravisCI build. Thanks to [@eshanholtz](https://github.com/eshanholtz)!
+   2861: 
+   2862: **Events**
+   2863: - Set maturity to beta
+   2864: 
+   2865: **Messaging**
+   2866: - Adjust A2P brand registration status enum **(breaking change)**
+   2867: 
+   2868: **Studio**
+   2869: - Remove internal safeguards for Studio V2 API usage now that it's GA
+   2870: 
+   2871: **Verify**
+   2872: - Add support for creating and verifying totp factors. Support for totp factors is behind the `api.verify.totp` beta feature.
+   2873: 
+   2874: 
+   2875: [2021-02-24] Version 1.10.0
+   2876: ---------------------------
+   2877: **Library - Fix**
+   2878: - [PR #27](https://github.com/twilio/twilio-oai/pull/27): add support for null response fields. Thanks to [@eshanholtz](https://github.com/eshanholtz)!
+   2879: - [PR #26](https://github.com/twilio/twilio-oai/pull/26): remove duplicate enum values. Thanks to [@eshanholtz](https://github.com/eshanholtz)!
+   2880: 
+   2881: **Events**
+   2882: - Update description of types in the create sink resource
+   2883: 
+   2884: **Messaging**
+   2885: - Add WA template header and footer
+   2886: - Remove A2P campaign and use cases API **(breaking change)**
+   2887: - Add number_registration_status field to read and fetch campaign responses
+   2888: 
+   2889: **Trusthub**
+   2890: - Make all resources public
+   2891: 
+   2892: **Verify**
+   2893: - Verify List Attempts API endpoints added.
+   2894: 
+   2895: 
+   2896: [2021-02-10] Version 1.9.0
+   2897: --------------------------
+   2898: **Library - Feature**
+   2899: - [PR #19](https://github.com/twilio/twilio-oai/pull/19): add custom types to global schema. Thanks to [@eshanholtz](https://github.com/eshanholtz)!
+   2900: - [PR #24](https://github.com/twilio/twilio-oai/pull/24): add inline schema titles. Thanks to [@thinkingserious](https://github.com/thinkingserious)!
+   2901: 
+   2902: **Api**
+   2903: - Revert change that conference participant create `from` and `to` param to be endpoint type for supporting client identifier and sip address
+   2904: - Update the conference participant create `from` and `to` param to be endpoint type for supporting client identifier and sip address
+   2905: 
+   2906: **Events**
+   2907: - Documentation should state that no fields are PII
+   2908: 
+   2909: **Flex**
+   2910: - Adding `notifications` and `markdown` to Flex Configuration
+   2911: 
+   2912: **Messaging**
+   2913: - Add A2P use cases API
+   2914: - Add Brand Registrations API
+   2915: - Add Campaigns API
+   2916: 
+   2917: **Serverless**
+   2918: - Add runtime field to Build response and as an optional parameter to the Build create endpoint.
+   2919: - Add @twilio/runtime-handler dependency to Build response example.
+   2920: 
+   2921: **Sync**
+   2922: - Remove If-Match header for Document **(breaking change)**
+   2923: 
+   2924: 
+   2925: [2021-01-27] Version 1.8.0
+   2926: --------------------------
+   2927: **Library - Feature**
+   2928: - [PR #20](https://github.com/twilio/twilio-oai/pull/20): Remove Postman File. Thanks to [@garethpaul](https://github.com/garethpaul)!
+   2929: 
+   2930: **Studio**
+   2931: - Studio V2 API is now GA
+   2932: 
+   2933: **Supersim**
+   2934: - Allow updating `CommandsUrl` and `CommandsMethod` on a Fleet
+   2935: 
+   2936: 
+   2937: [2021-01-13] Version 1.7.0
+   2938: --------------------------
+   2939: **Library - Chore**
+   2940: - [PR #18](https://github.com/twilio/twilio-oai/pull/18): add ahoy msg. Thanks to [@garethpaul](https://github.com/garethpaul)!
+   2941: 
+   2942: **Library - Fix**
+   2943: - [PR #17](https://github.com/twilio/twilio-oai/pull/17): making specs conform with the OpenAPI specification. Thanks to [@shwetha-manvinkurke](https://github.com/shwetha-manvinkurke)!
+   2944: 
+   2945: **Api**
+   2946: - Add 'Electric Imp v1 Usage' to usage categories
+   2947: 
+   2948: **Conversations**
+   2949: - Changed `last_read_message_index` type in Participant's resource **(breaking change)**
+   2950: 
+   2951: **Insights**
+   2952: - Added `created_time` to call summary.
+   2953: 
+   2954: **Sync**
+   2955: - Remove HideExpired query parameter for filtering Sync Documents with expired **(breaking change)**
+   2956: 
+   2957: **Video**
+   2958: - [Rooms] Expose maxConcurrentPublishedTracks property in Room resource
+   2959: 
+   2960: 
+   2961: [2020-12-16] Version 1.6.0
+   2962: --------------------------
+   2963: **Library - Feature**
+   2964: - [PR #16](https://github.com/twilio/twilio-oai/pull/16): add operation IDs. Thanks to [@JenniferMah](https://github.com/JenniferMah)!
+   2965: 
+   2966: **Api**
+   2967: - Updated `call_event` default_output_properties to request and response.
+   2968: 
+   2969: **Conversations**
+   2970: - Added `last_read_message_index` and `last_read_timestamp` to Participant's resource update operation
+   2971: - Added `is_notifiable` and `is_online` to User's resource
+   2972: - Added `reachability_enabled` parameters to update method for Conversation Service Configuration resource
+   2973: 
+   2974: **Messaging**
+   2975: - Added WA template quick reply, URL, and phone number buttons
+   2976: 
+   2977: 
+   2978: [2020-12-08] Version 1.5.0
+   2979: --------------------------
+   2980: **Library - Chore**
+   2981: - [PR #14](https://github.com/twilio/twilio-oai/pull/14): replace tags with vendor extension. Thanks to [@thinkingserious](https://github.com/thinkingserious)!
+   2982: 
+   2983: **Library - Fix**
+   2984: - [PR #11](https://github.com/twilio/twilio-oai/pull/11): fixing semantic errors in the specs. Thanks to [@shwetha-manvinkurke](https://github.com/shwetha-manvinkurke)!
+   2985: 
+   2986: **Api**
+   2987: - Added optional `RecordingTrack` parameter for create calls, create participants, and create call recordings
+   2988: - Removed deprecated Programmable Chat usage record categories **(breaking change)**
+   2989: 
+   2990: 
+   2991: [2020-12-02] Version 1.4.0
+   2992: --------------------------
+   2993: **Library - Feature**
+   2994: - [PR #8](https://github.com/twilio/twilio-oai/pull/8): Splitting up openAPI specs by version. Thanks to [@shwetha-manvinkurke](https://github.com/shwetha-manvinkurke)!
+   2995: 
+   2996: **Api**
+   2997: - Remove `RecordingTrack` parameter for create calls, create participants, and create call recordings **(breaking change)**
+   2998: - Added `RecordingTrack` parameter for create calls and create call recordings
+   2999: - Add optional property `recording_track` in the participant create request
+   3000: 
+   3001: **Lookups**
+   3002: - Changed `caller_name` and `carrier` properties type to object **(breaking change)**
+   3003: 
+   3004: **Trunking**
+   3005: - Added dual channel recording options for Trunks.
+   3006: 
+   3007: 
+   3008: [2020-11-18] Version 1.3.0
+   3009: --------------------------
+   3010: **Api**
+   3011: - Add new call events resource - GET /2010-04-01/Accounts/{account_sid}/Calls/{call_sid}/Events.json
+   3012: 
+   3013: **Conversations**
+   3014: - Fixed default response property issue for Service Notifications Configuration
+   3015: 
+   3016: **Insights**
+   3017: - Removing call_sid from participant summary. **(breaking change)**
+   3018: 
+   3019: **Serverless**
+   3020: - Allow Service unique name to be used in path (in place of SID) in Service update request
+   3021: 
+   3022: **Sync**
+   3023: - Added HideExpired query parameter for filtering Sync Documents with expired
+   3024: 
+   3025: **Verify**
+   3026: - Challenge `Details` and `HiddenDetails` properties are now marked as `PII`
+   3027: - Challenge `expiration_date` attribute updated to set a default value of five (5) minutes and to allow max dates of one (1) hour after creation.
+   3028: - Entity `identity` attribute updated to allow values between 8 and 64 characters.
+   3029: - Verify Service frinedly_name attribute updated from 64 max lenght to 30 characters.
+   3030: 
+   3031: 
+   3032: [2020-11-05] Version 1.2.0
+   3033: --------------------------
+   3034: **Api**
+   3035: - Added `verify-push` to `usage_record` API
+   3036: 
+   3037: **Bulkexports**
+   3038: - When creating a custom export the StartDay, EndDay, and FriendlyName fields were required but this was not reflected in the API documentation.  The API itself failed the request without these fields. **(breaking change)**
+   3039: - Added property descriptions for Custom Export create method
+   3040: - Clarified WebhookUrl and WebhookMethod must be provided together for Custom Export
+   3041: 
+   3042: **Insights**
+   3043: - Added video room and participant summary apis.
+   3044: 
+   3045: **Ip_messaging**
+   3046: - Create separate definition for ip-messaging
+   3047: - Restore v2 endpoints for ip-messaging
+   3048: 
+   3049: **Verify**
+   3050: - Verify Push madurity were updated from `preview` to `beta`
+   3051: - `twilio_sandbox_mode` header was removed from Verify Push resources **(breaking change)**
+   3052: 
+   3053: **Video**
+   3054: - [Rooms] Add Recording Rules API
+   3055: 
+   3056: 
+   3057: [2020-10-14] Version 1.1.0
+   3058: --------------------------
+   3059: **Ai**
+   3060: - Add `Annotation Project` and `Annotation Task` endpoints
+   3061: - Add `Primitives` endpoints
+   3062: - Add `meta.total` to the search endpoint
+   3063: 
+   3064: **Conversations**
+   3065: - Mutable Conversation Unique Names
+   3066: 
+   3067: **Insights**
+   3068: - Added `trust` to summary.
+   3069: 
+   3070: **Preview**
+   3071: - Simplified `Channels` resource. The path is now `/BrandedChannels/branded_channel_sid/Channels` **(breaking change)**
+   3072: 
+   3073: **Verify**
+   3074: - Changed parameters (`config` and `binding`) to use dot notation instead of JSON string (e.i. Before: `binding={"alg":"ES256", "public_key": "xxx..."}`, Now: `Binding.Alg="ES256"`, `Binding.PublicKey="xxx..."`). **(breaking change)**
+   3075: - Changed parameters (`details` and `hidden_details`) to use dot notation instead of JSON string (e.i. Before: `details={"message":"Test message", "fields": "[{\"label\": \"Action 1\", \"value\":\"value 1\"}]"}`, Now: `details.Message="Test message"`, `Details.Fields=["{\"label\": \"Action 1\", \"value\":\"value 1\"}"]`). **(breaking change)**
+   3076: - Removed `notify_service_sid` from `push` service configuration object. Add `Push.IncludeDate`, `Push.ApnCredentialSid` and `Push.FcmCredentialSid` service configuration parameters. **(breaking change)**
+   3077: 
+   3078: 
+   3079: [2020-09-28] Version 1.0.1
+   3080: --------------------------
+   3081: **Api**
+   3082: - Add optional property `call_reason` in the participant create request
+   3083: - Make sip-domain-service endpoints available in stage-au1 and prod-au1
+   3084: 
+   3085: **Messaging**
+   3086: - Removed beta feature gate from WhatsApp Templates API
+   3087: 
+   3088: **Serverless**
+   3089: - Add Build Status endpoint
+   3090: 
+   3091: **Video**
+   3092: - [Rooms] Add new room type "go" for WebRTC Go
+   3093: 
+   3094: 
+   3095: [2020-09-21] Version 1.0.0
+   3096: --------------------------
+   3097: **Library - Docs**
+   3098: - [PR #4](https://github.com/twilio/twilio-oai/pull/4): Adding README.md. Thanks to [@garethpaul](https://github.com/garethpaul)!
+   3099: 
+   3100: **Accounts**
+   3101: - Add Auth Token rotation API
+   3102: 
+   3103: **Conversations**
+   3104: - Change resource path for Webhook Configuration
+   3105: 
+   3106: **Events**
+   3107: - Schemas API get all Schemas names and versions
+   3108: 
+   3109: 
+   3110: [2020-09-17] Version 0.1.1
+   3111: --------------------------
+   3112: **Conversations**
+   3113: - Expose Configuration and Service Configuration resources
+   3114: - Add Unique Name support for Conversations
+   3115: - Add Services Push Notification resource
+   3116: - Add Service scoped Conversation resources
+   3117: - Support Identity in Users resource endpoint
+   3118: 
+   3119: **Messaging**
+   3120: - GA Deactivation List API
+   3121: - Add domain cert API's(fetch, update, create) for link tracker
+   3122: 
+   3123: **Numbers**
+   3124: - Add API endpoint for Supporting Document deletion
+   3125: 
+   3126: **Proxy**
+   3127: - Updated usage of FailOnParticipantConflict param to apply only to accounts with ProxyAllowParticipantConflict account flag
+   3128: 
+   3129: **Supersim**
+   3130: - Add `AccountSid` parameter to Sim resource update request
+   3131: - Add `ready` status as an available status for a Sim resource
+   3132: 
+   3133: 
+   3134: [2020-08-26] Version 0.1.0
+   3135: --------------------------

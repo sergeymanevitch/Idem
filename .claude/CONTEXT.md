@@ -91,12 +91,13 @@ or moved.
   `Write`, `Stop` blocking once and standing down on the next stop, and, later that evening, the
   `Bash` deny on `echo … >>` against the same snapshot (its hash unchanged before and after). The
   deny on `Write`, `MultiEdit` and `NotebookEdit` and the `*.input.txt` deny are proved by the
-  negative test only. In the translations that wrote the three shipped tickets files the `Bash` deny
+  negative test only. In the translations that wrote the three example tickets files the `Bash` deny
   fired six times, five on a command that read a snapshot and wrote somewhere else — a tickets file,
   a draft outside the repository, `/dev/null` — the wrong denial named above, and one on a command
   that wrote nothing, whose Python source held `>` and `>=`; `PostToolUse` handed back
   three failures on a tickets file written in parts, which then passed; `Stop` never sent a turn
-  back, because every file passed before its session ended.
+  back, because every file passed before its session ended. For the session of 2026-09-25 that
+  wrote the seven other tickets files, no hook firing is recorded.
 
 **The test.** `hooks/test_idem_hook.py`, the fourth test command, from the Idem root:
 

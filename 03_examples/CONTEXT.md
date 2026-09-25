@@ -1,6 +1,6 @@
 # 03_examples — assemble examples.md
 
-One job: build `../examples.md` whole from the pairs `examples-manifest.md` names — a shipped
+One job: build `../examples.md` whole from the pairs `examples-manifest.md` names — an example
 snapshot of `../00_fetch/00_snapshots/` and the tickets file of `../01_translate/00_tickets/`
 written for it — every embedded file a byte copy. **Built.** `../examples.md` at the root is the
 script's output, committed, and is never edited by hand: a change to the script or to the manifest
@@ -20,7 +20,7 @@ exist (one plain line each) — and nothing is written then.
   two columns `snapshot | tickets`, read by position, catalogued nowhere; and the pairs it names,
   by bare file name, from `../00_fetch/00_snapshots/` and `../01_translate/00_tickets/`. Three
   rows today: PagerDuty, Docker Engine API, Plaid.
-- Read by the tests as well: the manifest's `snapshot` column is how they find the shipped
+- Read by the tests as well: the manifest's `snapshot` column is how they find the example
   snapshots, through `shipped_names()` of `../lib/tests/test_segmentation.py`, which
   `../lib/tests/test_schema.py` and `../02_validate/test_validate.py` use, so a snapshot fetched
   beside them is none of them.
@@ -46,7 +46,7 @@ one character fails the suite.
 - `examples-manifest.md` — the pairs, in the order the file shows them.
 - `test_build_examples.py` — the fifth of Idem's test commands, and reached by none of the other
   four: `python3 -m unittest discover -s 03_examples -t 03_examples`. It holds
-  `extract(embed(b)) == b` on the six shipped files and on every kind of bytes a fence could trip
+  `extract(embed(b)) == b` on the six example files and on every kind of bytes a fence could trip
   over (a fence inside, a longer run, no final line feed, an empty file, CRLF, a NUL), the form of
   the generated file, `blocks()` of the committed file against the six committed files byte for
   byte, and the script as a person runs it, every output in a temporary directory.

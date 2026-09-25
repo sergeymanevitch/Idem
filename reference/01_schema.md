@@ -130,7 +130,7 @@ for every field that carries a quote. `breaking` narrows it in one case, a line 
 disagree, and `03_breaking-terms.md` states that case under **Scoped and conditional wording**.
 
 The examples in this section and the four after it are invented on `example.com`, or they are lines
-of the PagerDuty snapshot shipped in `00_fetch/00_snapshots/` — the changelog shipped as the tidy
+of the example PagerDuty snapshot in `00_fetch/00_snapshots/` — the changelog shipped as the tidy
 example — each quoted whole and numbered the way `04_snapshot-format.md` numbers a body line. Body
 line 136, with the one space it carries before its marker:
 
@@ -790,7 +790,7 @@ shows that one is needed, and not before.
 
 Both neighbours this file points at are written: `03_breaking-terms.md`, the closed list of phrases
 that fill `breaking` and the value each one maps to, and `05_checks.md`, where every rule above has
-the key and the code that will make it enforceable.
+the key and the code under which it is enforced.
 
 ## What reads these tables
 

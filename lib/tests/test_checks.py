@@ -4,13 +4,12 @@
 
 These read the shipped contract and never a temp tree: what is under test is what the folder says.
 
-Nothing here is a check. `02_validate/validate.py` is written and seven of its nine phases and the
-warnings are behind it, but a row of `checks` still states what will be checked and under what
-code, never that anything checks it today; what each written check does is proved in
-`02_validate/test_validate.py`, beside the tool. What can
-be proved here is that the table is well formed, that it holds the rows the requirements ask for, that
-it agrees with the two code strings `contract.py` is allowed to hold, and that no other code string
-has leaked into any source file.
+Nothing here is a check. `02_validate/validate.py` writes all nine phases, and every row of `checks`
+has a check behind it; a row states what is checked and under what code, and what each check does is
+proved in `02_validate/test_validate.py`, beside the tool. What can be proved here is that the table
+is well formed, that it holds the rows the requirements ask for, that it agrees with the two code
+strings `contract.py` is allowed to hold, and that no other code string has leaked into any source
+file.
 
 WHAT IS WRITTEN HERE AS A LITERAL
 

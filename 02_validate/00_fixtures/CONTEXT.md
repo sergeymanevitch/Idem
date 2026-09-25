@@ -90,7 +90,10 @@ is a record of a page as it was served, and nothing here should ever be read as 
 A value mutation goes through the parser — parse, change, serialise — so the file stays canonical
 and fails for the reason it was built to fail for. A shape mutation is one the parser cannot be made
 to write, so it is made on the bytes: `encoding-01`, `header-01`, `noncanonical-01`, the three
-`grammar_line` files, `grammar_shape-01` and the three `fields` files are the ten here. Two of the
+`grammar_line` files, `grammar_shape-01` and `fields-01` to `fields-03` are the ten here.
+`fields-04` and `fields-05` are neither a shape mutation made on the bytes nor a value mutation that
+stays canonical: each is what the serialiser writes, byte for byte, from `clean-01`'s model changed
+to give its first ticket's `change` or `breaking` row twice, and the reader refuses it. Two of the
 ten are worth a word. `noncanonical-01` writes four hyphens in each cell of one delimiter row, which
 parses — the reader forgives the dash count and the comparison with canonical form reports it — and
 could not have been written by a serialiser, which writes the count the contract gives; and

@@ -1,8 +1,14 @@
 <!DOCTYPE html>
-<!-- A fixture page for the HTML routine. Every construct below has its line in changelog.txt. -->
+<!-- A fixture page for the HTML routine, not a page to view. Every element that carries text has
+     its line in changelog.txt; the viewport meta and the aria-label and title attributes give none.
+     The odd constructs are on purpose: a script holding "</div>", text inside a textarea and an
+     iframe, a hidden div, a table cell holding a list. Each pins what the routine keeps or drops,
+     and changelog.txt is what they must give. test_html_text.py requires the textarea, the iframe,
+     a script, the table, the ordered list, a no-break space reference and a comment to stay. -->
 <html lang="en">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Example API &amp; SDK changelog</title>
   <style>
     body { font-family: sans-serif; }
@@ -48,8 +54,8 @@
     </tbody>
   </table>
   <p>An example request body:</p>
-  <textarea readonly><b>not bold</b> &lt;id&gt; &amp;amp;</textarea>
-  <iframe srcdoc="x"><p>raw &amp; unresolved</p></iframe>
+  <textarea readonly aria-label="An example request body"><b>not bold</b> &lt;id&gt; &amp;amp;</textarea>
+  <iframe srcdoc="x" title="An embedded example"><p>raw &amp; unresolved</p></iframe>
   <script type="application/json">{"hidden": "</p>"}</script>
   <details><summary>Older releases</summary><div hidden>1.9.0 &ndash; the first public release.</div></details>
   <hr>

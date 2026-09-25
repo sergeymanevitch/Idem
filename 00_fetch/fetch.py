@@ -243,7 +243,8 @@ OUT = "--out"
 URLS = "--urls"
 USAGE = ("usage: python3 00_fetch/fetch.py [--out DIR] (<url> | --urls FILE) - one http or https "
          "URL, or a file of them one a line, and a directory that is there and can be written; "
-         "the snapshots are written beside this tool when no directory is named")
+         "the snapshots are written into 00_snapshots/ beside this tool when no directory is "
+         "named")
 #: A URL file: a line starting with this is a comment, and one of these characters around a line
 #: is not part of it.
 COMMENT = "#"

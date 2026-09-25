@@ -492,7 +492,7 @@ that passes.
 **FR-16's "'Deprecated on X' alone fills neither field."** A translator-only rule, with no mechanical
 check and no key in this file. Catching it would need a closed list of the phrases that tie a date to
 a change taking effect, or to old behaviour ending, and no requirement holds such a list; inventing
-one would put a second owner beside FR-16. The architecture spine records it under Deferred, and the
+one would put a second owner beside FR-16. The author's design notes defer it, and the
 guard in the meantime is `value_quote` — the date, wherever it is filed, still has to be a substring
 of its own quote — and a reader looking at `Unmapped`.
 
